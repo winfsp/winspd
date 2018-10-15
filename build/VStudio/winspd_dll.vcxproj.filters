@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Include">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Source">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Include\winspd">
+      <UniqueIdentifier>{bd60d71e-1fe0-477a-b3f1-5121a9881dc4}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\dll\library.c">
+      <Filter>Source</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\dll\library.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\inc\winspd\ioctl.h">
+      <Filter>Include\winspd</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\inc\winspd\winspd.h">
+      <Filter>Include\winspd</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

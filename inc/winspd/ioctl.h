@@ -1,5 +1,5 @@
 /**
- * @file sys/driver.c
+ * @file winspd/ioctl.h
  *
  * @copyright 2018 Bill Zissimopoulos
  */
@@ -19,19 +19,17 @@
  * associated repository.
  */
 
-#include <sys/driver.h>
+#ifndef WINSPD_IOCTL_H_INCLUDED
+#define WINSPD_IOCTL_H_INCLUDED
 
-DRIVER_INITIALIZE DriverEntry;
+#include <devioctl.h>
 
-#ifdef ALLOC_PRAGMA
-#pragma alloc_text(INIT, DriverEntry)
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-NTSTATUS DriverEntry(
-    PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
-{
-    UNREFERENCED_PARAMETER(DriverObject);
-    UNREFERENCED_PARAMETER(RegistryPath);
-
-    return STATUS_UNSUCCESSFUL;
+#ifdef __cplusplus
 }
+#endif
+
+#endif

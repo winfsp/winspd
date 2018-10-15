@@ -1,5 +1,5 @@
 /**
- * @file sys/driver.c
+ * @file dll/library.h
  *
  * @copyright 2018 Bill Zissimopoulos
  */
@@ -19,19 +19,10 @@
  * associated repository.
  */
 
-#include <sys/driver.h>
+#ifndef WINSPD_DLL_LIBRARY_H_INCLUDED
+#define WINSPD_DLL_LIBRARY_H_INCLUDED
 
-DRIVER_INITIALIZE DriverEntry;
+#define WINSPD_DLL_INTERNAL
+#include <winspd/winspd.h>
 
-#ifdef ALLOC_PRAGMA
-#pragma alloc_text(INIT, DriverEntry)
 #endif
-
-NTSTATUS DriverEntry(
-    PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
-{
-    UNREFERENCED_PARAMETER(DriverObject);
-    UNREFERENCED_PARAMETER(RegistryPath);
-
-    return STATUS_UNSUCCESSFUL;
-}
