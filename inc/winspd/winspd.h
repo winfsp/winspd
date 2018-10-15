@@ -2,8 +2,8 @@
  * @file winspd/winspd.h
  * WinSpd User Mode API.
  *
- * In order to use the WinSpd API the user mode StorPort Driver must include &lt;winspd/winspd.h&gt;
- * and link with the winspd_x64.dll (or winspd_x86.dll) library.
+ * In order to use the WinSpd API the user mode Storage Port Driver must include
+ * &lt;winspd/winspd.h&gt; and link with the winspd_x64.dll (or winspd_x86.dll) library.
  *
  * @copyright 2018 Bill Zissimopoulos
  */

@@ -26,5 +26,22 @@
 
 #define POOL_NX_OPTIN                   1
 #include <ntifs.h>
+#include <storport.h>
+
+/* disable warnings */
+#pragma warning(disable:4100)           /* unreferenced formal parameter */
+#pragma warning(disable:4200)           /* zero-sized array in struct/union */
+
+/* virtual miniport functions */
+HW_INITIALIZE SpdHwInitialize;
+HW_STARTIO SpdHwStartIo;
+VIRTUAL_HW_FIND_ADAPTER SpdHwFindAdapter;
+HW_RESET_BUS SpdHwResetBus;
+HW_ADAPTER_CONTROL SpdHwAdapterControl;
+HW_FREE_ADAPTER_RESOURCES SpdHwFreeAdapterResources;
+HW_PROCESS_SERVICE_REQUEST SpdHwProcessServiceRequest;
+HW_COMPLETE_SERVICE_IRP SpdHwCompleteServiceIrp;
+HW_INITIALIZE_TRACING SpdHwInitializeTracing;
+HW_CLEANUP_TRACING SpdHwCleanupTracing;
 
 #endif

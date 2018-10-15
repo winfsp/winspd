@@ -30,8 +30,33 @@ DRIVER_INITIALIZE DriverEntry;
 NTSTATUS DriverEntry(
     PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
-    UNREFERENCED_PARAMETER(DriverObject);
-    UNREFERENCED_PARAMETER(RegistryPath);
+    VIRTUAL_HW_INITIALIZATION_DATA Data;
 
-    return STATUS_UNSUCCESSFUL;
+    RtlZeroMemory(&Data, sizeof(Data));
+    Data.HwInitializationDataSize = sizeof(VIRTUAL_HW_INITIALIZATION_DATA);
+    Data.AdapterInterfaceType = Internal;
+    Data.HwInitialize = SpdHwInitialize;
+    Data.HwStartIo = SpdHwStartIo;
+    Data.HwInterrupt = 0;
+    Data.HwFindAdapter = SpdHwFindAdapter;
+    Data.HwResetBus = SpdHwResetBus;
+    Data.HwDmaStarted = 0;
+    Data.HwAdapterState = 0;
+    Data.DeviceExtensionSize = 0;
+    Data.SpecificLuExtensionSize = 0;
+    Data.SrbExtensionSize = 0;
+    Data.MapBuffers = STOR_MAP_NO_BUFFERS;
+    Data.TaggedQueuing = FALSE;         /* docs say MUST be TRUE */
+    Data.AutoRequestSense = FALSE;      /* docs say MUST be TRUE */
+    Data.MultipleRequestPerLu = TRUE;
+    Data.HwAdapterControl = SpdHwAdapterControl;
+    Data.HwBuildIo = 0;
+    Data.HwFreeAdapterResources = SpdHwFreeAdapterResources;
+    Data.HwProcessServiceRequest = SpdHwProcessServiceRequest;
+    Data.HwCompleteServiceIrp = SpdHwCompleteServiceIrp;
+    Data.HwInitializeTracing = SpdHwInitializeTracing;
+    Data.HwCleanupTracing = SpdHwCleanupTracing;
+
+    return StorPortInitialize(
+        DriverObject, RegistryPath, (PHW_INITIALIZATION_DATA)&Data, 0);
 }
