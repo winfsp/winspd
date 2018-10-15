@@ -1,0 +1,195 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="version.properties" />
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{989F4291-242B-4ABE-915F-366581E867B4}</ProjectGuid>
+    <TemplateGuid>{dd38f7fc-d7bd-488b-9242-7d8754cde80d}</TemplateGuid>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <MinimumVisualStudioVersion>12.0</MinimumVisualStudioVersion>
+    <Configuration>Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">Win32</Platform>
+    <RootNamespace>winspd</RootNamespace>
+    <WindowsTargetPlatformVersion>$(LatestTargetPlatformVersion)</WindowsTargetPlatformVersion>
+    <ProjectName>winspd.sys</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>WDM</DriverType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>WDM</DriverType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>WDM</DriverType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>WDM</DriverType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(ProjectName).build\$(Configuration)\$(PlatformTarget)\</IntDir>
+    <TargetName>$(SolutionName)-$(PlatformTarget)</TargetName>
+    <EnableInf2cat>false</EnableInf2cat>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(ProjectName).build\$(Configuration)\$(PlatformTarget)\</IntDir>
+    <TargetName>$(SolutionName)-$(PlatformTarget)</TargetName>
+    <EnableInf2cat>false</EnableInf2cat>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(ProjectName).build\$(Configuration)\$(PlatformTarget)\</IntDir>
+    <TargetName>$(SolutionName)-$(PlatformTarget)</TargetName>
+    <EnableInf2cat>false</EnableInf2cat>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(ProjectName).build\$(Configuration)\$(PlatformTarget)\</IntDir>
+    <TargetName>$(SolutionName)-$(PlatformTarget)</TargetName>
+    <EnableInf2cat>false</EnableInf2cat>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\src;..\..\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\src;..\..\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\src;..\..\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\src;..\..\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <FilesToPackage Include="$(TargetPath)" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\sys\driver.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\sys\driver.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\..\src\sys\driver.inf.in">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">set DriverFile=$(TargetFileName)
+set Provider="$(MyCompanyName)"
+set CatalogFile=driver-$(PlatformTarget).cat
+
+setlocal EnableDelayedExpansion
+if exist $(OutDir)driver-$(PlatformTarget).inf del $(OutDir)driver-$(PlatformTarget).inf
+for /f "delims=" %%l in (%(FullPath)) do (
+    set line=%%l
+    echo !line! &gt;&gt;$(OutDir)driver-$(PlatformTarget).inf
+)
+
+stampinf -v $(MyVersion) -f $(OutDir)driver-$(PlatformTarget).inf</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Writing driver-$(PlatformTarget).inf</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)driver-$(PlatformTarget).inf</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkObjects>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">set DriverFile=$(TargetFileName)
+set Provider="$(MyCompanyName)"
+set CatalogFile=driver-$(PlatformTarget).cat
+
+setlocal EnableDelayedExpansion
+if exist $(OutDir)driver-$(PlatformTarget).inf del $(OutDir)driver-$(PlatformTarget).inf
+for /f "delims=" %%l in (%(FullPath)) do (
+    set line=%%l
+    echo !line! &gt;&gt;$(OutDir)driver-$(PlatformTarget).inf
+)
+
+stampinf -v $(MyVersion) -f $(OutDir)driver-$(PlatformTarget).inf</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Writing driver-$(PlatformTarget).inf</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)driver-$(PlatformTarget).inf</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkObjects>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">set DriverFile=$(TargetFileName)
+set Provider="$(MyCompanyName)"
+set CatalogFile=driver-$(PlatformTarget).cat
+
+setlocal EnableDelayedExpansion
+if exist $(OutDir)driver-$(PlatformTarget).inf del $(OutDir)driver-$(PlatformTarget).inf
+for /f "delims=" %%l in (%(FullPath)) do (
+    set line=%%l
+    echo !line! &gt;&gt;$(OutDir)driver-$(PlatformTarget).inf
+)
+
+stampinf -v $(MyVersion) -f $(OutDir)driver-$(PlatformTarget).inf</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Writing driver-$(PlatformTarget).inf</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)driver-$(PlatformTarget).inf</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">set DriverFile=$(TargetFileName)
+set Provider="$(MyCompanyName)"
+set CatalogFile=driver-$(PlatformTarget).cat
+
+setlocal EnableDelayedExpansion
+if exist $(OutDir)driver-$(PlatformTarget).inf del $(OutDir)driver-$(PlatformTarget).inf
+for /f "delims=" %%l in (%(FullPath)) do (
+    set line=%%l
+    echo !line! &gt;&gt;$(OutDir)driver-$(PlatformTarget).inf
+)
+
+stampinf -v $(MyVersion) -f $(OutDir)driver-$(PlatformTarget).inf</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Writing driver-$(PlatformTarget).inf</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)driver-$(PlatformTarget).inf</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

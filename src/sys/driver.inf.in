@@ -1,0 +1,21 @@
+[Version]
+Signature = "$WINDOWS NT$"
+Class = Volume
+ClassGuid = {58A546F8-E96F-4D39-BA2D-335F5F80D3FF}
+CatalogFile = !CatalogFile!
+Provider = !Provider!
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+[DefaultInstall]
+CopyFiles = Driver.CopyFiles
+
+[Driver.CopyFiles]
+!DriverFile!
+
+[SourceDisksFiles]
+!DriverFile! = 1
+
+[SourceDisksNames]
+1 = Disk1
