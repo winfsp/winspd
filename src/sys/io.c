@@ -23,5 +23,14 @@
 
 BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb)
 {
-    return FALSE;
+    BOOLEAN Result = FALSE;
+    SPD_ENTER(adapter);
+
+    Result = FALSE;
+
+    SPD_LEAVE(adapter,
+        "DeviceExtension=%p, Srb=%p", " = %d",
+        DeviceExtension, Srb, Result);
+
+    return Result;
 }

@@ -30,6 +30,10 @@ DRIVER_INITIALIZE DriverEntry;
 NTSTATUS DriverEntry(
     PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
+    NTSTATUS Result = STATUS_UNSUCCESSFUL;
+    SPD_ENTER(drvrld,
+        ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
+
     VIRTUAL_HW_INITIALIZATION_DATA Data;
 
     RtlZeroMemory(&Data, sizeof(Data));
@@ -57,6 +61,12 @@ NTSTATUS DriverEntry(
     Data.HwInitializeTracing = SpdHwInitializeTracing;
     Data.HwCleanupTracing = SpdHwCleanupTracing;
 
-    return StorPortInitialize(
+    Result = StorPortInitialize(
         DriverObject, RegistryPath, (PHW_INITIALIZATION_DATA)&Data, 0);
+
+#pragma prefast(suppress:28175, "We are in DriverEntry: ok to access DriverName")
+    SPD_LEAVE(drvrld,
+        "DriverName=\"%wZ\", RegistryPath=\"%wZ\"", " = %lx",
+        &DriverObject->DriverName, RegistryPath, Result);
+    return Result;
 }

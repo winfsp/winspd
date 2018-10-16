@@ -53,26 +53,15 @@ ULONG SpdHwFindAdapter(
          */
     ConfigInfo->MaximumNumberOfLogicalUnits = 255/*SCSI_MAXIMUM_LUNS_PER_TARGET*/;
     ConfigInfo->WmiDataProvider = TRUE;
-        // ???: HOW?
     ConfigInfo->SynchronizationModel = StorSynchronizeFullDuplex;
     ConfigInfo->VirtualDevice = TRUE;
 
     Result = SP_RETURN_FOUND;
 
     SPD_LEAVE(adapter,
-        "DeviceExtension=%p, "
-        "HwContext=%p, "
-        "BusInformation=%p, "
-        "LowerDevice=%p, "
-        "ArgumentString=\"%s\"",
+        "DeviceExtension=%p, HwContext=%p, BusInformation=%p, LowerDevice=%p, ArgumentString=\"%s\"",
         " = %lu",
-        DeviceExtension,
-        HwContext,
-        BusInformation,
-        LowerDevice,
-        ArgumentString,
-        Result);
-
+        DeviceExtension, HwContext, BusInformation, LowerDevice, ArgumentString, Result);
     return Result;
 }
 
@@ -84,11 +73,8 @@ BOOLEAN SpdHwInitialize(PVOID DeviceExtension)
     Result = FALSE;
 
     SPD_LEAVE(adapter,
-        "DeviceExtension=%p",
-        " = %d",
-        DeviceExtension,
-        Result);
-
+        "DeviceExtension=%p", " = %d",
+        DeviceExtension, Result);
     return Result;
 }
 
@@ -98,8 +84,7 @@ VOID SpdHwFreeAdapterResources(PVOID DeviceExtension)
         ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
 
     SPD_LEAVE(adapter,
-        "DeviceExtension=%p",
-        "",
+        "DeviceExtension=%p", "",
         DeviceExtension);
 }
 
@@ -111,13 +96,8 @@ BOOLEAN SpdHwResetBus(PVOID DeviceExtension, ULONG PathId)
     Result = FALSE;
 
     SPD_LEAVE(adapter,
-        "DeviceExtension=%p, "
-        "PathId=%lu",
-        " = %d",
-        DeviceExtension,
-        PathId,
-        Result);
-
+        "DeviceExtension=%p, PathId=%lu", " = %d",
+        DeviceExtension, PathId, Result);
     return Result;
 }
 
@@ -132,12 +112,7 @@ SCSI_ADAPTER_CONTROL_STATUS SpdHwAdapterControl(
     Result = ScsiAdapterControlUnsuccessful;
 
     SPD_LEAVE(adapter,
-        "DeviceExtension=%p, "
-        "ControlType=%lu",
-        " = %d",
-        DeviceExtension,
-        ControlType,
-        (int)Result);
-
+        "DeviceExtension=%p, ControlType=%lu", " = %d",
+        DeviceExtension, ControlType, (int)Result);
     return Result;
 }

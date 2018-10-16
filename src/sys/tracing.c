@@ -23,8 +23,20 @@
 
 VOID SpdHwInitializeTracing(PVOID Arg1, PVOID Arg2)
 {
+    SPD_ENTER(tracing,
+        ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
+
+    SPD_LEAVE(tracing,
+        "Arg1=%p, Arg2=%p", "",
+        Arg1, Arg2);
 }
 
 VOID SpdHwCleanupTracing(PVOID Arg1)
 {
+    SPD_ENTER(tracing,
+        ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
+
+    SPD_LEAVE(tracing,
+        "Arg1=%p", "",
+        Arg1);
 }
