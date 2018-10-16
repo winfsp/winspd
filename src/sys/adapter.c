@@ -30,7 +30,32 @@ ULONG SpdHwFindAdapter(
     PPORT_CONFIGURATION_INFORMATION ConfigInfo,
     PBOOLEAN Again)
 {
-    return SP_RETURN_NOT_FOUND;
+    ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
+
+    ConfigInfo->MaximumTransferLength = SP_UNINITIALIZED_VALUE;
+    ConfigInfo->NumberOfPhysicalBreaks = SP_UNINITIALIZED_VALUE;
+    ConfigInfo->AlignmentMask = 3;
+    ConfigInfo->NumberOfBuses = 1;
+    ConfigInfo->ScatterGather = TRUE;
+    ConfigInfo->Master = TRUE;
+    ConfigInfo->CachesData = TRUE;
+    ConfigInfo->AdapterScansDown = FALSE;
+    ConfigInfo->MaximumNumberOfTargets = 255;
+        /*
+         * Quote from storport.h:
+         *     Define SCSI maximum configuration parameters.
+         *
+         *     NOTE - the current SCSI_MAXIMUM_TARGETS_PER_BUS is applicable only
+         *     on scsiport miniports. For storport miniports, the max target
+         *     supported is 255.
+         */
+    ConfigInfo->MaximumNumberOfLogicalUnits = 255/*SCSI_MAXIMUM_LUNS_PER_TARGET*/;
+    ConfigInfo->WmiDataProvider = TRUE;
+        // ???: HOW?
+    ConfigInfo->SynchronizationModel = StorSynchronizeFullDuplex;
+    ConfigInfo->VirtualDevice = TRUE;
+
+    return SP_RETURN_FOUND;
 }
 
 BOOLEAN SpdHwInitialize(PVOID DeviceExtension)
