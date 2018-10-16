@@ -9,6 +9,9 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="Include\winspd">
+      <UniqueIdentifier>{6cf160f6-0481-4a70-a13b-d71117e17242}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\sys\driver.c">
@@ -30,6 +33,9 @@
   <ItemGroup>
     <ClInclude Include="..\..\src\sys\driver.h">
       <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\inc\winspd\ioctl.h">
+      <Filter>Include\winspd</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

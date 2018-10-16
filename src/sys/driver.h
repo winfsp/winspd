@@ -27,21 +27,107 @@
 #define POOL_NX_OPTIN                   1
 #include <ntifs.h>
 #include <storport.h>
+#include <winspd/ioctl.h>
 
 /* disable warnings */
 #pragma warning(disable:4100)           /* unreferenced formal parameter */
 #pragma warning(disable:4200)           /* zero-sized array in struct/union */
 
+#define DRIVER_NAME                     SPD_IOCTL_DRIVER_NAME
+
+/* debug */
+#if DBG
+enum
+{
+    spd_debug_bp_generic                = 0x00000001,   /* generic breakpoint switch */
+    spd_debug_bp_drvrld                 = 0x00000002,   /* DriverEntry breakpoint switch */
+    spd_debug_bp_tracing                = 0x00000004,   /* tracing functions breakpoint switch */
+    spd_debug_bp_adapter                = 0x00000008,   /* adapter functions breakpoint switch */
+    spd_debug_bp_ioctl                  = 0x00000010,   /* ioctl functions breakpoint switch */
+    spd_debug_bp_io                     = 0x00000020,   /* io functions breakpoint switch */
+    spd_debug_dp_generic                = 0x00010000,   /* generic DbgPrint switch */
+    spd_debug_dp_drvrld                 = 0x00020000,   /* DriverEntry DbgPrint switch */
+    spd_debug_dp_tracing                = 0x00040000,   /* tracing functions DbgPrint switch */
+    spd_debug_dp_adapter                = 0x00080000,   /* adapter functions DbgPrint switch */
+    spd_debug_dp_ioctl                  = 0x00100000,   /* ioctl functions DbgPrint switch */
+    spd_debug_dp_io                     = 0x00200000,   /* io functions DbgPrint switch */
+};
+extern __declspec(selectany) int spd_debug =
+    spd_debug_bp_drvrld | spd_debug_dp_drvrld;
+#endif
+
+/* DEBUGBREAK */
+#if DBG
+#define DEBUGBREAK_EX(category)         \
+    do                                  \
+    {                                   \
+        static int bp = 1;              \
+        if (bp && (spd_debug & spd_debug_bp_ ## category) && !KD_DEBUGGER_NOT_PRESENT)\
+            DbgBreakPoint();            \
+    } while (0,0)
+#else
+#define DEBUGBREAK_EX(category)         do {} while (0,0)
+#endif
+#define DEBUGBREAK()                    DEBUGBREAK_EX(generic)
+
+/* DEBUGLOG */
+#if DBG
+#define DEBUGLOG_EX(category, fmt, ...) \
+    ((void)((spd_debug & spd_debug_dp_ ## category) ?\
+        DbgPrint("[%d] " DRIVER_NAME "!" __FUNCTION__ ": " fmt "\n", KeGetCurrentIrql(), __VA_ARGS__) :\
+        0))
+#else
+#define DEBUGLOG_EX(category, fmt, ...) ((void)0)
+#endif
+#define DEBUGLOG(fmt, ...)              DEBUGLOG_EX(generic, fmt, __VA_ARGS__)
+
+/* SPD_ENTER/SPD_LEAVE */
+#if DBG
+#define SPD_DEBUGLOG_(category, fmt, rfmt, ...)\
+    ((void)((spd_debug & spd_debug_dp_ ## category) ?\
+        DbgPrint(AbnormalTermination() ?\
+            "[%d] " DRIVER_NAME "!" __FUNCTION__ "(" fmt ") = *AbnormalTermination*\n" :\
+            "[%d] " DRIVER_NAME "!" __FUNCTION__ "(" fmt ")" rfmt "\n"\
+            , KeGetCurrentIrql(), __VA_ARGS__) :\
+        0))
+#else
+#define SPD_DEBUGLOG_(category, fmt, rfmt, ...)\
+    ((void)0)
+#endif
+#define SPD_ENTER_(category, ...)       \
+    DEBUGBREAK_EX(category);            \
+    try                                 \
+    {                                   \
+        __VA_ARGS__
+#define SPD_LEAVE_(...)                 \
+    goto spd_leave_label;               \
+    spd_leave_label:;                   \
+    }                                   \
+    finally                             \
+    {                                   \
+        __VA_ARGS__;                    \
+    }
+#define SPD_ENTER(category, ...)        \
+    SPD_ENTER_(category, __VA_ARGS__)
+#define SPD_LEAVE(category, fmt, rfmt, ...)\
+    SPD_LEAVE_(SPD_DEBUGLOG_(category, fmt, rfmt, __VA_ARGS__))
+#define SPD_RETURN(...)                 \
+    do                                  \
+    {                                   \
+        __VA_ARGS__;                    \
+        goto spd_leave_label;           \
+    } while (0,0)
+
 /* virtual miniport functions */
-HW_INITIALIZE SpdHwInitialize;
-HW_STARTIO SpdHwStartIo;
-VIRTUAL_HW_FIND_ADAPTER SpdHwFindAdapter;
-HW_RESET_BUS SpdHwResetBus;
-HW_ADAPTER_CONTROL SpdHwAdapterControl;
-HW_FREE_ADAPTER_RESOURCES SpdHwFreeAdapterResources;
-HW_PROCESS_SERVICE_REQUEST SpdHwProcessServiceRequest;
-HW_COMPLETE_SERVICE_IRP SpdHwCompleteServiceIrp;
 HW_INITIALIZE_TRACING SpdHwInitializeTracing;
 HW_CLEANUP_TRACING SpdHwCleanupTracing;
+VIRTUAL_HW_FIND_ADAPTER SpdHwFindAdapter;
+HW_INITIALIZE SpdHwInitialize;
+HW_FREE_ADAPTER_RESOURCES SpdHwFreeAdapterResources;
+HW_RESET_BUS SpdHwResetBus;
+HW_ADAPTER_CONTROL SpdHwAdapterControl;
+HW_PROCESS_SERVICE_REQUEST SpdHwProcessServiceRequest;
+HW_COMPLETE_SERVICE_IRP SpdHwCompleteServiceIrp;
+HW_STARTIO SpdHwStartIo;
 
 #endif

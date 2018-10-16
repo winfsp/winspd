@@ -30,7 +30,9 @@ ULONG SpdHwFindAdapter(
     PPORT_CONFIGURATION_INFORMATION ConfigInfo,
     PBOOLEAN Again)
 {
-    ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
+    ULONG Result = SP_RETURN_NOT_FOUND;
+    SPD_ENTER(adapter,
+        ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
 
     ConfigInfo->MaximumTransferLength = SP_UNINITIALIZED_VALUE;
     ConfigInfo->NumberOfPhysicalBreaks = SP_UNINITIALIZED_VALUE;
@@ -55,21 +57,68 @@ ULONG SpdHwFindAdapter(
     ConfigInfo->SynchronizationModel = StorSynchronizeFullDuplex;
     ConfigInfo->VirtualDevice = TRUE;
 
-    return SP_RETURN_FOUND;
+    Result = SP_RETURN_FOUND;
+
+    SPD_LEAVE(adapter,
+        "DeviceExtension=%p, "
+        "HwContext=%p, "
+        "BusInformation=%p, "
+        "LowerDevice=%p, "
+        "ArgumentString=\"%s\"",
+        " = %lu",
+        DeviceExtension,
+        HwContext,
+        BusInformation,
+        LowerDevice,
+        ArgumentString,
+        Result);
+
+    return Result;
 }
 
 BOOLEAN SpdHwInitialize(PVOID DeviceExtension)
 {
-    return FALSE;
+    BOOLEAN Result = FALSE;
+    SPD_ENTER(adapter);
+
+    Result = FALSE;
+
+    SPD_LEAVE(adapter,
+        "DeviceExtension=%p",
+        " = %d",
+        DeviceExtension,
+        Result);
+
+    return Result;
 }
 
 VOID SpdHwFreeAdapterResources(PVOID DeviceExtension)
 {
+    SPD_ENTER(adapter,
+        ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
+
+    SPD_LEAVE(adapter,
+        "DeviceExtension=%p",
+        "",
+        DeviceExtension);
 }
 
 BOOLEAN SpdHwResetBus(PVOID DeviceExtension, ULONG PathId)
 {
-    return FALSE;
+    BOOLEAN Result = FALSE;
+    SPD_ENTER(adapter);
+
+    Result = FALSE;
+
+    SPD_LEAVE(adapter,
+        "DeviceExtension=%p, "
+        "PathId=%lu",
+        " = %d",
+        DeviceExtension,
+        PathId,
+        Result);
+
+    return Result;
 }
 
 SCSI_ADAPTER_CONTROL_STATUS SpdHwAdapterControl(
@@ -77,5 +126,18 @@ SCSI_ADAPTER_CONTROL_STATUS SpdHwAdapterControl(
     SCSI_ADAPTER_CONTROL_TYPE ControlType,
     PVOID Parameters)
 {
-    return ScsiAdapterControlUnsuccessful;
+    SCSI_ADAPTER_CONTROL_STATUS Result = ScsiAdapterControlUnsuccessful;
+    SPD_ENTER(adapter);
+
+    Result = ScsiAdapterControlUnsuccessful;
+
+    SPD_LEAVE(adapter,
+        "DeviceExtension=%p, "
+        "ControlType=%lu",
+        " = %d",
+        DeviceExtension,
+        ControlType,
+        (int)Result);
+
+    return Result;
 }
