@@ -24,7 +24,7 @@
 #if DBG
 #define SYM(x)                          case x: return #x;
 
-const char *SrbFunctionSym(UCHAR Function)
+const char *SrbFunctionSym(ULONG Function)
 {
     switch (Function)
     {
@@ -63,7 +63,7 @@ const char *SrbFunctionSym(UCHAR Function)
     }
 }
 
-const char *SrbStatusSym(UCHAR Status)
+const char *SrbStatusSym(ULONG Status)
 {
     switch (SRB_STATUS(Status))
     {
@@ -101,7 +101,7 @@ const char *SrbStatusSym(UCHAR Status)
     }
 }
 
-const char *SrbStatusMaskSym(UCHAR Status)
+const char *SrbStatusMaskSym(ULONG Status)
 {
     switch (Status & (SRB_STATUS_QUEUE_FROZEN | SRB_STATUS_AUTOSENSE_VALID))
     {

@@ -141,6 +141,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\inc\winspd\ioctl.h" />
     <ClInclude Include="..\..\src\sys\driver.h" />
+    <ClInclude Include="..\..\src\sys\srbcompat.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\..\src\sys\driver.inf.in">

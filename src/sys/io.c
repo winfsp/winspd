@@ -21,12 +21,13 @@
 
 #include <sys/driver.h>
 
-BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb)
+BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
 {
+    PVOID Srb = Srb0;
     SPD_ENTER(io,
         ASSERT(DISPATCH_LEVEL >= KeGetCurrentIrql()));
 
-    switch (Srb->Function)
+    switch (SrbGetSrbFunction(Srb))
     {
     case SRB_FUNCTION_EXECUTE_SCSI:
         //SrbExecuteScsi(DeviceExtension, Srb);
@@ -61,14 +62,14 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb)
     case SRB_FUNCTION_FREE_DUMP_POINTERS:
     case SRB_FUNCTION_STORAGE_REQUEST_BLOCK:
     default:
-        Srb->SrbStatus = SRB_STATUS_INVALID_REQUEST;
+        SrbSetSrbStatus(Srb, SRB_STATUS_INVALID_REQUEST);
         break;
     }
 
     SPD_LEAVE(io,
         "DeviceExtension=%p, %s", " = %s%s",
-        DeviceExtension, SrbFunctionSym(Srb->Function),
-        SrbStatusSym(Srb->SrbStatus), SrbStatusMaskSym(Srb->SrbStatus));
+        DeviceExtension, SrbFunctionSym(SrbGetSrbFunction(Srb)),
+        SrbStatusSym(SrbGetSrbStatus(Srb)), SrbStatusMaskSym(SrbGetSrbStatus(Srb)));
 
     return TRUE;
 }

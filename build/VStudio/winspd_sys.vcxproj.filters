@@ -40,6 +40,9 @@
     <ClInclude Include="..\..\inc\winspd\ioctl.h">
       <Filter>Include\winspd</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\sys\srbcompat.h">
+      <Filter>Source</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\..\src\sys\driver.inf.in">
