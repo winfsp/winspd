@@ -133,4 +133,14 @@ HW_PROCESS_SERVICE_REQUEST SpdHwProcessServiceRequest;
 HW_COMPLETE_SERVICE_IRP SpdHwCompleteServiceIrp;
 HW_STARTIO SpdHwStartIo;
 
+/* extensions */
+typedef struct
+{
+    UINT32 dummy;
+} SPD_DEVICE_EXTENSION;
+typedef struct
+{
+    UINT32 dummy;
+} SPD_LOGICAL_UNIT;
+
 #endif

@@ -46,8 +46,8 @@ NTSTATUS DriverEntry(
     Data.HwResetBus = SpdHwResetBus;
     Data.HwDmaStarted = 0;
     Data.HwAdapterState = 0;
-    Data.DeviceExtensionSize = 0;
-    Data.SpecificLuExtensionSize = 0;
+    Data.DeviceExtensionSize = sizeof(SPD_DEVICE_EXTENSION);
+    Data.SpecificLuExtensionSize = sizeof(SPD_LOGICAL_UNIT);
     Data.SrbExtensionSize = 0;
     Data.MapBuffers = STOR_MAP_NO_BUFFERS;
     Data.TaggedQueuing = FALSE;         /* docs say MUST be TRUE */
