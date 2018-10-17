@@ -23,14 +23,13 @@
 
 BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb)
 {
-    BOOLEAN Result = FALSE;
-    SPD_ENTER(adapter);
+    SPD_ENTER(io,
+        ASSERT(DISPATCH_LEVEL >= KeGetCurrentIrql()));
 
-    Result = FALSE;
+    SPD_LEAVE(io,
+        "DeviceExtension=%p, %s", " = %s%s",
+        DeviceExtension, SrbFunctionSym(Srb->Function),
+        SrbStatusSym(Srb->SrbStatus), SrbStatusMaskSym(Srb->SrbStatus));
 
-    SPD_LEAVE(adapter,
-        "DeviceExtension=%p, Srb=%p", " = %d",
-        DeviceExtension, Srb, Result);
-
-    return Result;
+    return TRUE;
 }

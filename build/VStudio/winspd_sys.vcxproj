@@ -132,6 +132,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\sys\adapter.c" />
+    <ClCompile Include="..\..\src\sys\debug.c" />
     <ClCompile Include="..\..\src\sys\driver.c" />
     <ClCompile Include="..\..\src\sys\io.c" />
     <ClCompile Include="..\..\src\sys\ioctl.c" />

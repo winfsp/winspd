@@ -54,6 +54,9 @@ enum
 };
 extern __declspec(selectany) int spd_debug =
     spd_debug_bp_drvrld | spd_debug_dp_drvrld;
+const char *SrbFunctionSym(UCHAR Function);
+const char *SrbStatusSym(UCHAR Status);
+const char *SrbStatusMaskSym(UCHAR Status);
 #endif
 
 /* DEBUGBREAK */
