@@ -58,6 +58,7 @@ extern __declspec(selectany) int spd_debug =
 const char *SrbFunctionSym(ULONG Function);
 const char *SrbStatusSym(ULONG Status);
 const char *SrbStatusMaskSym(ULONG Status);
+const char *CdbOperationCodeSym(ULONG OperationCode);
 #endif
 
 /* DEBUGBREAK */
