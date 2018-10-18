@@ -30,39 +30,37 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
     switch (SrbGetSrbFunction(Srb))
     {
     case SRB_FUNCTION_EXECUTE_SCSI:
-        //SrbExecuteScsi(DeviceExtension, Srb);
+        SpdSrbExecuteScsi(DeviceExtension, Srb);
         break;
-    case SRB_FUNCTION_CLAIM_DEVICE:
-    case SRB_FUNCTION_IO_CONTROL:
-    case SRB_FUNCTION_RECEIVE_EVENT:
-    case SRB_FUNCTION_RELEASE_QUEUE:
-    case SRB_FUNCTION_ATTACH_DEVICE:
-    case SRB_FUNCTION_RELEASE_DEVICE:
-    case SRB_FUNCTION_SHUTDOWN:
-    case SRB_FUNCTION_FLUSH:
-    case SRB_FUNCTION_PROTOCOL_COMMAND:
     case SRB_FUNCTION_ABORT_COMMAND:
-    case SRB_FUNCTION_RELEASE_RECOVERY:
+        SpdSrbAbortCommand(DeviceExtension, Srb);
+        break;
     case SRB_FUNCTION_RESET_BUS:
+        SpdSrbResetBus(DeviceExtension, Srb);
+        break;
     case SRB_FUNCTION_RESET_DEVICE:
-    case SRB_FUNCTION_TERMINATE_IO:
-    case SRB_FUNCTION_FLUSH_QUEUE:
-    case SRB_FUNCTION_REMOVE_DEVICE:
-    case SRB_FUNCTION_WMI:
-    case SRB_FUNCTION_LOCK_QUEUE:
-    case SRB_FUNCTION_UNLOCK_QUEUE:
-    case SRB_FUNCTION_QUIESCE_DEVICE:
-    case SRB_FUNCTION_RESET_LOGICAL_UNIT:
-    case SRB_FUNCTION_SET_LINK_TIMEOUT:
-    case SRB_FUNCTION_LINK_TIMEOUT_OCCURRED:
-    case SRB_FUNCTION_LINK_TIMEOUT_COMPLETE:
-    case SRB_FUNCTION_POWER:
+        SpdSrbResetDevice(DeviceExtension, Srb);
+        break;
+    case SRB_FUNCTION_FLUSH:
+        SpdSrbFlush(DeviceExtension, Srb);
+        break;
+    case SRB_FUNCTION_SHUTDOWN:
+        SpdSrbShutdown(DeviceExtension, Srb);
+        break;
+    case SRB_FUNCTION_IO_CONTROL:
+        SpdSrbIoControl(DeviceExtension, Srb);
+        break;
     case SRB_FUNCTION_PNP:
+        SpdSrbPnp(DeviceExtension, Srb);
+        break;
+    case SRB_FUNCTION_WMI:
+        SpdSrbWmi(DeviceExtension, Srb);
+        break;
     case SRB_FUNCTION_DUMP_POINTERS:
-    case SRB_FUNCTION_FREE_DUMP_POINTERS:
-    case SRB_FUNCTION_STORAGE_REQUEST_BLOCK:
+        SpdSrbDumpPointers(DeviceExtension, Srb);
+        break;
     default:
-        SrbSetSrbStatus(Srb, SRB_STATUS_INVALID_REQUEST);
+        SpdSrbUnsupported(DeviceExtension, Srb);
         break;
     }
 
@@ -72,4 +70,55 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
         SrbStatusSym(SrbGetSrbStatus(Srb)), SrbStatusMaskSym(SrbGetSrbStatus(Srb)));
 
     return TRUE;
+}
+
+VOID SpdSrbAbortCommand(PVOID DeviceExtension, PVOID Srb)
+{
+    SpdSrbUnsupported(DeviceExtension, Srb);
+}
+
+VOID SpdSrbResetBus(PVOID DeviceExtension, PVOID Srb)
+{
+    SpdSrbUnsupported(DeviceExtension, Srb);
+}
+
+VOID SpdSrbResetDevice(PVOID DeviceExtension, PVOID Srb)
+{
+    SpdSrbUnsupported(DeviceExtension, Srb);
+}
+
+VOID SpdSrbFlush(PVOID DeviceExtension, PVOID Srb)
+{
+    SpdSrbUnsupported(DeviceExtension, Srb);
+}
+
+VOID SpdSrbShutdown(PVOID DeviceExtension, PVOID Srb)
+{
+    SpdSrbUnsupported(DeviceExtension, Srb);
+}
+
+VOID SpdSrbIoControl(PVOID DeviceExtension, PVOID Srb)
+{
+    SpdSrbUnsupported(DeviceExtension, Srb);
+}
+
+VOID SpdSrbPnp(PVOID DeviceExtension, PVOID Srb)
+{
+    SpdSrbUnsupported(DeviceExtension, Srb);
+}
+
+VOID SpdSrbWmi(PVOID DeviceExtension, PVOID Srb)
+{
+    SpdSrbUnsupported(DeviceExtension, Srb);
+}
+
+VOID SpdSrbDumpPointers(PVOID DeviceExtension, PVOID Srb)
+{
+    SpdSrbUnsupported(DeviceExtension, Srb);
+}
+
+VOID SpdSrbUnsupported(PVOID DeviceExtension, PVOID Srb)
+{
+    SrbSetSrbStatus(Srb, SRB_STATUS_INVALID_REQUEST);
+    SpdSrbComplete(DeviceExtension, Srb);
 }

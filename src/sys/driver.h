@@ -134,6 +134,23 @@ HW_PROCESS_SERVICE_REQUEST SpdHwProcessServiceRequest;
 HW_COMPLETE_SERVICE_IRP SpdHwCompleteServiceIrp;
 HW_STARTIO SpdHwStartIo;
 
+/* I/O */
+FORCEINLINE VOID SpdSrbComplete(PVOID DeviceExtension, PVOID Srb)
+{
+    StorPortNotification(RequestComplete, DeviceExtension, Srb);
+}
+VOID SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb);
+VOID SpdSrbAbortCommand(PVOID DeviceExtension, PVOID Srb);
+VOID SpdSrbResetBus(PVOID DeviceExtension, PVOID Srb);
+VOID SpdSrbResetDevice(PVOID DeviceExtension, PVOID Srb);
+VOID SpdSrbFlush(PVOID DeviceExtension, PVOID Srb);
+VOID SpdSrbShutdown(PVOID DeviceExtension, PVOID Srb);
+VOID SpdSrbIoControl(PVOID DeviceExtension, PVOID Srb);
+VOID SpdSrbPnp(PVOID DeviceExtension, PVOID Srb);
+VOID SpdSrbWmi(PVOID DeviceExtension, PVOID Srb);
+VOID SpdSrbDumpPointers(PVOID DeviceExtension, PVOID Srb);
+VOID SpdSrbUnsupported(PVOID DeviceExtension, PVOID Srb);
+
 /* extensions */
 typedef struct
 {

@@ -52,7 +52,7 @@ ULONG SpdHwFindAdapter(
          *     supported is 255.
          */
     ConfigInfo->MaximumNumberOfLogicalUnits = 255/*SCSI_MAXIMUM_LUNS_PER_TARGET*/;
-    ConfigInfo->WmiDataProvider = TRUE;
+    ConfigInfo->WmiDataProvider = FALSE;
     ConfigInfo->SynchronizationModel = StorSynchronizeFullDuplex;
     ConfigInfo->VirtualDevice = TRUE;
 
