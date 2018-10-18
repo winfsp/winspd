@@ -149,6 +149,7 @@ VOID SpdSrbIoControl(PVOID DeviceExtension, PVOID Srb);
 VOID SpdSrbPnp(PVOID DeviceExtension, PVOID Srb);
 VOID SpdSrbWmi(PVOID DeviceExtension, PVOID Srb);
 VOID SpdSrbDumpPointers(PVOID DeviceExtension, PVOID Srb);
+VOID SpdSrbFreeDumpPointers(PVOID DeviceExtension, PVOID Srb);
 VOID SpdSrbUnsupported(PVOID DeviceExtension, PVOID Srb);
 
 /* extensions */

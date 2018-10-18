@@ -59,6 +59,9 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
     case SRB_FUNCTION_DUMP_POINTERS:
         SpdSrbDumpPointers(DeviceExtension, Srb);
         break;
+    case SRB_FUNCTION_FREE_DUMP_POINTERS:
+        SpdSrbFreeDumpPointers(DeviceExtension, Srb);
+        break;
     default:
         SpdSrbUnsupported(DeviceExtension, Srb);
         break;
@@ -113,6 +116,11 @@ VOID SpdSrbWmi(PVOID DeviceExtension, PVOID Srb)
 }
 
 VOID SpdSrbDumpPointers(PVOID DeviceExtension, PVOID Srb)
+{
+    SpdSrbUnsupported(DeviceExtension, Srb);
+}
+
+VOID SpdSrbFreeDumpPointers(PVOID DeviceExtension, PVOID Srb)
 {
     SpdSrbUnsupported(DeviceExtension, Srb);
 }
