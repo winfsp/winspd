@@ -27,45 +27,49 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
     SPD_ENTER(io,
         ASSERT(DISPATCH_LEVEL >= KeGetCurrentIrql()));
 
+    UCHAR SrbStatus;
     switch (SrbGetSrbFunction(Srb))
     {
     case SRB_FUNCTION_EXECUTE_SCSI:
-        SpdSrbExecuteScsi(DeviceExtension, Srb);
+        SrbStatus = SpdSrbExecuteScsi(DeviceExtension, Srb);
         break;
     case SRB_FUNCTION_ABORT_COMMAND:
-        SpdSrbAbortCommand(DeviceExtension, Srb);
+        SrbStatus = SpdSrbAbortCommand(DeviceExtension, Srb);
         break;
     case SRB_FUNCTION_RESET_BUS:
-        SpdSrbResetBus(DeviceExtension, Srb);
+        SrbStatus = SpdSrbResetBus(DeviceExtension, Srb);
         break;
     case SRB_FUNCTION_RESET_DEVICE:
-        SpdSrbResetDevice(DeviceExtension, Srb);
+        SrbStatus = SpdSrbResetDevice(DeviceExtension, Srb);
         break;
     case SRB_FUNCTION_FLUSH:
-        SpdSrbFlush(DeviceExtension, Srb);
+        SrbStatus = SpdSrbFlush(DeviceExtension, Srb);
         break;
     case SRB_FUNCTION_SHUTDOWN:
-        SpdSrbShutdown(DeviceExtension, Srb);
+        SrbStatus = SpdSrbShutdown(DeviceExtension, Srb);
         break;
     case SRB_FUNCTION_IO_CONTROL:
-        SpdSrbIoControl(DeviceExtension, Srb);
+        SrbStatus = SpdSrbIoControl(DeviceExtension, Srb);
         break;
     case SRB_FUNCTION_PNP:
-        SpdSrbPnp(DeviceExtension, Srb);
+        SrbStatus = SpdSrbPnp(DeviceExtension, Srb);
         break;
     case SRB_FUNCTION_WMI:
-        SpdSrbWmi(DeviceExtension, Srb);
+        SrbStatus = SpdSrbWmi(DeviceExtension, Srb);
         break;
     case SRB_FUNCTION_DUMP_POINTERS:
-        SpdSrbDumpPointers(DeviceExtension, Srb);
+        SrbStatus = SpdSrbDumpPointers(DeviceExtension, Srb);
         break;
     case SRB_FUNCTION_FREE_DUMP_POINTERS:
-        SpdSrbFreeDumpPointers(DeviceExtension, Srb);
+        SrbStatus = SpdSrbFreeDumpPointers(DeviceExtension, Srb);
         break;
     default:
-        SpdSrbUnsupported(DeviceExtension, Srb);
+        SrbStatus = SRB_STATUS_INVALID_REQUEST;
         break;
     }
+
+    if (SRB_STATUS_PENDING != SRB_STATUS(SrbStatus))
+        SpdSrbComplete(DeviceExtension, Srb, SrbStatus);
 
     SPD_LEAVE(io,
         "DeviceExtension=%p, %s", " = %s%s",
@@ -75,58 +79,52 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
     return TRUE;
 }
 
-VOID SpdSrbAbortCommand(PVOID DeviceExtension, PVOID Srb)
+UCHAR SpdSrbAbortCommand(PVOID DeviceExtension, PVOID Srb)
 {
-    SpdSrbUnsupported(DeviceExtension, Srb);
+    return SRB_STATUS_INVALID_REQUEST;
 }
 
-VOID SpdSrbResetBus(PVOID DeviceExtension, PVOID Srb)
+UCHAR SpdSrbResetBus(PVOID DeviceExtension, PVOID Srb)
 {
-    SpdSrbUnsupported(DeviceExtension, Srb);
+    return SRB_STATUS_INVALID_REQUEST;
 }
 
-VOID SpdSrbResetDevice(PVOID DeviceExtension, PVOID Srb)
+UCHAR SpdSrbResetDevice(PVOID DeviceExtension, PVOID Srb)
 {
-    SpdSrbUnsupported(DeviceExtension, Srb);
+    return SRB_STATUS_INVALID_REQUEST;
 }
 
-VOID SpdSrbFlush(PVOID DeviceExtension, PVOID Srb)
+UCHAR SpdSrbFlush(PVOID DeviceExtension, PVOID Srb)
 {
-    SpdSrbUnsupported(DeviceExtension, Srb);
+    return SRB_STATUS_INVALID_REQUEST;
 }
 
-VOID SpdSrbShutdown(PVOID DeviceExtension, PVOID Srb)
+UCHAR SpdSrbShutdown(PVOID DeviceExtension, PVOID Srb)
 {
-    SpdSrbUnsupported(DeviceExtension, Srb);
+    return SRB_STATUS_INVALID_REQUEST;
 }
 
-VOID SpdSrbIoControl(PVOID DeviceExtension, PVOID Srb)
+UCHAR SpdSrbIoControl(PVOID DeviceExtension, PVOID Srb)
 {
-    SpdSrbUnsupported(DeviceExtension, Srb);
+    return SRB_STATUS_INVALID_REQUEST;
 }
 
-VOID SpdSrbPnp(PVOID DeviceExtension, PVOID Srb)
+UCHAR SpdSrbPnp(PVOID DeviceExtension, PVOID Srb)
 {
-    SpdSrbUnsupported(DeviceExtension, Srb);
+    return SRB_STATUS_INVALID_REQUEST;
 }
 
-VOID SpdSrbWmi(PVOID DeviceExtension, PVOID Srb)
+UCHAR SpdSrbWmi(PVOID DeviceExtension, PVOID Srb)
 {
-    SpdSrbUnsupported(DeviceExtension, Srb);
+    return SRB_STATUS_INVALID_REQUEST;
 }
 
-VOID SpdSrbDumpPointers(PVOID DeviceExtension, PVOID Srb)
+UCHAR SpdSrbDumpPointers(PVOID DeviceExtension, PVOID Srb)
 {
-    SpdSrbUnsupported(DeviceExtension, Srb);
+    return SRB_STATUS_INVALID_REQUEST;
 }
 
-VOID SpdSrbFreeDumpPointers(PVOID DeviceExtension, PVOID Srb)
+UCHAR SpdSrbFreeDumpPointers(PVOID DeviceExtension, PVOID Srb)
 {
-    SpdSrbUnsupported(DeviceExtension, Srb);
-}
-
-VOID SpdSrbUnsupported(PVOID DeviceExtension, PVOID Srb)
-{
-    SrbSetSrbStatus(Srb, SRB_STATUS_INVALID_REQUEST);
-    SpdSrbComplete(DeviceExtension, Srb);
+    return SRB_STATUS_INVALID_REQUEST;
 }

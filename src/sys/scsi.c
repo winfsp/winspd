@@ -21,6 +21,29 @@
 
 #include <sys/driver.h>
 
-VOID SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
+UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
 {
+    UCHAR PathId, TargetId, Lun;
+    SPD_LOGICAL_UNIT *LogicalUnit;
+    PCDB Cdb;
+    UCHAR SrbStatus = SRB_STATUS_PENDING;
+
+    SrbGetPathTargetLun(Srb, &PathId, &TargetId, &Lun);
+    LogicalUnit = StorPortGetLogicalUnit(DeviceExtension, PathId, TargetId, Lun);
+    if (0 == LogicalUnit)
+    {
+        SrbStatus = SRB_STATUS_NO_DEVICE;
+        goto exit;
+    }
+
+    Cdb = SrbGetCdb(Srb);
+    switch (Cdb->AsByte[0])
+    {
+    default:
+        SrbStatus = SRB_STATUS_INVALID_REQUEST;
+        break;
+    }
+
+exit:;
+    return SrbStatus;
 }
