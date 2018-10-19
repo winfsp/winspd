@@ -161,7 +161,7 @@ typedef struct
 } SPD_DEVICE_EXTENSION;
 typedef struct
 {
-    UINT32 dummy;
+    SPD_DEVICE_EXTENSION *DeviceExtension;
 } SPD_LOGICAL_UNIT;
 
 #endif
