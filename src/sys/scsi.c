@@ -124,16 +124,16 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
         PINQUIRYDATA InquiryData = DataBuffer;
 
         if (INQUIRYDATABUFFERSIZE < DataTransferLength)
-            return SRB_STATUS_INTERNAL_ERROR;
+            return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_NO_SENSE);
 
         InquiryData->DeviceType = LogicalUnit->DeviceType;
         InquiryData->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
         InquiryData->RemovableMedia = !!LogicalUnit->RemovableMedia;
         InquiryData->Versions = 5; /* "The device complies to the standard." */
         InquiryData->ResponseDataFormat = 2;
+        InquiryData->CommandQueue = 1;
         InquiryData->AdditionalLength = INQUIRYDATABUFFERSIZE -
             RTL_SIZEOF_THROUGH_FIELD(INQUIRYDATA, AdditionalLength);
-        InquiryData->CommandQueue = 1;
         RtlCopyMemory(InquiryData->VendorId, SPD_IOCTL_VENDOR_ID,
             sizeof SPD_IOCTL_VENDOR_ID - 1);
         RtlCopyMemory(InquiryData->ProductId, LogicalUnit->ProductId,
@@ -183,6 +183,32 @@ UCHAR SpdScsiSynchronizeCache(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb
 UCHAR SpdScsiReportLuns(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
 {
     return SRB_STATUS_INVALID_REQUEST;
+}
+
+UCHAR SpdScsiError(PVOID Srb, UCHAR SenseKey, UCHAR AdditionalSenseCode)
+{
+    UCHAR SenseInfoBufferLength = SrbGetSenseInfoBufferLength(Srb);
+    PSENSE_DATA SenseInfoBuffer = SrbGetSenseInfoBuffer(Srb);
+    UCHAR SrbStatus = SRB_STATUS_ERROR;
+
+    if (0 != SenseInfoBuffer &&
+        sizeof(SENSE_DATA) <= SenseInfoBufferLength &&
+        !FlagOn(SrbGetSrbFlags(Srb), SRB_FLAGS_DISABLE_AUTOSENSE))
+    {
+        RtlZeroMemory(SenseInfoBuffer, SenseInfoBufferLength);
+        SenseInfoBuffer->ErrorCode = SCSI_SENSE_ERRORCODE_FIXED_CURRENT;
+        SenseInfoBuffer->Valid = 1;
+        SenseInfoBuffer->SenseKey = SenseKey;
+        SenseInfoBuffer->AdditionalSenseCode = AdditionalSenseCode;
+        SenseInfoBuffer->AdditionalSenseLength = sizeof(SENSE_DATA) -
+            RTL_SIZEOF_THROUGH_FIELD(SENSE_DATA, AdditionalSenseLength);
+
+        SrbStatus |= SRB_STATUS_AUTOSENSE_VALID;
+    }
+
+    SrbSetScsiStatus(Srb, SCSISTAT_CHECK_CONDITION);
+
+    return SrbStatus;
 }
 
 BOOLEAN SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength)
