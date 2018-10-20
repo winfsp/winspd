@@ -29,6 +29,7 @@ extern "C" {
 #endif
 
 #define SPD_IOCTL_DRIVER_NAME           "WinSpd"
+#define SPD_IOCTL_VENDOR_ID             "WinSpd  "
 
 #ifdef __cplusplus
 }

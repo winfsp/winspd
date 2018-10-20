@@ -68,8 +68,19 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
         break;
     }
 
-    if (SRB_STATUS_PENDING != SRB_STATUS(SrbStatus))
+    switch (SRB_STATUS(SrbStatus))
+    {
+    case SRB_STATUS_PENDING:
+        /* no completion */
+        break;
+    case SRB_STATUS_INTERNAL_ERROR:
+        if (STATUS_SUCCESS == SrbGetSystemStatus(Srb))
+            SrbSetSystemStatus(Srb, (ULONG)STATUS_INVALID_PARAMETER);
+        /* fall through */
+    default:
         SpdSrbComplete(DeviceExtension, Srb, SrbStatus);
+        break;
+    }
 
     SPD_LEAVE(io,
         "DeviceExtension=%p, %s", " = %s%s",

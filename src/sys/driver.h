@@ -162,6 +162,10 @@ typedef struct
 typedef struct
 {
     SPD_DEVICE_EXTENSION *DeviceExtension;
+    UCHAR DeviceType;
+    UINT32 RemovableMedia:1;
+    UCHAR ProductId[16];
+    UCHAR ProductRevisionLevel[4];
 } SPD_LOGICAL_UNIT;
 
 #endif

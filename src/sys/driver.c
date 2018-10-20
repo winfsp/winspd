@@ -49,9 +49,9 @@ NTSTATUS DriverEntry(
     Data.DeviceExtensionSize = sizeof(SPD_DEVICE_EXTENSION);
     Data.SpecificLuExtensionSize = sizeof(SPD_LOGICAL_UNIT);
     Data.SrbExtensionSize = 0;
-    Data.MapBuffers = STOR_MAP_NO_BUFFERS;
-    Data.TaggedQueuing = FALSE;         /* docs say MUST be TRUE */
-    Data.AutoRequestSense = FALSE;      /* docs say MUST be TRUE */
+    Data.MapBuffers = STOR_MAP_NON_READ_WRITE_BUFFERS;
+    Data.TaggedQueuing = TRUE;
+    Data.AutoRequestSense = TRUE;
     Data.MultipleRequestPerLu = TRUE;
     Data.HwAdapterControl = SpdHwAdapterControl;
     Data.HwBuildIo = 0;

@@ -111,7 +111,43 @@ exit:
 
 UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
 {
-    return SRB_STATUS_INVALID_REQUEST;
+    PVOID DataBuffer = SrbGetDataBuffer(Srb);
+    ULONG DataTransferLength = SrbGetDataTransferLength(Srb);
+
+    if (0 == DataBuffer)
+        return SRB_STATUS_INTERNAL_ERROR;
+
+    RtlZeroMemory(DataBuffer, DataTransferLength);
+
+    if (0 == Cdb->CDB6INQUIRY3.EnableVitalProductData)
+    {
+        PINQUIRYDATA InquiryData = DataBuffer;
+
+        if (INQUIRYDATABUFFERSIZE < DataTransferLength)
+            return SRB_STATUS_INTERNAL_ERROR;
+
+        InquiryData->DeviceType = LogicalUnit->DeviceType;
+        InquiryData->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
+        InquiryData->RemovableMedia = !!LogicalUnit->RemovableMedia;
+        InquiryData->Versions = 5; /* "The device complies to the standard." */
+        InquiryData->ResponseDataFormat = 2;
+        InquiryData->AdditionalLength = INQUIRYDATABUFFERSIZE -
+            RTL_SIZEOF_THROUGH_FIELD(INQUIRYDATA, AdditionalLength);
+        InquiryData->CommandQueue = 1;
+        RtlCopyMemory(InquiryData->VendorId, SPD_IOCTL_VENDOR_ID,
+            sizeof SPD_IOCTL_VENDOR_ID - 1);
+        RtlCopyMemory(InquiryData->ProductId, LogicalUnit->ProductId,
+            sizeof LogicalUnit->ProductId);
+        RtlCopyMemory(InquiryData->ProductRevisionLevel, LogicalUnit->ProductRevisionLevel,
+            sizeof LogicalUnit->ProductRevisionLevel);
+
+        SrbSetDataTransferLength(Srb, INQUIRYDATABUFFERSIZE);
+    }
+    else
+    {
+    }
+
+    return SRB_STATUS_SUCCESS;
 }
 
 UCHAR SpdScsiModeSense(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
