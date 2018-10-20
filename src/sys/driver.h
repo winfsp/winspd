@@ -166,6 +166,7 @@ typedef struct
     UINT32 RemovableMedia:1;
     UCHAR ProductId[16];
     UCHAR ProductRevisionLevel[4];
+    UCHAR SerialNumber[8];
 } SPD_LOGICAL_UNIT;
 
 #endif

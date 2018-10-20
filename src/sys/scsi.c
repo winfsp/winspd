@@ -30,6 +30,7 @@ static UCHAR SpdScsiVerify(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiSynchronizeCache(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiReportLuns(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb);
 
+static UCHAR SpdScsiError(PVOID Srb, UCHAR SenseKey, UCHAR AdditionalSenseCode);
 static BOOLEAN SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength);
 
 UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
@@ -121,11 +122,9 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
 
     if (0 == Cdb->CDB6INQUIRY3.EnableVitalProductData)
     {
-        PINQUIRYDATA InquiryData = DataBuffer;
-
         if (INQUIRYDATABUFFERSIZE < DataTransferLength)
-            return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_NO_SENSE);
-
+            return SRB_STATUS_DATA_OVERRUN;
+        PINQUIRYDATA InquiryData = DataBuffer;
         InquiryData->DeviceType = LogicalUnit->DeviceType;
         InquiryData->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
         InquiryData->RemovableMedia = !!LogicalUnit->RemovableMedia;
@@ -140,11 +139,96 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
             sizeof LogicalUnit->ProductId);
         RtlCopyMemory(InquiryData->ProductRevisionLevel, LogicalUnit->ProductRevisionLevel,
             sizeof LogicalUnit->ProductRevisionLevel);
-
         SrbSetDataTransferLength(Srb, INQUIRYDATABUFFERSIZE);
     }
     else
     {
+        PVPD_SUPPORTED_PAGES_PAGE SupportedPages;
+        PVPD_SERIAL_NUMBER_PAGE SerialNumber;
+        PVPD_IDENTIFICATION_PAGE Identification;
+        enum
+        {
+            PageCount = 3,
+            IdentifierLength =
+                sizeof SPD_IOCTL_VENDOR_ID - 1 +
+                sizeof LogicalUnit->ProductId +
+                sizeof LogicalUnit->ProductRevisionLevel +
+                sizeof LogicalUnit->SerialNumber,
+        };
+
+        switch (Cdb->CDB6INQUIRY3.PageCode)
+        {
+        case VPD_SUPPORTED_PAGES:
+            if (sizeof(VPD_SUPPORTED_PAGES_PAGE) + PageCount < DataTransferLength)
+                return SRB_STATUS_DATA_OVERRUN;
+            SupportedPages = DataBuffer;
+            SupportedPages->DeviceType = LogicalUnit->DeviceType;
+            SupportedPages->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
+            SupportedPages->PageCode = VPD_SUPPORTED_PAGES;
+            SupportedPages->PageLength = PageCount;
+            SupportedPages->SupportedPageList[0] = VPD_SUPPORTED_PAGES;
+            SupportedPages->SupportedPageList[1] = VPD_SERIAL_NUMBER;
+            SupportedPages->SupportedPageList[2] = VPD_DEVICE_IDENTIFIERS;
+            SrbSetDataTransferLength(Srb, sizeof(VPD_SUPPORTED_PAGES_PAGE) + PageCount);
+            break;
+
+        case VPD_SERIAL_NUMBER:
+            if (sizeof(VPD_SERIAL_NUMBER_PAGE) + sizeof LogicalUnit->SerialNumber < DataTransferLength)
+                return SRB_STATUS_DATA_OVERRUN;
+            SerialNumber = DataBuffer;
+            SerialNumber->DeviceType = LogicalUnit->DeviceType;
+            SerialNumber->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
+            SerialNumber->PageCode = VPD_SERIAL_NUMBER;
+            SerialNumber->PageLength = sizeof LogicalUnit->SerialNumber;
+            RtlCopyMemory(SerialNumber->SerialNumber, LogicalUnit->SerialNumber,
+                sizeof LogicalUnit->SerialNumber);
+            SrbSetDataTransferLength(Srb, sizeof(VPD_SERIAL_NUMBER_PAGE) +
+                sizeof LogicalUnit->SerialNumber);
+            break;
+
+        case VPD_DEVICE_IDENTIFIERS:
+            if (sizeof(VPD_IDENTIFICATION_PAGE) +
+                sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + IdentifierLength < DataTransferLength)
+                return SRB_STATUS_DATA_OVERRUN;
+            Identification = DataBuffer;
+            Identification->DeviceType = LogicalUnit->DeviceType;
+            Identification->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
+            Identification->PageCode = VPD_DEVICE_IDENTIFIERS;
+            Identification->PageLength = sizeof(VPD_IDENTIFICATION_PAGE) +
+                sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + IdentifierLength;
+            ((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->CodeSet =
+                VpdCodeSetAscii;
+            ((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->IdentifierType =
+                VpdIdentifierTypeVendorId;
+            ((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->Association =
+                VpdAssocDevice;
+            ((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->IdentifierLength =
+                IdentifierLength;
+            RtlCopyMemory(((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->Identifier,
+                SPD_IOCTL_VENDOR_ID,
+                sizeof SPD_IOCTL_VENDOR_ID - 1);
+            RtlCopyMemory(((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->Identifier +
+                    sizeof SPD_IOCTL_VENDOR_ID - 1,
+                LogicalUnit->ProductId,
+                sizeof LogicalUnit->ProductId);
+            RtlCopyMemory(((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->Identifier +
+                    sizeof SPD_IOCTL_VENDOR_ID - 1 +
+                    sizeof LogicalUnit->ProductId,
+                LogicalUnit->ProductRevisionLevel,
+                sizeof LogicalUnit->ProductRevisionLevel);
+            RtlCopyMemory(((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->Identifier +
+                    sizeof SPD_IOCTL_VENDOR_ID - 1 +
+                    sizeof LogicalUnit->ProductId +
+                    sizeof LogicalUnit->ProductRevisionLevel,
+                LogicalUnit->SerialNumber,
+                sizeof LogicalUnit->SerialNumber);
+            SrbSetDataTransferLength(Srb, sizeof(VPD_IDENTIFICATION_PAGE) +
+                sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + IdentifierLength);
+            break;
+
+        default:
+            return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_CDB);
+        }
     }
 
     return SRB_STATUS_SUCCESS;
@@ -203,10 +287,10 @@ UCHAR SpdScsiError(PVOID Srb, UCHAR SenseKey, UCHAR AdditionalSenseCode)
         SenseInfoBuffer->AdditionalSenseLength = sizeof(SENSE_DATA) -
             RTL_SIZEOF_THROUGH_FIELD(SENSE_DATA, AdditionalSenseLength);
 
+        SrbSetScsiStatus(Srb, SCSISTAT_CHECK_CONDITION);
+
         SrbStatus |= SRB_STATUS_AUTOSENSE_VALID;
     }
-
-    SrbSetScsiStatus(Srb, SCSISTAT_CHECK_CONDITION);
 
     return SrbStatus;
 }
