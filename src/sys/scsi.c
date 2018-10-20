@@ -28,6 +28,7 @@ static UCHAR SpdScsiRead(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiWrite(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiVerify(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiSynchronizeCache(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb);
+static UCHAR SpdScsiStartStopUnit(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiReportLuns(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb);
 
 static UCHAR SpdScsiError(PVOID Srb, UCHAR SenseKey, UCHAR AdditionalSenseCode);
@@ -55,15 +56,12 @@ UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
         SrbStatus = SRB_STATUS_SUCCESS;
         break;
 
-    case SCSIOP_START_STOP_UNIT:
-        SrbStatus = SRB_STATUS_SUCCESS;
-        break;
-
     case SCSIOP_INQUIRY:
         SrbStatus = SpdScsiInquiry(LogicalUnit, Srb, Cdb);
         break;
 
     case SCSIOP_MODE_SENSE:
+    case SCSIOP_MODE_SENSE10:
         SrbStatus = SpdScsiModeSense(LogicalUnit, Srb, Cdb);
         break;
 
@@ -95,6 +93,10 @@ UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
 
     case SCSIOP_SYNCHRONIZE_CACHE:
         SrbStatus = SpdScsiSynchronizeCache(LogicalUnit, Srb, Cdb);
+        break;
+
+    case SCSIOP_START_STOP_UNIT:
+        SrbStatus = SpdScsiStartStopUnit(LogicalUnit, Srb, Cdb);
         break;
 
     case SCSIOP_REPORT_LUNS:
@@ -173,7 +175,8 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
             break;
 
         case VPD_SERIAL_NUMBER:
-            if (sizeof(VPD_SERIAL_NUMBER_PAGE) + sizeof LogicalUnit->SerialNumber < DataTransferLength)
+            if (sizeof(VPD_SERIAL_NUMBER_PAGE) +
+                sizeof LogicalUnit->SerialNumber < DataTransferLength)
                 return SRB_STATUS_DATA_OVERRUN;
             SerialNumber = DataBuffer;
             SerialNumber->DeviceType = LogicalUnit->DeviceType;
@@ -260,6 +263,11 @@ UCHAR SpdScsiVerify(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
 }
 
 UCHAR SpdScsiSynchronizeCache(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
+{
+    return SRB_STATUS_INVALID_REQUEST;
+}
+
+UCHAR SpdScsiStartStopUnit(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
 {
     return SRB_STATUS_INVALID_REQUEST;
 }
