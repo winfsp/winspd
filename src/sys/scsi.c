@@ -142,6 +142,7 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
         RtlCopyMemory(InquiryData->ProductRevisionLevel, LogicalUnit->ProductRevisionLevel,
             sizeof LogicalUnit->ProductRevisionLevel);
         SrbSetDataTransferLength(Srb, INQUIRYDATABUFFERSIZE);
+        return SRB_STATUS_SUCCESS;
     }
     else
     {
@@ -172,7 +173,7 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
             SupportedPages->SupportedPageList[1] = VPD_SERIAL_NUMBER;
             SupportedPages->SupportedPageList[2] = VPD_DEVICE_IDENTIFIERS;
             SrbSetDataTransferLength(Srb, sizeof(VPD_SUPPORTED_PAGES_PAGE) + PageCount);
-            break;
+            return SRB_STATUS_SUCCESS;
 
         case VPD_SERIAL_NUMBER:
             if (sizeof(VPD_SERIAL_NUMBER_PAGE) +
@@ -187,7 +188,7 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
                 sizeof LogicalUnit->SerialNumber);
             SrbSetDataTransferLength(Srb, sizeof(VPD_SERIAL_NUMBER_PAGE) +
                 sizeof LogicalUnit->SerialNumber);
-            break;
+            return SRB_STATUS_SUCCESS;
 
         case VPD_DEVICE_IDENTIFIERS:
             if (sizeof(VPD_IDENTIFICATION_PAGE) +
@@ -227,14 +228,12 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
                 sizeof LogicalUnit->SerialNumber);
             SrbSetDataTransferLength(Srb, sizeof(VPD_IDENTIFICATION_PAGE) +
                 sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + IdentifierLength);
-            break;
+            return SRB_STATUS_SUCCESS;
 
         default:
             return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_CDB);
         }
     }
-
-    return SRB_STATUS_SUCCESS;
 }
 
 UCHAR SpdScsiModeSense(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
