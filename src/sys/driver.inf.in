@@ -1,21 +1,53 @@
 [Version]
 Signature = "$WINDOWS NT$"
-Class = Volume
-ClassGuid = {4D36E97B-E325-11CE-BFC1-08002BE10318}
-CatalogFile = !CatalogFile!
-Provider = !Provider!
+Class = SCSIAdapter
+ClassGuid = {4d36e97b-e325-11ce-bfc1-08002be10318}
+CatalogFile.ntx86 = !BaseName!-x86.cat
+CatalogFile.ntamd64 = !BaseName!-x64.cat
+Provider = %MyCompanyName%
 
-[DestinationDirs]
-DefaultDestDir = 12
+[Manufacturer]
+%MyCompanyName% = model,ntx86,ntamd64
 
-[DefaultInstall]
-CopyFiles = Driver.CopyFiles
+[model.ntx86]
+%MyDescription% = install,%HardwareId%
 
-[Driver.CopyFiles]
-!DriverFile!
+[model.ntamd64]
+%MyDescription% = install,%HardwareId%
+
+[install.ntx86]
+CopyFiles = sys.files.x86,dll.files.x86
+
+[install.ntamd64]
+CopyFiles = sys.files.x64,dll.files.x64
+
+[sys.files.x86]
+!BaseName!-x86.sys
+[dll.files.x86]
+!BaseName!-x86.dll
+
+[sys.files.x64]
+!BaseName!-x64.sys
+[dll.files.x64]
+!BaseName!-x64.dll
 
 [SourceDisksFiles]
-!DriverFile! = 1
+!BaseName!-x86.sys = 1
+!BaseName!-x86.dll = 1
+!BaseName!-x64.sys = 1
+!BaseName!-x64.dll = 1
 
 [SourceDisksNames]
-1 = Disk1
+1 = %MyDescription%
+
+[DestinationDirs]
+sys.CopyFiles = 12
+dll.CopyFiles = 11
+
+[Strings]
+MyProductName = !MyProductName!
+MyDescription = !MyDescription!
+MyCompanyName = !MyCompanyName!
+MyCopyright = !MyCopyright!
+MyVersion = !MyVersion!
+HardwareId = !HardwareId!

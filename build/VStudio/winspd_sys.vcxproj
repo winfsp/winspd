@@ -177,20 +177,25 @@ stampinf -v $(MyVersion) -f $(OutDir)driver-$(PlatformTarget).inf</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Writing driver-$(PlatformTarget).inf</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)driver-$(PlatformTarget).inf</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkObjects>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">set DriverFile=$(TargetFileName)
-set Provider="$(MyCompanyName)"
-set CatalogFile=driver-$(PlatformTarget).cat
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">set MyProductName="$(MyProductName)"
+set MyDescription="$(MyDescription)"
+set MyCompanyName="$(MyCompanyName)"
+set MyCopyright="$(MyCopyright)"
+set MyVersion=$(MyVersion)
+set BaseName=$(SolutionName)
+set HardwareId="root\%DriverName%"
 
 setlocal EnableDelayedExpansion
-if exist $(OutDir)driver-$(PlatformTarget).inf del $(OutDir)driver-$(PlatformTarget).inf
+if exist $(OutDir)$(TargetName).inf del $(OutDir)$(TargetName).inf
 for /f "delims=" %%l in (%(FullPath)) do (
     set line=%%l
-    echo !line! &gt;&gt;$(OutDir)driver-$(PlatformTarget).inf
+    echo !line! &gt;&gt;$(OutDir)$(TargetName).inf
 )
 
-stampinf -v $(MyVersion) -f $(OutDir)driver-$(PlatformTarget).inf</Command>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Writing driver-$(PlatformTarget).inf</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)driver-$(PlatformTarget).inf</Outputs>
+stampinf -v $(MyVersion) -f $(OutDir)$(TargetName).inf
+</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Writing $(TargetName).inf</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)$(TargetName).inf</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">set DriverFile=$(TargetFileName)
 set Provider="$(MyCompanyName)"
