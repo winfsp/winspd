@@ -13,3 +13,11 @@ mkdir %TARGET% 2>nul
 for %%f in (winspd-%SUFFIX%.inf winspd-%SUFFIX%.cat winspd-%SUFFIX%.sys winspd-%SUFFIX%.dll) do (
 	copy build\VStudio\build\%CONFIG%\%%f %TARGET% >nul
 )
+
+set RegKey="HKLM\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
+set RegVal="KitsRoot10"
+reg query %RegKey% /v %RegVal% >nul 2>&1 || (echo Cannot find Windows Kit >&2 & exit /b 1)
+for /f "tokens=2,*" %%i in ('reg query %RegKey% /v %RegVal% ^| findstr %RegVal%') do (
+    set KitRoot="%%j"
+)
+copy %KitRoot%\Tools\%SUFFIX%\devcon.exe %TARGET% >nul
