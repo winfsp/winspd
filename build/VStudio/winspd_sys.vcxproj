@@ -205,7 +205,6 @@ set MyCompanyName="$(MyCompanyName)"
 set MyCopyright="$(MyCopyright)"
 set MyVersion=$(MyVersion)
 set BaseName=$(SolutionName)
-set HardwareId="root\%DriverName%"
 
 setlocal EnableDelayedExpansion
 if exist $(OutDir)$(TargetName).inf del $(OutDir)$(TargetName).inf

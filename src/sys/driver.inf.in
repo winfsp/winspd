@@ -31,6 +31,28 @@ CopyFiles = sys.files.x64,dll.files.x64
 [dll.files.x64]
 !BaseName!-x64.dll
 
+[install.ntx86.Services]
+AddService = !MyProductName!,%SPSVCINST_ASSOCSERVICE%,services.x86
+
+[install.ntamd64.Services]
+AddService = !MyProductName!,%SPSVCINST_ASSOCSERVICE%,services.x64
+
+[services.x86]
+DisplayName = !MyProductName!
+Description = !MyDescription!
+ServiceType = %SERVICE_KERNEL_DRIVER%
+StartType = %SERVICE_DEMAND_START%
+ErrorControl = %SERVICE_ERROR_NORMAL%
+ServiceBinary = %12%\!BaseName!-x86.sys
+
+[services.x64]
+DisplayName = !MyProductName!
+Description = !MyDescription!
+ServiceType = %SERVICE_KERNEL_DRIVER%
+StartType = %SERVICE_DEMAND_START%
+ErrorControl = %SERVICE_ERROR_NORMAL%
+ServiceBinary = %12%\!BaseName!-x64.sys
+
 [SourceDisksFiles]
 !BaseName!-x86.sys = 1
 !BaseName!-x86.dll = 1
@@ -52,4 +74,9 @@ MyDescription = !MyDescription!
 MyCompanyName = !MyCompanyName!
 MyCopyright = !MyCopyright!
 MyVersion = !MyVersion!
-HardwareId = !HardwareId!
+HardwareId = "root/!BaseName!"
+
+SPSVCINST_ASSOCSERVICE = 0x00000002
+SERVICE_KERNEL_DRIVER = 0x00000001
+SERVICE_DEMAND_START = 0x3
+SERVICE_ERROR_NORMAL = 0x1
