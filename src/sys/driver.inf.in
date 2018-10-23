@@ -16,17 +16,19 @@ Provider = %MyCompanyName%
 %MyDescription% = install,%HardwareId%
 
 [install.ntx86]
-CopyFiles = files-x86
+CopyFiles = sys.files.x86,dll.files.x86
 
 [install.ntamd64]
-CopyFiles = files-x64
+CopyFiles = sys.files.x64,dll.files.x64
 
-[files-x86]
+[sys.files.x86]
 !BaseName!-x86.sys
+[dll.files.x86]
 !BaseName!-x86.dll
 
-[files-x64]
+[sys.files.x64]
 !BaseName!-x64.sys
+[dll.files.x64]
 !BaseName!-x64.dll
 
 [SourceDisksFiles]
@@ -39,8 +41,10 @@ CopyFiles = files-x64
 1 = %MyDescription%
 
 [DestinationDirs]
-sys.CopyFiles = 12
-dll.CopyFiles = 11
+sys.files.x86 = 12
+dll.files.x86 = 11
+sys.files.x64 = 12
+dll.files.x64 = 11
 
 [Strings]
 MyProductName = !MyProductName!
