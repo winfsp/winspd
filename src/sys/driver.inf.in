@@ -16,16 +16,16 @@ Provider = %MyCompanyName%
 %MyDescription% = install,%HardwareId%
 
 [install.ntx86]
-CopyFiles = files.x86
+CopyFiles = files-x86
 
 [install.ntamd64]
-CopyFiles = files.x64
+CopyFiles = files-x64
 
-[files.x86]
+[files-x86]
 !BaseName!-x86.sys
 !BaseName!-x86.dll
 
-[files.x64]
+[files-x64]
 !BaseName!-x64.sys
 !BaseName!-x64.dll
 

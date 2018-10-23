@@ -102,6 +102,9 @@
     <Link>
       <AdditionalDependencies>storport.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>call "$(SolutionDir)..\..\tools\mkcat.bat" $(PlatformTarget) "$(OutDir)" $(TargetName).inf $(TargetName).sys $(TargetName).dll</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -110,6 +113,9 @@
     <Link>
       <AdditionalDependencies>storport.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>call "$(SolutionDir)..\..\tools\mkcat.bat" $(PlatformTarget) "$(OutDir)" $(TargetName).inf $(TargetName).sys $(TargetName).dll</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -118,6 +124,9 @@
     <Link>
       <AdditionalDependencies>storport.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>call "$(SolutionDir)..\..\tools\mkcat.bat" $(PlatformTarget) "$(OutDir)" $(TargetName).inf $(TargetName).sys $(TargetName).dll</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -126,6 +135,9 @@
     <Link>
       <AdditionalDependencies>storport.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>call "$(SolutionDir)..\..\tools\mkcat.bat" $(PlatformTarget) "$(OutDir)" $(TargetName).inf $(TargetName).sys $(TargetName).dll</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <FilesToPackage Include="$(TargetPath)" />
