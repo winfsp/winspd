@@ -74,7 +74,7 @@ MyDescription = !MyDescription!
 MyCompanyName = !MyCompanyName!
 MyCopyright = !MyCopyright!
 MyVersion = !MyVersion!
-HardwareId = "root/!BaseName!"
+HardwareId = "root\!BaseName!"
 
 SPSVCINST_ASSOCSERVICE = 0x00000002
 SERVICE_KERNEL_DRIVER = 0x00000001
