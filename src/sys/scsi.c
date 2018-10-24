@@ -124,7 +124,7 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
 
     if (0 == Cdb->CDB6INQUIRY3.EnableVitalProductData)
     {
-        if (INQUIRYDATABUFFERSIZE < DataTransferLength)
+        if (INQUIRYDATABUFFERSIZE > DataTransferLength)
             return SRB_STATUS_DATA_OVERRUN;
         PINQUIRYDATA InquiryData = DataBuffer;
         InquiryData->DeviceType = LogicalUnit->DeviceType;
@@ -162,7 +162,7 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
         switch (Cdb->CDB6INQUIRY3.PageCode)
         {
         case VPD_SUPPORTED_PAGES:
-            if (sizeof(VPD_SUPPORTED_PAGES_PAGE) + PageCount < DataTransferLength)
+            if (sizeof(VPD_SUPPORTED_PAGES_PAGE) + PageCount > DataTransferLength)
                 return SRB_STATUS_DATA_OVERRUN;
             SupportedPages = DataBuffer;
             SupportedPages->DeviceType = LogicalUnit->DeviceType;
@@ -177,7 +177,7 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
 
         case VPD_SERIAL_NUMBER:
             if (sizeof(VPD_SERIAL_NUMBER_PAGE) +
-                sizeof LogicalUnit->SerialNumber < DataTransferLength)
+                sizeof LogicalUnit->SerialNumber > DataTransferLength)
                 return SRB_STATUS_DATA_OVERRUN;
             SerialNumber = DataBuffer;
             SerialNumber->DeviceType = LogicalUnit->DeviceType;
@@ -192,7 +192,7 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
 
         case VPD_DEVICE_IDENTIFIERS:
             if (sizeof(VPD_IDENTIFICATION_PAGE) +
-                sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + IdentifierLength < DataTransferLength)
+                sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + IdentifierLength > DataTransferLength)
                 return SRB_STATUS_DATA_OVERRUN;
             Identification = DataBuffer;
             Identification->DeviceType = LogicalUnit->DeviceType;
@@ -273,7 +273,28 @@ UCHAR SpdScsiStartStopUnit(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
 
 UCHAR SpdScsiReportLuns(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
 {
-    return SRB_STATUS_INVALID_REQUEST;
+    PVOID DataBuffer = SrbGetDataBuffer(Srb);
+    ULONG DataTransferLength = SrbGetDataTransferLength(Srb);
+
+    if (0 == DataBuffer)
+        return SRB_STATUS_INTERNAL_ERROR;
+
+    RtlZeroMemory(DataBuffer, DataTransferLength);
+
+    ULONG LunCount = 1;
+    UINT32 LunListLength = LunCount * 2;
+    if (sizeof(LUN_LIST) + LunListLength > DataTransferLength)
+        return SRB_STATUS_DATA_OVERRUN;
+
+    PLUN_LIST LunList = DataBuffer;
+    LunList->LunListLength[0] = (LunListLength >> 24) & 0xff;
+    LunList->LunListLength[1] = (LunListLength >> 16) & 0xff;
+    LunList->LunListLength[2] = (LunListLength >> 8) & 0xff;
+    LunList->LunListLength[3] = LunListLength & 0xff;
+    LunList->Lun[0][1] = 0;
+    SrbSetDataTransferLength(Srb, sizeof(LUN_LIST) + LunListLength);
+
+    return SRB_STATUS_SUCCESS;
 }
 
 UCHAR SpdScsiError(PVOID Srb, UCHAR SenseKey, UCHAR AdditionalSenseCode)
