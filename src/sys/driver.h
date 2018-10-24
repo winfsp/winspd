@@ -26,6 +26,7 @@
 
 #define POOL_NX_OPTIN                   1
 #include <ntifs.h>
+#include <ntstrsafe.h>
 #include <storport.h>
 #include <winspd/ioctl.h>
 #include "srbcompat.h"
@@ -52,6 +53,7 @@ enum
     spd_debug_dp_adapter                = 0x00080000,   /* adapter functions DbgPrint switch */
     spd_debug_dp_ioctl                  = 0x00100000,   /* ioctl functions DbgPrint switch */
     spd_debug_dp_io                     = 0x00200000,   /* io functions DbgPrint switch */
+    spd_debug_dp                        = 0xffff0000,
 };
 extern __declspec(selectany) int spd_debug =
     spd_debug_bp_drvrld | spd_debug_dp_drvrld;
@@ -60,6 +62,7 @@ const char *SrbFunctionSym(ULONG Function);
 const char *SrbStatusSym(ULONG Status);
 const char *SrbStatusMaskSym(ULONG Status);
 const char *CdbOperationCodeSym(ULONG OperationCode);
+const char *SpdStringizeSrb(PVOID Srb, char Buffer[], size_t Size);
 #endif
 
 /* DEBUGBREAK */
@@ -90,6 +93,8 @@ const char *CdbOperationCodeSym(ULONG OperationCode);
 /* SPD_ENTER/SPD_LEAVE */
 #if DBG
 #define SPD_DEBUGLOG_(category, fmt, rfmt, ...)\
+    char SpdDebugLogBuf[1024];        \
+    (void)SpdDebugLogBuf;             \
     ((void)((spd_debug & spd_debug_dp_ ## category) ?\
         DbgPrint(AbnormalTermination() ?\
             "[%d] " DRIVER_NAME "!" __FUNCTION__ "(" fmt ") = *AbnormalTermination*\n" :\

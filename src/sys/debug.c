@@ -330,4 +330,63 @@ const char *CdbOperationCodeSym(ULONG OperationCode)
     }
 }
 
+const char *SpdStringizeSrb(PVOID Srb, char Buffer[], size_t Size)
+{
+    ULONG Function = SrbGetSrbFunction(Srb);
+    UCHAR Status = SrbGetSrbStatus(Srb);
+
+    switch (Function)
+    {
+    case SRB_FUNCTION_EXECUTE_SCSI:
+        if (SRB_STATUS_ERROR != SRB_STATUS(Status))
+        {
+            RtlStringCbPrintfA(Buffer, Size,
+                "%s[%s], Lun=%u:%u:%u, DataTransferLength=%lu, SrbStatus=%s%s",
+                SrbFunctionSym(Function), CdbOperationCodeSym(SrbGetCdb(Srb)->AsByte[0]),
+                SrbGetPathId(Srb), SrbGetTargetId(Srb), SrbGetLun(Srb),
+                SrbGetDataTransferLength(Srb),
+                SrbStatusSym(Status), SrbStatusMaskSym(Status));
+        }
+        else
+        {
+            UCHAR SenseInfoBufferLength = SrbGetSenseInfoBufferLength(Srb);
+            PSENSE_DATA SenseInfoBuffer = SrbGetSenseInfoBuffer(Srb);
+
+            if (0 != SenseInfoBuffer &&
+                sizeof(SENSE_DATA) <= SenseInfoBufferLength &&
+                !FlagOn(SrbGetSrbFlags(Srb), SRB_FLAGS_DISABLE_AUTOSENSE) &&
+                SenseInfoBuffer->Valid &&
+                FlagOn(Status, SRB_STATUS_AUTOSENSE_VALID))
+            {
+                RtlStringCbPrintfA(Buffer, Size,
+                    "%s[%s], Lun=%u:%u:%u, ScsiStatus=%u, SenseData={KEY=%u,ASC=%u}, SrbStatus=%s%s",
+                    SrbFunctionSym(Function), CdbOperationCodeSym(SrbGetCdb(Srb)->AsByte[0]),
+                    SrbGetPathId(Srb), SrbGetTargetId(Srb), SrbGetLun(Srb),
+                    SrbGetScsiStatus(Srb),
+                    SenseInfoBuffer->SenseKey, SenseInfoBuffer->AdditionalSenseCode,
+                    SrbStatusSym(Status), SrbStatusMaskSym(Status));
+            }
+            else
+            {
+                RtlStringCbPrintfA(Buffer, Size,
+                    "%s[%s], Lun=%u:%u:%u, ScsiStatus=%u, SrbStatus=%s%s",
+                    SrbFunctionSym(Function), CdbOperationCodeSym(SrbGetCdb(Srb)->AsByte[0]),
+                    SrbGetPathId(Srb), SrbGetTargetId(Srb), SrbGetLun(Srb),
+                    SrbGetScsiStatus(Srb),
+                    SrbStatusSym(Status), SrbStatusMaskSym(Status));
+            }
+        }
+        break;
+
+    default:
+        RtlStringCbPrintfA(Buffer, Size,
+            "%s, SrbStatus=%s%s",
+            SrbFunctionSym(Function),
+            SrbStatusSym(Status), SrbStatusMaskSym(Status));
+        break;
+    }
+
+    return Buffer;
+}
+
 #endif

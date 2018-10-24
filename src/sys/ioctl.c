@@ -27,7 +27,7 @@ VOID SpdHwProcessServiceRequest(PVOID DeviceExtension, PVOID Irp)
         ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
 
     SPD_LEAVE(ioctl,
-        "DeviceExtension=%p, Irp=%p", "",
+        "%p, Irp=%p", "",
         DeviceExtension, Irp);
 }
 
@@ -37,6 +37,6 @@ VOID SpdHwCompleteServiceIrp(PVOID DeviceExtension)
         ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
 
     SPD_LEAVE(ioctl,
-        "DeviceExtension=%p", "",
+        "%p", "",
         DeviceExtension);
 }

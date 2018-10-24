@@ -83,9 +83,8 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
     }
 
     SPD_LEAVE(io,
-        "DeviceExtension=%p, %s", " = %s%s",
-        DeviceExtension, SrbFunctionSym(SrbGetSrbFunction(Srb)),
-        SrbStatusSym(SrbGetSrbStatus(Srb)), SrbStatusMaskSym(SrbGetSrbStatus(Srb)));
+        "%p, %s", "",
+        DeviceExtension, SpdStringizeSrb(Srb, SpdDebugLogBuf, sizeof SpdDebugLogBuf));
 
     return TRUE;
 }

@@ -59,7 +59,7 @@ ULONG SpdHwFindAdapter(
     Result = SP_RETURN_FOUND;
 
     SPD_LEAVE(adapter,
-        "DeviceExtension=%p, HwContext=%p, BusInformation=%p, LowerDevice=%p, ArgumentString=\"%s\"",
+        "%p, HwContext=%p, BusInformation=%p, LowerDevice=%p, ArgumentString=\"%s\"",
         " = %lu",
         DeviceExtension, HwContext, BusInformation, LowerDevice, ArgumentString, Result);
     return Result;
@@ -73,7 +73,7 @@ BOOLEAN SpdHwInitialize(PVOID DeviceExtension)
     Result = TRUE;
 
     SPD_LEAVE(adapter,
-        "DeviceExtension=%p", " = %d",
+        "%p", " = %d",
         DeviceExtension, Result);
     return Result;
 }
@@ -84,7 +84,7 @@ VOID SpdHwFreeAdapterResources(PVOID DeviceExtension)
         ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
 
     SPD_LEAVE(adapter,
-        "DeviceExtension=%p", "",
+        "%p", "",
         DeviceExtension);
 }
 
@@ -96,7 +96,7 @@ BOOLEAN SpdHwResetBus(PVOID DeviceExtension, ULONG PathId)
     Result = TRUE;
 
     SPD_LEAVE(adapter,
-        "DeviceExtension=%p, PathId=%lu", " = %d",
+        "%p, PathId=%lu", " = %d",
         DeviceExtension, PathId, Result);
     return Result;
 }
@@ -136,7 +136,7 @@ SCSI_ADAPTER_CONTROL_STATUS SpdHwAdapterControl(
     }
 
     SPD_LEAVE(adapter,
-        "DeviceExtension=%p, ControlType=%s", " = %d",
+        "%p, ControlType=%s", " = %d",
         DeviceExtension, AdapterControlSym(ControlType), (int)Result);
     return Result;
 }
