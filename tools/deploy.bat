@@ -21,3 +21,5 @@ for /f "tokens=2,*" %%i in ('reg query %RegKey% /v %RegVal% ^| findstr %RegVal%'
     set KitRoot="%%j"
 )
 copy %KitRoot%\Tools\%SUFFIX%\devcon.exe %TARGET% >nul
+
+echo devcon install winspd-%SUFFIX%.inf root\winspd >%TARGET%install.bat
