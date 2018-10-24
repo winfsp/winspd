@@ -55,6 +55,7 @@ enum
 };
 extern __declspec(selectany) int spd_debug =
     spd_debug_bp_drvrld | spd_debug_dp_drvrld;
+const char *AdapterControlSym(ULONG Control);
 const char *SrbFunctionSym(ULONG Function);
 const char *SrbStatusSym(ULONG Status);
 const char *SrbStatusMaskSym(ULONG Status);

@@ -24,6 +24,32 @@
 #if DBG
 #define SYM(x)                          case x: return #x;
 
+const char *AdapterControlSym(ULONG Control)
+{
+    switch (Control)
+    {
+    SYM(ScsiQuerySupportedControlTypes)
+    SYM(ScsiStopAdapter)
+    SYM(ScsiRestartAdapter)
+    SYM(ScsiSetBootConfig)
+    SYM(ScsiSetRunningConfig)
+    SYM(ScsiPowerSettingNotification)
+    SYM(ScsiAdapterPower)
+    SYM(ScsiAdapterPoFxPowerRequired)
+    SYM(ScsiAdapterPoFxPowerActive)
+    SYM(ScsiAdapterPoFxPowerSetFState)
+    SYM(ScsiAdapterPoFxPowerControl)
+    SYM(ScsiAdapterPrepareForBusReScan)
+    SYM(ScsiAdapterSystemPowerHints)
+    SYM(ScsiAdapterFilterResourceRequirements)
+    SYM(ScsiAdapterPoFxMaxOperationalPower)
+    SYM(ScsiAdapterPoFxSetPerfState)
+    SYM(ScsiAdapterSurpriseRemoval)
+    default:
+        return "Control:Unknown";
+    }
+}
+
 const char *SrbFunctionSym(ULONG Function)
 {
     switch (Function)

@@ -70,7 +70,7 @@ BOOLEAN SpdHwInitialize(PVOID DeviceExtension)
     BOOLEAN Result = FALSE;
     SPD_ENTER(adapter);
 
-    Result = FALSE;
+    Result = TRUE;
 
     SPD_LEAVE(adapter,
         "DeviceExtension=%p", " = %d",
@@ -93,7 +93,7 @@ BOOLEAN SpdHwResetBus(PVOID DeviceExtension, ULONG PathId)
     BOOLEAN Result = FALSE;
     SPD_ENTER(adapter);
 
-    Result = FALSE;
+    Result = TRUE;
 
     SPD_LEAVE(adapter,
         "DeviceExtension=%p, PathId=%lu", " = %d",
@@ -109,10 +109,34 @@ SCSI_ADAPTER_CONTROL_STATUS SpdHwAdapterControl(
     SCSI_ADAPTER_CONTROL_STATUS Result = ScsiAdapterControlUnsuccessful;
     SPD_ENTER(adapter);
 
-    Result = ScsiAdapterControlUnsuccessful;
+    switch (ControlType)
+    {
+    case ScsiQuerySupportedControlTypes:
+#define SetSupportedControlType(i)      \
+    if (((PSCSI_SUPPORTED_CONTROL_TYPE_LIST)Parameters)->MaxControlType > (i))\
+        ((PSCSI_SUPPORTED_CONTROL_TYPE_LIST)Parameters)->SupportedTypeList[(i)] = TRUE
+        SetSupportedControlType(ScsiQuerySupportedControlTypes);
+        SetSupportedControlType(ScsiStopAdapter);
+        SetSupportedControlType(ScsiRestartAdapter);
+        Result = ScsiAdapterControlSuccess;
+        break;
+#undef SetSupportedControlType
+
+    case ScsiStopAdapter:
+        Result = ScsiAdapterControlSuccess;
+        break;
+
+    case ScsiRestartAdapter:
+        Result = ScsiAdapterControlSuccess;
+        break;
+
+    default:
+        Result = ScsiAdapterControlUnsuccessful;
+        break;
+    }
 
     SPD_LEAVE(adapter,
-        "DeviceExtension=%p, ControlType=%lu", " = %d",
-        DeviceExtension, ControlType, (int)Result);
+        "DeviceExtension=%p, ControlType=%s", " = %d",
+        DeviceExtension, AdapterControlSym(ControlType), (int)Result);
     return Result;
 }
