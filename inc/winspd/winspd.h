@@ -26,16 +26,12 @@
 #ifndef WINSPD_WINSPD_H_INCLUDED
 #define WINSPD_WINSPD_H_INCLUDED
 
-#define WIN32_NO_STATUS
+#define _NTSCSI_USER_MODE_
 #include <windows.h>
-#undef WIN32_NO_STATUS
-#include <winternl.h>
-#pragma warning(push)
-#pragma warning(disable:4005)           /* macro redefinition */
-#include <ntstatus.h>
-#pragma warning(pop)
+#include <scsi.h>
 
-#if defined(WINSPD_DLL_INTERNAL)
+#if defined(SPD_API)
+#elif defined(WINSPD_DLL_INTERNAL)
 #define SPD_API                         __declspec(dllexport)
 #else
 #define SPD_API                         __declspec(dllimport)
@@ -46,6 +42,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* SCSI control */
+SPD_API DWORD SpdGetDevicePath(PWSTR DeviceName, PWCHAR PathBuf, DWORD PathBufSize);
+SPD_API DWORD SpdOpenDevice(PWSTR DeviceName, PHANDLE PDeviceHandle);
+SPD_API DWORD SpdScsiControl(HANDLE DeviceHandle,
+    DWORD Ptl, PCDB Cdb, UCHAR DataDirection, PVOID DataBuffer, PDWORD PDataLength,
+    PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32]);
 
 #ifdef __cplusplus
 }

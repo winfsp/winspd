@@ -12,19 +12,19 @@
     <Filter Include="Include\winspd">
       <UniqueIdentifier>{bd60d71e-1fe0-477a-b3f1-5121a9881dc4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Include\shared">
-      <UniqueIdentifier>{69af5ccd-fa28-4de0-8480-c00fd273f5d6}</UniqueIdentifier>
+    <Filter Include="Source\shared">
+      <UniqueIdentifier>{5e677395-9f35-4353-a2dc-a25d7f55e818}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\dll\library.c">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\scsictl.c">
+      <Filter>Source\shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\dll\library.h">
-      <Filter>Source</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\inc\winspd\ioctl.h">
       <Filter>Include\winspd</Filter>
     </ClInclude>
@@ -32,7 +32,7 @@
       <Filter>Include\winspd</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\shared\minimal.h">
-      <Filter>Include\shared</Filter>
+      <Filter>Source\shared</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -19,7 +19,8 @@
  * associated repository.
  */
 
-#include <dll/library.h>
+#include <winspd/winspd.h>
+#include <shared/minimal.h>
 
 HINSTANCE DllInstance;
 

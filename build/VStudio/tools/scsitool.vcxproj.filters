@@ -9,18 +9,21 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Include\shared">
-      <UniqueIdentifier>{4479fe87-a0dd-4728-bbbb-0f5cb57ac638}</UniqueIdentifier>
+    <Filter Include="Source\shared">
+      <UniqueIdentifier>{64dfc8c1-e6d7-4bab-a138-29d5fd12b4ac}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\scsitool\scsitool.c">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\shared\scsictl.c">
+      <Filter>Source\shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\shared\minimal.h">
-      <Filter>Include\shared</Filter>
+      <Filter>Source\shared</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
