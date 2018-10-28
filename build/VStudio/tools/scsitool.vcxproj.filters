@@ -9,29 +9,17 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Include\winspd">
-      <UniqueIdentifier>{bd60d71e-1fe0-477a-b3f1-5121a9881dc4}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Include\shared">
-      <UniqueIdentifier>{69af5ccd-fa28-4de0-8480-c00fd273f5d6}</UniqueIdentifier>
+      <UniqueIdentifier>{4479fe87-a0dd-4728-bbbb-0f5cb57ac638}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\dll\library.c">
+    <ClCompile Include="..\..\..\src\scsitool\scsitool.c">
       <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\dll\library.h">
-      <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\inc\winspd\ioctl.h">
-      <Filter>Include\winspd</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\inc\winspd\winspd.h">
-      <Filter>Include\winspd</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\shared\minimal.h">
+    <ClInclude Include="..\..\..\src\shared\minimal.h">
       <Filter>Include\shared</Filter>
     </ClInclude>
   </ItemGroup>

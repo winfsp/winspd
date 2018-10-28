@@ -10,6 +10,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "winspd.sys", "winspd_sys.vc
 		{B8066540-44FD-41DB-8431-12ABFF9233D2} = {B8066540-44FD-41DB-8431-12ABFF9233D2}
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{F809D260-BBDF-431C-8F4B-BCD0F5BF3C01}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "scsitool", "tools\scsitool.vcxproj", "{33A69A34-B54D-42BA-B397-3BFA8FF53E47}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -38,8 +42,19 @@ Global
 		{989F4291-242B-4ABE-915F-366581E867B4}.Release|x86.ActiveCfg = Release|Win32
 		{989F4291-242B-4ABE-915F-366581E867B4}.Release|x86.Build.0 = Release|Win32
 		{989F4291-242B-4ABE-915F-366581E867B4}.Release|x86.Deploy.0 = Release|Win32
+		{33A69A34-B54D-42BA-B397-3BFA8FF53E47}.Debug|x64.ActiveCfg = Debug|x64
+		{33A69A34-B54D-42BA-B397-3BFA8FF53E47}.Debug|x64.Build.0 = Debug|x64
+		{33A69A34-B54D-42BA-B397-3BFA8FF53E47}.Debug|x86.ActiveCfg = Debug|Win32
+		{33A69A34-B54D-42BA-B397-3BFA8FF53E47}.Debug|x86.Build.0 = Debug|Win32
+		{33A69A34-B54D-42BA-B397-3BFA8FF53E47}.Release|x64.ActiveCfg = Release|x64
+		{33A69A34-B54D-42BA-B397-3BFA8FF53E47}.Release|x64.Build.0 = Release|x64
+		{33A69A34-B54D-42BA-B397-3BFA8FF53E47}.Release|x86.ActiveCfg = Release|Win32
+		{33A69A34-B54D-42BA-B397-3BFA8FF53E47}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{33A69A34-B54D-42BA-B397-3BFA8FF53E47} = {F809D260-BBDF-431C-8F4B-BCD0F5BF3C01}
 	EndGlobalSection
 EndGlobal

@@ -24,5 +24,6 @@
 
 #define WINSPD_DLL_INTERNAL
 #include <winspd/winspd.h>
+#include <shared/minimal.h>
 
 #endif
