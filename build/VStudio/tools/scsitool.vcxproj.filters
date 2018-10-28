@@ -12,6 +12,9 @@
     <Filter Include="Source\shared">
       <UniqueIdentifier>{64dfc8c1-e6d7-4bab-a138-29d5fd12b4ac}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Include\winspd">
+      <UniqueIdentifier>{b62a10c5-f7bb-4bb8-ad51-b662da1f9f14}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\scsitool\scsitool.c">
@@ -24,6 +27,9 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\src\shared\minimal.h">
       <Filter>Source\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\inc\winspd\winspd.h">
+      <Filter>Include\winspd</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

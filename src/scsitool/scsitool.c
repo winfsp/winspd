@@ -68,7 +68,7 @@ static void usage(void)
         PROGNAME);
 }
 
-static DWORD ScsiControlByName(PWSTR DeviceName,
+static DWORD ScsiControl(PWSTR DeviceName,
     DWORD Ptl, PCDB Cdb, UCHAR DataDirection, PVOID DataBuffer, PDWORD PDataLength,
     PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32])
 {
@@ -113,18 +113,25 @@ static int inquiry(int argc, wchar_t **argv)
         usage();
 
     CDB Cdb;
-    __declspec(align(16)) UCHAR DataBuffer[VPD_MAX_BUFFER_SIZE];
-    DWORD DataLength = sizeof DataBuffer;
+    UCHAR *DataBuffer = 0;
+    DWORD DataLength = VPD_MAX_BUFFER_SIZE;
     UCHAR ScsiStatus;
     UCHAR SenseInfoBuffer[32];
     DWORD Error;
+
+    Error = SpdMemAlignAlloc(DataLength, 511, &DataBuffer);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
 
     memset(&Cdb, 0, sizeof Cdb);
     Cdb.CDB6INQUIRY3.OperationCode = SCSIOP_INQUIRY;
     Cdb.CDB6INQUIRY3.AllocationLength = VPD_MAX_BUFFER_SIZE;
 
-    Error = ScsiControlByName(argv[1], 0, &Cdb, 1/*SCSI_IOCTL_DATA_IN*/,
+    Error = ScsiControl(argv[1], 0, &Cdb, 1/*SCSI_IOCTL_DATA_IN*/,
         DataBuffer, &DataLength, &ScsiStatus, SenseInfoBuffer);
+
+exit:
+    SpdMemAlignFree(DataBuffer);
 
     return Error;
 }
