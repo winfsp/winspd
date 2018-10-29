@@ -93,17 +93,26 @@ exit:
 
 static void PrintSenseInfo(UCHAR ScsiStatus, UCHAR SenseInfoBuffer[32])
 {
-    info(
-        "ScsiStatus=%u SenseInfo="
-        "%02x%02x%02x%02x%02x%02x%02x%02x"
-        "%02x%02x%02x%02x%02x%02x%02x%02x"
-        "%02x%02x%02x%02x%02x%02x%02x%02x"
-        "%02x%02x%02x%02x%02x%02x%02x%02x",
-        ScsiStatus,
-        SenseInfoBuffer[ 0], SenseInfoBuffer[ 1], SenseInfoBuffer[ 2], SenseInfoBuffer[ 3],
-        SenseInfoBuffer[ 4], SenseInfoBuffer[ 5], SenseInfoBuffer[ 6], SenseInfoBuffer[ 7],
-        SenseInfoBuffer[ 8], SenseInfoBuffer[ 9], SenseInfoBuffer[10], SenseInfoBuffer[11],
-        SenseInfoBuffer[12], SenseInfoBuffer[13], SenseInfoBuffer[14], SenseInfoBuffer[15]);
+    info("ScsiStatus=%u", ScsiStatus);
+
+    ScsiLineText(GetStdHandle(STD_OUTPUT_HANDLE),
+        "u1  VALID\n"
+        "u7  RESPONSE CODE (70h or 71h)\n"
+        "u8  Obsolete\n"
+        "u1  FILEMARK\n"
+        "u1  EOM\n"
+        "u1  ILI\n"
+        "u1  Reserved\n"
+        "u4  SENSE KEY\n"
+        "u16 INFORMATION\n"
+        "u8  ADDITIONAL SENSE LENGTH (n-7)\n"
+        "u16 COMMAND-SPECIFIC INFORMATION\n"
+        "u8  ADDITIONAL SENSE CODE\n"
+        "u8  ADDITIONAL SENSE CODE QUALIFIER\n"
+        "u8  FIELD REPLACEABLE UNIT CODE\n"
+        "u1  SKSV\n"
+        "u15 SENSE KEY SPECIFIC\n",
+        SenseInfoBuffer, 32);
 }
 
 static int devpath(int argc, wchar_t **argv)
