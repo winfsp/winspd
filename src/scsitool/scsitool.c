@@ -89,6 +89,21 @@ exit:
     return Error;
 }
 
+static void PrintSenseInfo(UCHAR ScsiStatus, UCHAR SenseInfoBuffer[32])
+{
+    info(
+        "ScsiStatus=%u SenseInfo="
+        "%02x%02x%02x%02x%02x%02x%02x%02x"
+        "%02x%02x%02x%02x%02x%02x%02x%02x"
+        "%02x%02x%02x%02x%02x%02x%02x%02x"
+        "%02x%02x%02x%02x%02x%02x%02x%02x",
+        ScsiStatus,
+        SenseInfoBuffer[ 0], SenseInfoBuffer[ 1], SenseInfoBuffer[ 2], SenseInfoBuffer[ 3],
+        SenseInfoBuffer[ 4], SenseInfoBuffer[ 5], SenseInfoBuffer[ 6], SenseInfoBuffer[ 7],
+        SenseInfoBuffer[ 8], SenseInfoBuffer[ 9], SenseInfoBuffer[10], SenseInfoBuffer[11],
+        SenseInfoBuffer[12], SenseInfoBuffer[13], SenseInfoBuffer[14], SenseInfoBuffer[15]);
+}
+
 static int devpath(int argc, wchar_t **argv)
 {
     if (2 != argc)
@@ -113,7 +128,7 @@ static int inquiry(int argc, wchar_t **argv)
         usage();
 
     CDB Cdb;
-    UCHAR *DataBuffer = 0;
+    PVOID DataBuffer = 0;
     DWORD DataLength = VPD_MAX_BUFFER_SIZE;
     UCHAR ScsiStatus;
     UCHAR SenseInfoBuffer[32];
@@ -129,6 +144,65 @@ static int inquiry(int argc, wchar_t **argv)
 
     Error = ScsiControl(argv[1], 0, &Cdb, 1/*SCSI_IOCTL_DATA_IN*/,
         DataBuffer, &DataLength, &ScsiStatus, SenseInfoBuffer);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    if (SCSISTAT_GOOD == ScsiStatus)
+    {
+        PINQUIRYDATA InquiryData = DataBuffer;
+
+        info(
+            "PERIPHERAL_DEVICE_TYPE=%u "
+            "PERIPHERAL_QUALIFIER=%u "
+            "RMB=%u "
+            "VERSION=%u "
+            "RESPONSE_DATA_FORMAT=%u "
+            "HISUP=%u "
+            "NORMACA=%u "
+            "ADDITIONAL_LENGTH=%u "
+            "PROTECT=%u "
+            "TPC=%u "
+            "TPGS=%u "
+            "ACC=%u "
+            "SCCS=%u "
+            "ADDR16=%u "
+            "MCHNGR=%u "
+            "MULTIP=%u "
+            "ENCSERV=%u "
+            "CMDQUE=%u "
+            "LINKED=%u "
+            "SYNC=%u "
+            "WBUS16=%u "
+            "VENDOR=\"%.8s\" "
+            "PRODUCT=\"%.16s\" "
+            "REVISION=\"%.4s\"",
+            InquiryData->DeviceType,
+            InquiryData->DeviceTypeQualifier,
+            InquiryData->RemovableMedia,
+            InquiryData->Versions,
+            InquiryData->ResponseDataFormat,
+            InquiryData->HiSupport,
+            InquiryData->NormACA,
+            InquiryData->AdditionalLength,
+            InquiryData->PROTECT,
+            InquiryData->ThirdPartyCoppy,
+            InquiryData->TPGS,
+            InquiryData->ACC,
+            InquiryData->SCCS,
+            InquiryData->Addr16,
+            InquiryData->MediumChanger,
+            InquiryData->MultiPort,
+            InquiryData->EnclosureServices,
+            InquiryData->CommandQueue,
+            InquiryData->LinkedCommands,
+            InquiryData->Synchronous,
+            InquiryData->Wide16Bit,
+            InquiryData->VendorId,
+            InquiryData->ProductId,
+            InquiryData->ProductRevisionLevel);
+    }
+    else
+        PrintSenseInfo(ScsiStatus, SenseInfoBuffer);
 
 exit:
     SpdMemAlignFree(DataBuffer);
