@@ -203,6 +203,15 @@ static int inquiry(int argc, wchar_t **argv)
             "u1  QAS\n"
             "u1  IUS\n"
             "u8  Reserved\n"
+            "u16 VERSION DESCRIPTOR 1\n"
+            "u16 VERSION DESCRIPTOR 2\n"
+            "u16 VERSION DESCRIPTOR 3\n"
+            "u16 VERSION DESCRIPTOR 4\n"
+            "u16 VERSION DESCRIPTOR 5\n"
+            "u16 VERSION DESCRIPTOR 6\n"
+            "u16 VERSION DESCRIPTOR 7\n"
+            "u16 VERSION DESCRIPTOR 8\n"
+            "X22 Reserved\n"
             "",
             DataBuffer, DataLength);
     }
