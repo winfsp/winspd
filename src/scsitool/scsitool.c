@@ -22,8 +22,6 @@
 #include <winspd/winspd.h>
 #include <shared/minimal.h>
 
-void ScsiLineText(HANDLE h, const char *format, void *buf, size_t len);
-
 #define PROGNAME                        "scsitool"
 
 #define GLOBAL                          L"\\\\?\\"
@@ -91,11 +89,18 @@ exit:
     return Error;
 }
 
+static void ScsiPrint(const char *format, void *buf, size_t len)
+{
+    void ScsiLineText(HANDLE h, const char *format, void *buf, size_t len);
+
+    ScsiLineText(GetStdHandle(STD_OUTPUT_HANDLE), format, buf, len);
+}
+
 static void PrintSenseInfo(UCHAR ScsiStatus, UCHAR SenseInfoBuffer[32])
 {
     info("ScsiStatus=%u", ScsiStatus);
 
-    ScsiLineText(GetStdHandle(STD_OUTPUT_HANDLE),
+    ScsiPrint(
         "u1  VALID\n"
         "u7  RESPONSE CODE (70h or 71h)\n"
         "u8  Obsolete\n"
@@ -160,7 +165,7 @@ static int inquiry(int argc, wchar_t **argv)
 
     if (SCSISTAT_GOOD == ScsiStatus)
     {
-        ScsiLineText(GetStdHandle(STD_OUTPUT_HANDLE),
+        ScsiPrint(
             "u3  PERIPHERAL QUALIFIER\n"
             "u5  PERIPHERAL DEVICE TYPE\n"
             "u1  RMB\n"
