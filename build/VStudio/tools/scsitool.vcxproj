@@ -192,6 +192,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\src\scsitool\scsitext.c" />
     <ClCompile Include="..\..\..\src\scsitool\scsitool.c" />
     <ClCompile Include="..\..\..\src\shared\scsictl.c" />
   </ItemGroup>

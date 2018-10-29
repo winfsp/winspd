@@ -23,6 +23,9 @@
     <ClCompile Include="..\..\..\src\shared\scsictl.c">
       <Filter>Source\shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\scsitool\scsitext.c">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\shared\minimal.h">

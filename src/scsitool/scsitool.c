@@ -22,6 +22,8 @@
 #include <winspd/winspd.h>
 #include <shared/minimal.h>
 
+void ScsiLineText(HANDLE h, const char *format, void *buf, size_t len);
+
 #define PROGNAME                        "scsitool"
 
 #define GLOBAL                          L"\\\\?\\"
@@ -149,57 +151,51 @@ static int inquiry(int argc, wchar_t **argv)
 
     if (SCSISTAT_GOOD == ScsiStatus)
     {
-        PINQUIRYDATA InquiryData = DataBuffer;
-
-        info(
-            "PERIPHERAL_DEVICE_TYPE=%u "
-            "PERIPHERAL_QUALIFIER=%u "
-            "RMB=%u "
-            "VERSION=%u "
-            "RESPONSE_DATA_FORMAT=%u "
-            "HISUP=%u "
-            "NORMACA=%u "
-            "ADDITIONAL_LENGTH=%u "
-            "PROTECT=%u "
-            "TPC=%u "
-            "TPGS=%u "
-            "ACC=%u "
-            "SCCS=%u "
-            "ADDR16=%u "
-            "MCHNGR=%u "
-            "MULTIP=%u "
-            "ENCSERV=%u "
-            "CMDQUE=%u "
-            "LINKED=%u "
-            "SYNC=%u "
-            "WBUS16=%u "
-            "VENDOR=\"%.8s\" "
-            "PRODUCT=\"%.16s\" "
-            "REVISION=\"%.4s\"",
-            InquiryData->DeviceType,
-            InquiryData->DeviceTypeQualifier,
-            InquiryData->RemovableMedia,
-            InquiryData->Versions,
-            InquiryData->ResponseDataFormat,
-            InquiryData->HiSupport,
-            InquiryData->NormACA,
-            InquiryData->AdditionalLength,
-            InquiryData->PROTECT,
-            InquiryData->ThirdPartyCoppy,
-            InquiryData->TPGS,
-            InquiryData->ACC,
-            InquiryData->SCCS,
-            InquiryData->Addr16,
-            InquiryData->MediumChanger,
-            InquiryData->MultiPort,
-            InquiryData->EnclosureServices,
-            InquiryData->CommandQueue,
-            InquiryData->LinkedCommands,
-            InquiryData->Synchronous,
-            InquiryData->Wide16Bit,
-            InquiryData->VendorId,
-            InquiryData->ProductId,
-            InquiryData->ProductRevisionLevel);
+        ScsiLineText(GetStdHandle(STD_OUTPUT_HANDLE),
+            "u3  PERIPHERAL QUALIFIER\n"
+            "u5  PERIPHERAL DEVICE TYPE\n"
+            "u1  RMB\n"
+            "u7  Reserved\n"
+            "u8  VERSION\n"
+            "u1  Obsolete\n"
+            "u1  Obsolete\n"
+            "u1  NORMACA\n"
+            "u1  HISUP\n"
+            "u4  RESPONSE DATA FORMAT\n"
+            "u8  ADDITIONAL LENGTH (n-4)\n"
+            "u1  SCCS\n"
+            "u1  ACC\n"
+            "u2  TPGS\n"
+            "u1  3PC\n"
+            "u2  Reserved\n"
+            "u1  PROTECT\n"
+            "u1  BQUE\n"
+            "u1  ENCSERV\n"
+            "u1  VS\n"
+            "u1  MULTIP\n"
+            "u1  MCHNGR\n"
+            "u1  Obsolete\n"
+            "u1  Obsolete\n"
+            "u1  ADDR16\n"
+            "u1  Obsolete\n"
+            "u1  Obsolete\n"
+            "u1  WBUS16\n"
+            "u1  SYNC\n"
+            "u1  LINKED\n"
+            "u1  Obsolete\n"
+            "u1  CMDQUE\n"
+            "u1  VS\n"
+            "S8  T10 VENDOR IDENTIFICATION\n"
+            "S16 PRODUCT IDENTIFICATION\n"
+            "S8  PRODUCT REVISION LEVEL\n"
+            "X20 Vendor specific\n"
+            "u4  Reserved\n"
+            "u2  CLOCKING\n"
+            "u1  QAS\n"
+            "u1  IUS\n"
+            "u8  Reserved\n"
+            "",
+            DataBuffer, DataLength);
     }
     else
         PrintSenseInfo(ScsiStatus, SenseInfoBuffer);
