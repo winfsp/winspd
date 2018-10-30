@@ -114,9 +114,15 @@ void ScsiText(
 
             if (-1 != minusv)
             {
-                warn = len != uval + minusv + 1 ? "data buffer length mismatch" : 0;
-                len = uval + minusv + 1;
+                size_t newlen = uval + minusv + 1;
+                warn = len != newlen ?
+                    "data buffer length mismatch" : 0;
+                if (len > newlen)
+                    len = newlen;
             }
+
+            if (0 == invariant_strncmp("Reserved", name, p - name) && 0 != uval)
+                warn = "non-zero reserved value";
 
             fn(data, type, width, name, p - name, uval, pval, lval, warn);
         }
