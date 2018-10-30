@@ -25,14 +25,14 @@ void ScsiText(
     void (*fn)(void *data,
         unsigned type, unsigned width, const char *name, size_t namelen,
         unsigned long long uval, void *pval, size_t lval,
-        const char *caution),
+        const char *warn),
     void *data,
     const char *format, void *buf, size_t len)
 {
     unsigned type, width, minusv;
     const char *star = 0;
     const char *name;
-    const char *caution;
+    const char *warn;
     unsigned long long uval;
     void *pval;
     size_t lval;
@@ -41,7 +41,7 @@ void ScsiText(
     for (const char *p = format; len * 8 > bitpos;)
     {
         minusv = -1;
-        caution = 0;
+        warn = 0;
 
         type = *p;
         if ('*' == type)
@@ -90,7 +90,7 @@ void ScsiText(
                 lval = (unsigned)(len - bitpos / 8);
             bitpos += lval * 8;
 
-            fn(data, type, width, name, p - name, uval, pval, lval, caution);
+            fn(data, type, width, name, p - name, uval, pval, lval, warn);
         }
         else if ('a' <= type && type <= 'z')
         {
@@ -114,11 +114,11 @@ void ScsiText(
 
             if (-1 != minusv)
             {
-                caution = len != uval + minusv + 1 ? " (!!!: data buffer length mismatch)" : 0;
+                warn = len != uval + minusv + 1 ? " (WARN: data buffer length mismatch)" : 0;
                 len = uval + minusv + 1;
             }
 
-            fn(data, type, width, name, p - name, uval, pval, lval, caution);
+            fn(data, type, width, name, p - name, uval, pval, lval, warn);
         }
 
         if ('\n' == *p)
@@ -129,26 +129,26 @@ void ScsiText(
 void ScsiLineTextFn(void *data,
     unsigned type, unsigned width, const char *name, size_t namelen,
     unsigned long long uval, void *pval, size_t lval,
-    const char *caution)
+    const char *warn)
 {
     char buf[1024], *mem = 0, *bufp = buf;
-    size_t size, clen;
+    size_t size, warnlen;
     const char *sep = "";
     DWORD BytesTransferred;
 
-    clen = 0 != caution ? lstrlenA(caution) : 0;
+    warnlen = 0 != warn ? lstrlenA(warn) : 0;
     switch (type)
     {
     case 'u':
-        size = namelen + 1 + 64 + clen;
+        size = namelen + 1 + 64 + warnlen;
         break;
 
     case 'S':
-        size = namelen + 1 + lval + clen;
+        size = namelen + 1 + lval + warnlen;
         break;
 
     case 'X':
-        size = namelen + 1 + 3 * lval - 1 + clen;
+        size = namelen + 1 + 3 * lval - 1 + warnlen;
         break;
 
     default:
@@ -197,10 +197,10 @@ void ScsiLineTextFn(void *data,
         goto exit;
     }
 
-    if (0 != caution)
+    if (0 != warn)
     {
-        memcpy(bufp, caution, clen + 1);
-        bufp += clen;
+        memcpy(bufp, warn, warnlen + 1);
+        bufp += warnlen;
     }
 
     *bufp++ = '\n';
