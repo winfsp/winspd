@@ -114,7 +114,7 @@ void ScsiText(
 
             if (-1 != minusv)
             {
-                warn = len != uval + minusv + 1 ? " (WARN: data buffer length mismatch)" : 0;
+                warn = len != uval + minusv + 1 ? "data buffer length mismatch" : 0;
                 len = uval + minusv + 1;
             }
 
@@ -136,7 +136,7 @@ void ScsiLineTextFn(void *data,
     const char *sep = "";
     DWORD BytesTransferred;
 
-    warnlen = 0 != warn ? lstrlenA(warn) : 0;
+    warnlen = 0 != warn ? sizeof " (WARN: )" - 1 + lstrlenA(warn) : 0;
     switch (type)
     {
     case 'u':
@@ -198,10 +198,7 @@ void ScsiLineTextFn(void *data,
     }
 
     if (0 != warn)
-    {
-        memcpy(bufp, warn, warnlen + 1);
-        bufp += warnlen;
-    }
+        bufp += wsprintfA(bufp, " (WARN: %s)", warn);
 
     *bufp++ = '\n';
 
