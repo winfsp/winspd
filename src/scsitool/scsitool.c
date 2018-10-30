@@ -70,14 +70,15 @@ static void ScsiPrintSenseInfo(UCHAR ScsiStatus, UCHAR SenseInfoBuffer[32])
         "u1  ILI\n"
         "u1  Reserved\n"
         "u4  SENSE KEY\n"
-        "u16 INFORMATION\n"
+        "u32 INFORMATION\n"
         "u8  ADDITIONAL SENSE LENGTH (n-7)\n"
-        "u16 COMMAND-SPECIFIC INFORMATION\n"
+        "u32 COMMAND-SPECIFIC INFORMATION\n"
         "u8  ADDITIONAL SENSE CODE\n"
         "u8  ADDITIONAL SENSE CODE QUALIFIER\n"
         "u8  FIELD REPLACEABLE UNIT CODE\n"
         "u1  SKSV\n"
-        "u15 SENSE KEY SPECIFIC\n",
+        "u23 SENSE KEY SPECIFIC\n"
+        "X14 Additional sense bytes",
         SenseInfoBuffer, 32);
 }
 
@@ -217,7 +218,8 @@ static int inquiry(int argc, wchar_t **argv)
         "u16 VERSION DESCRIPTOR 6\n"
         "u16 VERSION DESCRIPTOR 7\n"
         "u16 VERSION DESCRIPTOR 8\n"
-        "X22 Reserved\n";
+        "X22 Reserved\n"
+        "X160 Vendor specific\n";
 
     return ScsiDataInAndPrint(argc, argv, &Cdb, VPD_MAX_BUFFER_SIZE, Format);
 }
