@@ -19,27 +19,7 @@
  * associated repository.
  */
 
-#include <winspd/winspd.h>
-#include <shared/minimal.h>
-
-static unsigned scanint(const char *p, const char **endp)
-{
-    unsigned v;
-
-    for (v = 0; *p; p++)
-    {
-        unsigned c = *p;
-
-        if ('0' <= c && c <= '9')
-            v = 10 * v + (c - '0');
-        else
-            break;
-    }
-
-    *endp = p;
-
-    return v;
-}
+#include <scsitool/scsitool.h>
 
 void ScsiText(
     void (*fn)(void *data,
@@ -76,7 +56,7 @@ void ScsiText(
         }
         p++;
 
-        width = scanint(p, &p);
+        width = (unsigned)strtoint(p, 10, 0, &p);
 
         while (' ' == *p)
             p++;

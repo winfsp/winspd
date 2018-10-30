@@ -19,10 +19,7 @@
  * associated repository.
  */
 
-#include <winspd/winspd.h>
-#include <shared/minimal.h>
-
-#define PROGNAME                        "scsitool"
+#include <scsitool/scsitool.h>
 
 #define info(format, ...)               printlog(GetStdHandle(STD_OUTPUT_HANDLE), format, __VA_ARGS__)
 #define warn(format, ...)               printlog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__)
@@ -57,8 +54,6 @@ static void printlog(HANDLE h, const char *format, ...)
 
 static void ScsiPrint(const char *format, void *buf, size_t len)
 {
-    void ScsiLineText(HANDLE h, const char *format, void *buf, size_t len);
-
     ScsiLineText(GetStdHandle(STD_OUTPUT_HANDLE), format, buf, len);
 }
 

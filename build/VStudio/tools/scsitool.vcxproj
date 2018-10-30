@@ -195,9 +195,11 @@
     <ClCompile Include="..\..\..\src\scsitool\scsitext.c" />
     <ClCompile Include="..\..\..\src\scsitool\scsitool.c" />
     <ClCompile Include="..\..\..\src\shared\scsictl.c" />
+    <ClCompile Include="..\..\..\src\shared\strtoint.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\inc\winspd\winspd.h" />
+    <ClInclude Include="..\..\..\src\scsitool\scsitool.h" />
     <ClInclude Include="..\..\..\src\shared\minimal.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
