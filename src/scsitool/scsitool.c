@@ -85,14 +85,32 @@ static int ScsiDataInAndPrint(int argc, wchar_t **argv,
     PCDB Cdb, DWORD DataLength,
     const char *Format)
 {
-    if (2 != argc)
+    if (2 > argc || argc > 3)
         usage();
 
     HANDLE DeviceHandle = INVALID_HANDLE_VALUE;
+    DWORD Ptl = 0;
     PVOID DataBuffer = 0;
     UCHAR ScsiStatus;
     UCHAR SenseInfoBuffer[32];
     DWORD Error;
+
+    if (3 == argc)
+    {
+        const wchar_t *p = argv[2];
+
+        Ptl |= (UCHAR)wcstoint(p, 10, 0, &p);
+        if (':' == *p++)
+        {
+            Ptl <<= 8;
+            Ptl |= (UCHAR)wcstoint(p, 10, 0, &p);
+            if (':' == *p++)
+            {
+                Ptl <<= 8;
+                Ptl |= (UCHAR)wcstoint(p, 10, 0, &p);
+            }
+        }
+    }
 
     Error = SpdOpenDevice(argv[1], &DeviceHandle);
     if (ERROR_SUCCESS != Error)
@@ -102,7 +120,7 @@ static int ScsiDataInAndPrint(int argc, wchar_t **argv,
     if (ERROR_SUCCESS != Error)
         goto exit;
 
-    Error = SpdScsiControl(DeviceHandle, 0, Cdb, 1/*SCSI_IOCTL_DATA_IN*/,
+    Error = SpdScsiControl(DeviceHandle, Ptl, Cdb, 1/*SCSI_IOCTL_DATA_IN*/,
         DataBuffer, &DataLength, &ScsiStatus, SenseInfoBuffer);
     if (ERROR_SUCCESS != Error)
         goto exit;
@@ -252,9 +270,9 @@ static void usage(void)
         "\n"
         "commands:\n"
         "    devpath device-name\n"
-        "    inquiry device-name\n"
-        "    report-luns device-name\n",
-        "    vpd0 device-name\n",
+        "    inquiry device-name [b:t:l]\n"
+        "    report-luns device-name [b:t:l]\n",
+        "    vpd0 device-name [b:t:l]\n",
         PROGNAME);
 }
 
