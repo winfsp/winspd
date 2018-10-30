@@ -24,12 +24,11 @@
 
 #define PROGNAME                        "scsitool"
 
-#define GLOBAL                          L"\\\\?\\"
-#define GLOBALROOT                      L"\\\\?\\GLOBALROOT"
-
 #define info(format, ...)               printlog(GetStdHandle(STD_OUTPUT_HANDLE), format, __VA_ARGS__)
 #define warn(format, ...)               printlog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__)
 #define fatal(ExitCode, format, ...)    (warn(format, __VA_ARGS__), ExitProcess(ExitCode))
+
+static void usage(void);
 
 static void vprintlog(HANDLE h, const char *format, va_list ap)
 {
@@ -54,19 +53,6 @@ static void printlog(HANDLE h, const char *format, ...)
     va_start(ap, format);
     vprintlog(h, format, ap);
     va_end(ap);
-}
-
-static void usage(void)
-{
-    fatal(ERROR_INVALID_PARAMETER,
-        "usage: %s COMMAND ARGS\n"
-        "\n"
-        "commands:\n"
-        "    devpath device-name\n"
-        "    inquiry device-name\n"
-        "    report-luns device-name\n",
-        "    vpd0 device-name\n",
-        PROGNAME);
 }
 
 static void ScsiPrint(const char *format, void *buf, size_t len)
@@ -262,6 +248,19 @@ static int report_luns(int argc, wchar_t **argv)
         "u32 LUN\n";
 
     return ScsiDataInAndPrint(argc, argv, &Cdb, 1024, Format);
+}
+
+static void usage(void)
+{
+    fatal(ERROR_INVALID_PARAMETER,
+        "usage: %s COMMAND ARGS\n"
+        "\n"
+        "commands:\n"
+        "    devpath device-name\n"
+        "    inquiry device-name\n"
+        "    report-luns device-name\n",
+        "    vpd0 device-name\n",
+        PROGNAME);
 }
 
 int wmain(int argc, wchar_t **argv)
