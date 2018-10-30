@@ -130,7 +130,7 @@ static int ScsiControlAndPrint(int argc, wchar_t **argv,
 
     CDB Cdb;
     PVOID DataBuffer = 0;
-    DWORD DataLength = VPD_MAX_BUFFER_SIZE;
+    DWORD DataLength = 1024;
     UCHAR ScsiStatus;
     UCHAR SenseInfoBuffer[32];
     DWORD Error;
@@ -252,12 +252,20 @@ static int inquiry_vpd0(int argc, wchar_t **argv)
         "X255 Supported VPD page list\n");
 }
 
+static void report_luns_init(PCDB Cdb, void *data)
+{
+    Cdb->REPORT_LUNS.OperationCode = SCSIOP_REPORT_LUNS;
+    Cdb->REPORT_LUNS.AllocationLength[2] = (1024 >> 8) & 0xff;
+    Cdb->REPORT_LUNS.AllocationLength[3] = 1024 & 0xff;
+}
+
 static int report_luns(int argc, wchar_t **argv)
 {
-    if (2 != argc)
-        usage();
-
-    return 0;
+    return ScsiControlAndPrint(argc, argv, report_luns_init, 0,
+        "u32 LUN LIST LENGTH (n-7)\n"
+        "u32 Reserved\n"
+        "*"
+        "u32 LUN\n");
 }
 
 int wmain(int argc, wchar_t **argv)

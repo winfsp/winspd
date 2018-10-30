@@ -213,17 +213,17 @@ SPD_API DWORD SpdScsiControl(HANDLE DeviceHandle,
     Scsi.Base.Lun = Ptl & 0xff;
     switch (Cdb->AsByte[0] & 0xE0)
     {
-    case 0:
+    case 0 << 5:
         Scsi.Base.CdbLength = 6;
         break;
-    case 1:
-    case 2:
+    case 1 << 5:
+    case 2 << 5:
         Scsi.Base.CdbLength = 10;
         break;
-    case 4:
+    case 4 << 5:
         Scsi.Base.CdbLength = 16;
         break;
-    case 5:
+    case 5 << 5:
         Scsi.Base.CdbLength = 12;
         break;
     default:

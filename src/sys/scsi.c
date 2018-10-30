@@ -342,7 +342,7 @@ BOOLEAN SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength)
 
     switch (Cdb->AsByte[0] & 0xE0)
     {
-    case 0:
+    case 0 << 5:
         /* CDB6 */
         *POffset =
             ((UINT64)Cdb->CDB6READWRITE.LogicalBlockMsb1 << 16) |
@@ -352,8 +352,8 @@ BOOLEAN SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength)
             ((UINT32)Cdb->CDB6READWRITE.TransferBlocks);
         return TRUE;
 
-    case 1:
-    case 2:
+    case 1 << 5:
+    case 2 << 5:
         /* CDB10 */
         *POffset =
             ((UINT64)Cdb->CDB10.LogicalBlockByte0 << 24) |
@@ -365,7 +365,7 @@ BOOLEAN SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength)
             ((UINT32)Cdb->CDB10.TransferBlocksLsb);
         return TRUE;
 
-    case 4:
+    case 4 << 5:
         /* CDB16 */
         *POffset =
             ((UINT64)Cdb->CDB16.LogicalBlock[0] << 56) |
@@ -383,7 +383,7 @@ BOOLEAN SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength)
             ((UINT32)Cdb->CDB16.TransferLength[3]);
         return TRUE;
 
-    case 5:
+    case 5 << 5:
         /* CDB12 */
         *POffset =
             ((UINT64)Cdb->CDB12.LogicalBlock[0] << 24) |

@@ -49,6 +49,7 @@ void ScsiText(
     const char *format, void *buf, size_t len)
 {
     unsigned type, width;
+    const char *star = 0;
     const char *name;
     unsigned long long uval;
     void *pval;
@@ -58,8 +59,21 @@ void ScsiText(
     for (const char *p = format; len * 8 > bitpos;)
     {
         type = *p;
+        if ('*' == type)
+        {
+            star = p++;
+            type = *p;
+        }
         if (0 == type)
+        {
+            if (0 != star)
+            {
+                p = star;
+                continue;
+            }
+
             break;
+        }
         p++;
 
         width = scanint(p, &p);
