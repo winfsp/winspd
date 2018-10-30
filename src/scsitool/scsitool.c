@@ -65,6 +65,7 @@ static void usage(void)
         "    devpath device-name\n"
         "    inquiry device-name\n"
         "    report-luns device-name\n",
+        "    vpd0 device-name\n",
         PROGNAME);
 }
 
@@ -96,7 +97,7 @@ static void ScsiPrint(const char *format, void *buf, size_t len)
     ScsiLineText(GetStdHandle(STD_OUTPUT_HANDLE), format, buf, len);
 }
 
-static void PrintSenseInfo(UCHAR ScsiStatus, UCHAR SenseInfoBuffer[32])
+static void ScsiPrintSenseInfo(UCHAR ScsiStatus, UCHAR SenseInfoBuffer[32])
 {
     info("ScsiStatus=%u", ScsiStatus);
 
@@ -120,6 +121,43 @@ static void PrintSenseInfo(UCHAR ScsiStatus, UCHAR SenseInfoBuffer[32])
         SenseInfoBuffer, 32);
 }
 
+static int ScsiControlAndPrint(int argc, wchar_t **argv,
+    void (*init)(PCDB cdb, void *data), void *data,
+    const char *format)
+{
+    if (2 != argc)
+        usage();
+
+    CDB Cdb;
+    PVOID DataBuffer = 0;
+    DWORD DataLength = VPD_MAX_BUFFER_SIZE;
+    UCHAR ScsiStatus;
+    UCHAR SenseInfoBuffer[32];
+    DWORD Error;
+
+    Error = SpdMemAlignAlloc(DataLength, 511, &DataBuffer);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    memset(&Cdb, 0, sizeof Cdb);
+    init(&Cdb, data);
+
+    Error = ScsiControl(argv[1], 0, &Cdb, 1/*SCSI_IOCTL_DATA_IN*/,
+        DataBuffer, &DataLength, &ScsiStatus, SenseInfoBuffer);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    if (SCSISTAT_GOOD == ScsiStatus)
+        ScsiPrint(format, DataBuffer, DataLength);
+    else
+        ScsiPrintSenseInfo(ScsiStatus, SenseInfoBuffer);
+
+exit:
+    SpdMemAlignFree(DataBuffer);
+
+    return Error;
+}
+
 static int devpath(int argc, wchar_t **argv)
 {
     if (2 != argc)
@@ -138,95 +176,80 @@ exit:
     return Error;
 }
 
+static void inquiry_init(PCDB Cdb, void *data)
+{
+    Cdb->CDB6INQUIRY3.OperationCode = SCSIOP_INQUIRY;
+    Cdb->CDB6INQUIRY3.EnableVitalProductData = 0 != data;
+    Cdb->CDB6INQUIRY3.PageCode = 0 != data ? *(PUCHAR)data : 0;
+    Cdb->CDB6INQUIRY3.AllocationLength = VPD_MAX_BUFFER_SIZE;
+}
+
 static int inquiry(int argc, wchar_t **argv)
 {
-    if (2 != argc)
-        usage();
+    return ScsiControlAndPrint(argc, argv, inquiry_init, 0,
+        "u3  PERIPHERAL QUALIFIER\n"
+        "u5  PERIPHERAL DEVICE TYPE\n"
+        "u1  RMB\n"
+        "u7  Reserved\n"
+        "u8  VERSION\n"
+        "u1  Obsolete\n"
+        "u1  Obsolete\n"
+        "u1  NORMACA\n"
+        "u1  HISUP\n"
+        "u4  RESPONSE DATA FORMAT\n"
+        "u8  ADDITIONAL LENGTH (n-4)\n"
+        "u1  SCCS\n"
+        "u1  ACC\n"
+        "u2  TPGS\n"
+        "u1  3PC\n"
+        "u2  Reserved\n"
+        "u1  PROTECT\n"
+        "u1  BQUE\n"
+        "u1  ENCSERV\n"
+        "u1  VS\n"
+        "u1  MULTIP\n"
+        "u1  MCHNGR\n"
+        "u1  Obsolete\n"
+        "u1  Obsolete\n"
+        "u1  ADDR16\n"
+        "u1  Obsolete\n"
+        "u1  Obsolete\n"
+        "u1  WBUS16\n"
+        "u1  SYNC\n"
+        "u1  LINKED\n"
+        "u1  Obsolete\n"
+        "u1  CMDQUE\n"
+        "u1  VS\n"
+        "S8  T10 VENDOR IDENTIFICATION\n"
+        "S16 PRODUCT IDENTIFICATION\n"
+        "S8  PRODUCT REVISION LEVEL\n"
+        "X20 Vendor specific\n"
+        "u4  Reserved\n"
+        "u2  CLOCKING\n"
+        "u1  QAS\n"
+        "u1  IUS\n"
+        "u8  Reserved\n"
+        "u16 VERSION DESCRIPTOR 1\n"
+        "u16 VERSION DESCRIPTOR 2\n"
+        "u16 VERSION DESCRIPTOR 3\n"
+        "u16 VERSION DESCRIPTOR 4\n"
+        "u16 VERSION DESCRIPTOR 5\n"
+        "u16 VERSION DESCRIPTOR 6\n"
+        "u16 VERSION DESCRIPTOR 7\n"
+        "u16 VERSION DESCRIPTOR 8\n"
+        "X22 Reserved\n");
+}
 
-    CDB Cdb;
-    PVOID DataBuffer = 0;
-    DWORD DataLength = VPD_MAX_BUFFER_SIZE;
-    UCHAR ScsiStatus;
-    UCHAR SenseInfoBuffer[32];
-    DWORD Error;
-
-    Error = SpdMemAlignAlloc(DataLength, 511, &DataBuffer);
-    if (ERROR_SUCCESS != Error)
-        goto exit;
-
-    memset(&Cdb, 0, sizeof Cdb);
-    Cdb.CDB6INQUIRY3.OperationCode = SCSIOP_INQUIRY;
-    Cdb.CDB6INQUIRY3.AllocationLength = VPD_MAX_BUFFER_SIZE;
-
-    Error = ScsiControl(argv[1], 0, &Cdb, 1/*SCSI_IOCTL_DATA_IN*/,
-        DataBuffer, &DataLength, &ScsiStatus, SenseInfoBuffer);
-    if (ERROR_SUCCESS != Error)
-        goto exit;
-
-    if (SCSISTAT_GOOD == ScsiStatus)
-    {
-        ScsiPrint(
-            "u3  PERIPHERAL QUALIFIER\n"
-            "u5  PERIPHERAL DEVICE TYPE\n"
-            "u1  RMB\n"
-            "u7  Reserved\n"
-            "u8  VERSION\n"
-            "u1  Obsolete\n"
-            "u1  Obsolete\n"
-            "u1  NORMACA\n"
-            "u1  HISUP\n"
-            "u4  RESPONSE DATA FORMAT\n"
-            "u8  ADDITIONAL LENGTH (n-4)\n"
-            "u1  SCCS\n"
-            "u1  ACC\n"
-            "u2  TPGS\n"
-            "u1  3PC\n"
-            "u2  Reserved\n"
-            "u1  PROTECT\n"
-            "u1  BQUE\n"
-            "u1  ENCSERV\n"
-            "u1  VS\n"
-            "u1  MULTIP\n"
-            "u1  MCHNGR\n"
-            "u1  Obsolete\n"
-            "u1  Obsolete\n"
-            "u1  ADDR16\n"
-            "u1  Obsolete\n"
-            "u1  Obsolete\n"
-            "u1  WBUS16\n"
-            "u1  SYNC\n"
-            "u1  LINKED\n"
-            "u1  Obsolete\n"
-            "u1  CMDQUE\n"
-            "u1  VS\n"
-            "S8  T10 VENDOR IDENTIFICATION\n"
-            "S16 PRODUCT IDENTIFICATION\n"
-            "S8  PRODUCT REVISION LEVEL\n"
-            "X20 Vendor specific\n"
-            "u4  Reserved\n"
-            "u2  CLOCKING\n"
-            "u1  QAS\n"
-            "u1  IUS\n"
-            "u8  Reserved\n"
-            "u16 VERSION DESCRIPTOR 1\n"
-            "u16 VERSION DESCRIPTOR 2\n"
-            "u16 VERSION DESCRIPTOR 3\n"
-            "u16 VERSION DESCRIPTOR 4\n"
-            "u16 VERSION DESCRIPTOR 5\n"
-            "u16 VERSION DESCRIPTOR 6\n"
-            "u16 VERSION DESCRIPTOR 7\n"
-            "u16 VERSION DESCRIPTOR 8\n"
-            "X22 Reserved\n"
-            "",
-            DataBuffer, DataLength);
-    }
-    else
-        PrintSenseInfo(ScsiStatus, SenseInfoBuffer);
-
-exit:
-    SpdMemAlignFree(DataBuffer);
-
-    return Error;
+static int inquiry_vpd0(int argc, wchar_t **argv)
+{
+    UCHAR PageCode = 0;
+    return ScsiControlAndPrint(argc, argv, inquiry_init, &PageCode,
+        "u3  PERIPHERAL QUALIFIER\n"
+        "u5  PERIPHERAL DEVICE TYPE\n"
+        "u8  PAGE CODE (00h)\n"
+        "u8  Reserved\n"
+        "u8  PAGE LENGTH (n-3)\n"
+        "X255 Supported VPD page list\n");
 }
 
 static int report_luns(int argc, wchar_t **argv)
@@ -253,6 +276,9 @@ int wmain(int argc, wchar_t **argv)
     else
     if (0 == invariant_wcscmp(L"report-luns", argv[0]))
         return report_luns(argc, argv);
+    else
+    if (0 == invariant_wcscmp(L"vpd0", argv[0]))
+        return inquiry_vpd0(argc, argv);
     else
         usage();
 
