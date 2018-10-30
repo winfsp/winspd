@@ -284,21 +284,35 @@ int wmain(int argc, wchar_t **argv)
     if (0 == argc)
         usage();
 
+    DWORD Error = ERROR_SUCCESS;
+
     if (0 == invariant_wcscmp(L"devpath", argv[0]))
-        return devpath(argc, argv);
+        Error = devpath(argc, argv);
     else
     if (0 == invariant_wcscmp(L"inquiry", argv[0]))
-        return inquiry(argc, argv);
+        Error = inquiry(argc, argv);
     else
     if (0 == invariant_wcscmp(L"report-luns", argv[0]))
-        return report_luns(argc, argv);
+        Error = report_luns(argc, argv);
     else
     if (0 == invariant_wcscmp(L"vpd0", argv[0]))
-        return inquiry_vpd0(argc, argv);
+        Error = inquiry_vpd0(argc, argv);
     else
         usage();
 
-    return 0;
+    if (ERROR_SUCCESS != Error)
+    {
+        char ErrorBuf[512];
+
+        if (0 == FormatMessageA(
+            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
+            0, Error, 0, ErrorBuf, sizeof ErrorBuf, 0))
+            ErrorBuf[0] = '\0';
+
+        warn("Error %lu%s%s", Error, '\0' != ErrorBuf[0] ? ": " : "", ErrorBuf);
+    }
+
+    return Error;
 }
 
 void wmainCRTStartup(void)
