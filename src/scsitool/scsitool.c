@@ -69,27 +69,6 @@ static void usage(void)
         PROGNAME);
 }
 
-static DWORD ScsiControl(PWSTR DeviceName,
-    DWORD Ptl, PCDB Cdb, UCHAR DataDirection, PVOID DataBuffer, PDWORD PDataLength,
-    PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32])
-{
-    HANDLE DeviceHandle = INVALID_HANDLE_VALUE;
-    DWORD Error;
-
-    Error = SpdOpenDevice(DeviceName, &DeviceHandle);
-    if (ERROR_SUCCESS != Error)
-        goto exit;
-
-    Error = SpdScsiControl(DeviceHandle, Ptl, Cdb,
-        DataDirection, DataBuffer, PDataLength, PScsiStatus, SenseInfoBuffer);
-
-exit:
-    if (INVALID_HANDLE_VALUE != DeviceHandle)
-        CloseHandle(DeviceHandle);
-
-    return Error;
-}
-
 static void ScsiPrint(const char *format, void *buf, size_t len)
 {
     void ScsiLineText(HANDLE h, const char *format, void *buf, size_t len);
@@ -121,39 +100,42 @@ static void ScsiPrintSenseInfo(UCHAR ScsiStatus, UCHAR SenseInfoBuffer[32])
         SenseInfoBuffer, 32);
 }
 
-static int ScsiControlAndPrint(int argc, wchar_t **argv,
-    void (*init)(PCDB cdb, void *data), void *data,
-    const char *format)
+static int ScsiDataInAndPrint(int argc, wchar_t **argv,
+    PCDB Cdb, DWORD DataLength,
+    const char *Format)
 {
     if (2 != argc)
         usage();
 
-    CDB Cdb;
+    HANDLE DeviceHandle = INVALID_HANDLE_VALUE;
     PVOID DataBuffer = 0;
-    DWORD DataLength = 1024;
     UCHAR ScsiStatus;
     UCHAR SenseInfoBuffer[32];
     DWORD Error;
+
+    Error = SpdOpenDevice(argv[1], &DeviceHandle);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
 
     Error = SpdMemAlignAlloc(DataLength, 511, &DataBuffer);
     if (ERROR_SUCCESS != Error)
         goto exit;
 
-    memset(&Cdb, 0, sizeof Cdb);
-    init(&Cdb, data);
-
-    Error = ScsiControl(argv[1], 0, &Cdb, 1/*SCSI_IOCTL_DATA_IN*/,
+    Error = SpdScsiControl(DeviceHandle, 0, Cdb, 1/*SCSI_IOCTL_DATA_IN*/,
         DataBuffer, &DataLength, &ScsiStatus, SenseInfoBuffer);
     if (ERROR_SUCCESS != Error)
         goto exit;
 
     if (SCSISTAT_GOOD == ScsiStatus)
-        ScsiPrint(format, DataBuffer, DataLength);
+        ScsiPrint(Format, DataBuffer, DataLength);
     else
         ScsiPrintSenseInfo(ScsiStatus, SenseInfoBuffer);
 
 exit:
     SpdMemAlignFree(DataBuffer);
+
+    if (INVALID_HANDLE_VALUE != DeviceHandle)
+        CloseHandle(DeviceHandle);
 
     return Error;
 }
@@ -176,17 +158,16 @@ exit:
     return Error;
 }
 
-static void inquiry_init(PCDB Cdb, void *data)
-{
-    Cdb->CDB6INQUIRY3.OperationCode = SCSIOP_INQUIRY;
-    Cdb->CDB6INQUIRY3.EnableVitalProductData = 0 != data;
-    Cdb->CDB6INQUIRY3.PageCode = 0 != data ? *(PUCHAR)data : 0;
-    Cdb->CDB6INQUIRY3.AllocationLength = VPD_MAX_BUFFER_SIZE;
-}
-
 static int inquiry(int argc, wchar_t **argv)
 {
-    return ScsiControlAndPrint(argc, argv, inquiry_init, 0,
+    CDB Cdb;
+    const char *Format;
+
+    memset(&Cdb, 0, sizeof Cdb);
+    Cdb.CDB6INQUIRY3.OperationCode = SCSIOP_INQUIRY;
+    Cdb.CDB6INQUIRY3.AllocationLength = VPD_MAX_BUFFER_SIZE;
+
+    Format =
         "u3  PERIPHERAL QUALIFIER\n"
         "u5  PERIPHERAL DEVICE TYPE\n"
         "u1  RMB\n"
@@ -237,35 +218,50 @@ static int inquiry(int argc, wchar_t **argv)
         "u16 VERSION DESCRIPTOR 6\n"
         "u16 VERSION DESCRIPTOR 7\n"
         "u16 VERSION DESCRIPTOR 8\n"
-        "X22 Reserved\n");
+        "X22 Reserved\n";
+
+    return ScsiDataInAndPrint(argc, argv, &Cdb, VPD_MAX_BUFFER_SIZE, Format);
 }
 
 static int inquiry_vpd0(int argc, wchar_t **argv)
 {
-    UCHAR PageCode = 0;
-    return ScsiControlAndPrint(argc, argv, inquiry_init, &PageCode,
+    CDB Cdb;
+    const char *Format;
+
+    memset(&Cdb, 0, sizeof Cdb);
+    Cdb.CDB6INQUIRY3.OperationCode = SCSIOP_INQUIRY;
+    Cdb.CDB6INQUIRY3.EnableVitalProductData = 1;
+    Cdb.CDB6INQUIRY3.PageCode = 0;
+    Cdb.CDB6INQUIRY3.AllocationLength = VPD_MAX_BUFFER_SIZE;
+
+    Format =
         "u3  PERIPHERAL QUALIFIER\n"
         "u5  PERIPHERAL DEVICE TYPE\n"
         "u8  PAGE CODE (00h)\n"
         "u8  Reserved\n"
         "u8  PAGE LENGTH (n-3)\n"
-        "X255 Supported VPD page list\n");
-}
+        "X255 Supported VPD page list\n";
 
-static void report_luns_init(PCDB Cdb, void *data)
-{
-    Cdb->REPORT_LUNS.OperationCode = SCSIOP_REPORT_LUNS;
-    Cdb->REPORT_LUNS.AllocationLength[2] = (1024 >> 8) & 0xff;
-    Cdb->REPORT_LUNS.AllocationLength[3] = 1024 & 0xff;
+    return ScsiDataInAndPrint(argc, argv, &Cdb, VPD_MAX_BUFFER_SIZE, Format);
 }
 
 static int report_luns(int argc, wchar_t **argv)
 {
-    return ScsiControlAndPrint(argc, argv, report_luns_init, 0,
+    CDB Cdb;
+    const char *Format;
+
+    memset(&Cdb, 0, sizeof Cdb);
+    Cdb.REPORT_LUNS.OperationCode = SCSIOP_REPORT_LUNS;
+    Cdb.REPORT_LUNS.AllocationLength[2] = (1024 >> 8) & 0xff;
+    Cdb.REPORT_LUNS.AllocationLength[3] = 1024 & 0xff;
+
+    Format =
         "u32 LUN LIST LENGTH (n-7)\n"
         "u32 Reserved\n"
         "*"
-        "u32 LUN\n");
+        "u32 LUN\n";
+
+    return ScsiDataInAndPrint(argc, argv, &Cdb, 1024, Format);
 }
 
 int wmain(int argc, wchar_t **argv)
