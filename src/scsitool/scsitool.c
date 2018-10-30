@@ -258,7 +258,7 @@ static int report_luns(int argc, wchar_t **argv)
         "u32 LUN LIST LENGTH (n-7)\n"
         "u32 Reserved\n"
         "*"
-        "u32 LUN\n";
+        "u64 LUN\n";
 
     return ScsiDataInAndPrint(argc, argv, &Cdb, 1024, Format);
 }
