@@ -149,7 +149,7 @@ SPD_API DWORD SpdGetDevicePath(PWSTR DeviceName, PWCHAR PathBuf, DWORD PathBufSi
 
     if (IsHwid)
     {
-        Error = GetDevicePathByHardwareId(&GUID_DEVCLASS_SCSIADAPTER, DeviceName,
+        Error = GetDevicePathByHardwareId(0, DeviceName,
             PathBuf + PrefixSize / sizeof(WCHAR), PathBufSize - PrefixSize);
         if (ERROR_SUCCESS != Error)
         {
