@@ -36,22 +36,14 @@ ULONG SpdHwFindAdapter(
 
     ConfigInfo->MaximumTransferLength = SP_UNINITIALIZED_VALUE;
     ConfigInfo->NumberOfPhysicalBreaks = SP_UNINITIALIZED_VALUE;
-    ConfigInfo->AlignmentMask = 3;
+    ConfigInfo->AlignmentMask = 0;
     ConfigInfo->NumberOfBuses = 1;
     ConfigInfo->ScatterGather = TRUE;
     ConfigInfo->Master = TRUE;
     ConfigInfo->CachesData = TRUE;
     ConfigInfo->AdapterScansDown = FALSE;
-    ConfigInfo->MaximumNumberOfTargets = 255;
-        /*
-         * Quote from storport.h:
-         *     Define SCSI maximum configuration parameters.
-         *
-         *     NOTE - the current SCSI_MAXIMUM_TARGETS_PER_BUS is applicable only
-         *     on scsiport miniports. For storport miniports, the max target
-         *     supported is 255.
-         */
-    ConfigInfo->MaximumNumberOfLogicalUnits = 255/*SCSI_MAXIMUM_LUNS_PER_TARGET*/;
+    ConfigInfo->MaximumNumberOfTargets = 1;
+    ConfigInfo->MaximumNumberOfLogicalUnits = SCSI_MAXIMUM_LUNS_PER_TARGET;
     ConfigInfo->WmiDataProvider = FALSE;
     ConfigInfo->SynchronizationModel = StorSynchronizeFullDuplex;
     ConfigInfo->VirtualDevice = TRUE;

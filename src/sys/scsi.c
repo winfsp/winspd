@@ -198,7 +198,7 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
             Identification->DeviceType = LogicalUnit->DeviceType;
             Identification->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
             Identification->PageCode = VPD_DEVICE_IDENTIFIERS;
-            Identification->PageLength = sizeof(VPD_IDENTIFICATION_PAGE) +
+            Identification->PageLength =
                 sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + IdentifierLength;
             ((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->CodeSet =
                 VpdCodeSetAscii;
@@ -282,7 +282,7 @@ UCHAR SpdScsiReportLuns(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
     RtlZeroMemory(DataBuffer, DataTransferLength);
 
     ULONG LunCount = 1;
-    UINT32 LunListLength = LunCount * 2;
+    UINT32 LunListLength = LunCount * RTL_FIELD_SIZE(LUN_LIST, Lun[0]);
     if (sizeof(LUN_LIST) + LunListLength > DataTransferLength)
         return SRB_STATUS_DATA_OVERRUN;
 
