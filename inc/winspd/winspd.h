@@ -44,24 +44,34 @@ extern "C" {
 #endif
 
 /**
- * @class SPD_STORAGE_INTERFACE
+ * @class SPD_STORAGE_UNIT_INTERFACE
  * Storage unit interface.
  */
-typedef struct _SPD_STORAGE_INTERFACE
+typedef struct _SPD_STORAGE_UNIT SPD_STORAGE_UNIT;
+typedef struct _SPD_STORAGE_UNIT_INTERFACE
 {
-    UINT8 (*Read)(UINT64 BlockAddress, PVOID Buffer, UINT32 Length, PSENSE_DATA SenseData);
-    UINT8 (*Write)(UINT64 BlockAddress, PVOID Buffer, UINT32 Length, PSENSE_DATA SenseData);
-    UINT8 (*Flush)(UINT64 BlockAddress, UINT32 Count, PSENSE_DATA SenseData);
-    UINT8 (*Unmap)(PUNMAP_BLOCK_DESCRIPTOR Descriptors, UINT32 Count, PSENSE_DATA SenseData);
+    UINT8 (*Read)(SPD_STORAGE_UNIT *StorageUnit, UINT64 BlockAddress, PVOID Buffer, UINT32 Length,
+        PSENSE_DATA SenseData);
+    UINT8 (*Write)(SPD_STORAGE_UNIT *StorageUnit, UINT64 BlockAddress, PVOID Buffer, UINT32 Length,
+        PSENSE_DATA SenseData);
+    UINT8 (*Flush)(SPD_STORAGE_UNIT *StorageUnit, UINT64 BlockAddress, UINT32 Count,
+        PSENSE_DATA SenseData);
+    UINT8 (*Unmap)(SPD_STORAGE_UNIT *StorageUnit, PUNMAP_BLOCK_DESCRIPTOR Descriptors, UINT32 Count,
+        PSENSE_DATA SenseData);
 
     /*
      * This ensures that this interface will always contain 16 function pointers.
      * Please update when changing the interface as it is important for future compatibility.
      */
     UINT8 (*Reserved[12])();
-} SPD_STORAGE_INTERFACE;
-SPD_IOCTL_STATIC_ASSERT(sizeof(SPD_STORAGE_INTERFACE) == 16 * sizeof(UINT8 (*)()),
-    "SPD_STORAGE_INTERFACE must have 16 entries.");
+} SPD_STORAGE_UNIT_INTERFACE;
+SPD_IOCTL_STATIC_ASSERT(sizeof(SPD_STORAGE_UNIT_INTERFACE) == 16 * sizeof(UINT8 (*)()),
+    "SPD_STORAGE_UNIT_INTERFACE must have 16 entries.");
+typedef struct _SPD_STORAGE_UNIT
+{
+    UINT16 Version;
+    PVOID UserContext;
+} SPD_STORAGE_UNIT;
 
 /* SCSI control */
 SPD_API DWORD SpdGetDevicePath(PWSTR DeviceName, PWCHAR PathBuf, DWORD PathBufSize);

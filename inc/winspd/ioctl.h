@@ -57,12 +57,6 @@ extern "C" {
 #pragma warning(disable:4200)           /* zero-sized array in struct/union */
 typedef struct
 {
-    SPD_IOCTL_DECLSPEC_ALIGN UINT16 Size;
-    UINT16 Code;
-} SPD_IOCTL_BASE_PARAMS;
-typedef struct
-{
-    SPD_IOCTL_BASE_PARAMS Base;
     GUID Guid;                          /* identity */
     UINT64 BlockCount;                  /* geometry */
     UINT32 BlockLength;                 /* geometry */
@@ -70,6 +64,16 @@ typedef struct
     UCHAR ProductRevisionLevel[4];
     UINT8 DeviceType;                   /* must be 0: direct access block device */
     UINT32 RemovableMedia:1;            /* must be 0: no removable media */
+} SPD_IOCTL_STORAGE_UNIT_PARAMS;
+typedef struct
+{
+    SPD_IOCTL_DECLSPEC_ALIGN UINT16 Size;
+    UINT16 Code;
+} SPD_IOCTL_BASE_PARAMS;
+typedef struct
+{
+    SPD_IOCTL_BASE_PARAMS Base;
+    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnit;
 } SPD_IOCTL_PROVISION_PARAMS;
 typedef struct
 {
@@ -95,8 +99,8 @@ typedef struct
             UINT32 Length;
             UINT64 Address;
             UINT64 BlockAddress;
-            UINT32 ReservedBit:1;
-            UINT32 ReservedBits:31;
+            UINT32 ForceUnitAccess:1;
+            UINT32 Reserved:31;
         } Req;
         struct
         {
