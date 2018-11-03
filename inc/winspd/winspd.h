@@ -73,15 +73,6 @@ typedef struct _SPD_STORAGE_UNIT
     PVOID UserContext;
 } SPD_STORAGE_UNIT;
 
-/* SCSI control */
-SPD_API DWORD SpdGetDevicePath(PWSTR DeviceName, PWCHAR PathBuf, DWORD PathBufSize);
-SPD_API DWORD SpdOpenDevice(PWSTR DeviceName, PHANDLE PDeviceHandle);
-SPD_API DWORD SpdScsiControl(HANDLE DeviceHandle,
-    DWORD Ptl, PCDB Cdb, UCHAR DataDirection, PVOID DataBuffer, PDWORD PDataLength,
-    PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32]);
-SPD_API DWORD SpdMemAlignAlloc(DWORD Size, DWORD AlignmentMask, PVOID *PP);
-SPD_API VOID SpdMemAlignFree(PVOID P);
-
 #ifdef __cplusplus
 }
 #endif

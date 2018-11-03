@@ -20,7 +20,7 @@
     <ClCompile Include="..\..\src\dll\library.c">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\shared\scsictl.c">
+    <ClCompile Include="..\..\src\shared\ioctl.c">
       <Filter>Source\shared</Filter>
     </ClCompile>
   </ItemGroup>

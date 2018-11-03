@@ -20,13 +20,13 @@
     <ClCompile Include="..\..\..\src\scsitool\scsitool.c">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\shared\scsictl.c">
-      <Filter>Source\shared</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\scsitool\scsitext.c">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\shared\strtoint.c">
+      <Filter>Source\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\shared\ioctl.c">
       <Filter>Source\shared</Filter>
     </ClCompile>
   </ItemGroup>

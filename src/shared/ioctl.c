@@ -1,5 +1,5 @@
 /**
- * @file shared/scsictl.c
+ * @file shared/ioctl.c
  *
  * @copyright 2018 Bill Zissimopoulos
  */
@@ -20,18 +20,17 @@
  */
 
 #include <winspd/winspd.h>
-#include <devguid.h>
+#include <shared/minimal.h>
 #pragma warning(push)
 #pragma warning(disable:4091)           /* typedef ignored */
 #include <ntddscsi.h>
 #pragma warning(pop)
 #include <setupapi.h>
-#include <shared/minimal.h>
 
 #define GLOBAL                          L"\\\\?\\"
 #define GLOBALROOT                      L"\\\\?\\GLOBALROOT"
 
-static DWORD GetDevicePathByHardwareId(const GUID *ClassGuid, PWSTR HardwareId,
+static DWORD GetDevicePathByHardwareId(GUID *ClassGuid, PWSTR HardwareId,
     PWCHAR PathBuf, DWORD PathBufSize)
 {
     HDEVINFO DiHandle;
@@ -89,7 +88,8 @@ exit:
     return Error;
 }
 
-SPD_API DWORD SpdGetDevicePath(PWSTR DeviceName, PWCHAR PathBuf, DWORD PathBufSize)
+SPD_API UINT32 SpdIoctlGetDevicePath(GUID *ClassGuid, PWSTR DeviceName,
+    PWCHAR PathBuf, UINT32 PathBufSize)
 {
     BOOLEAN IsHwid = FALSE;
     PWSTR Prefix;
@@ -149,7 +149,7 @@ SPD_API DWORD SpdGetDevicePath(PWSTR DeviceName, PWCHAR PathBuf, DWORD PathBufSi
 
     if (IsHwid)
     {
-        Error = GetDevicePathByHardwareId(0, DeviceName,
+        Error = GetDevicePathByHardwareId(ClassGuid, DeviceName,
             PathBuf + PrefixSize / sizeof(WCHAR), PathBufSize - PrefixSize);
         if (ERROR_SUCCESS != Error)
         {
@@ -165,7 +165,7 @@ exit:
     return Error;
 }
 
-SPD_API DWORD SpdOpenDevice(PWSTR DeviceName, PHANDLE PDeviceHandle)
+SPD_API UINT32 SpdIoctlOpenDevice(PWSTR DeviceName, PHANDLE PDeviceHandle)
 {
     WCHAR PathBuf[1024];
     HANDLE DeviceHandle = INVALID_HANDLE_VALUE;
@@ -173,7 +173,7 @@ SPD_API DWORD SpdOpenDevice(PWSTR DeviceName, PHANDLE PDeviceHandle)
 
     *PDeviceHandle = INVALID_HANDLE_VALUE;
 
-    Error = SpdGetDevicePath(DeviceName, PathBuf, sizeof PathBuf);
+    Error = SpdIoctlGetDevicePath(0, DeviceName, PathBuf, sizeof PathBuf);
     if (ERROR_SUCCESS != Error)
         goto exit;
 
@@ -193,8 +193,8 @@ exit:
     return Error;
 }
 
-SPD_API DWORD SpdScsiControl(HANDLE DeviceHandle,
-    DWORD Ptl, PCDB Cdb, UCHAR DataDirection, PVOID DataBuffer, PDWORD PDataLength,
+SPD_API UINT32 SpdIoctlScsiExecute(HANDLE DeviceHandle,
+    UINT32 Ptl, PCDB Cdb, UCHAR DataDirection, PVOID DataBuffer, PUINT32 PDataLength,
     PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32])
 {
     typedef struct
@@ -262,7 +262,7 @@ exit:
     return Error;
 }
 
-SPD_API DWORD SpdMemAlignAlloc(DWORD Size, DWORD AlignmentMask, PVOID *PP)
+SPD_API UINT32 SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP)
 {
     if (AlignmentMask + 1 < sizeof(PVOID))
         AlignmentMask = sizeof(PVOID) - 1;
@@ -279,7 +279,7 @@ SPD_API DWORD SpdMemAlignAlloc(DWORD Size, DWORD AlignmentMask, PVOID *PP)
     return ERROR_SUCCESS;
 }
 
-SPD_API VOID SpdMemAlignFree(PVOID P)
+SPD_API VOID SpdIoctlMemAlignFree(PVOID P)
 {
     if (0 == P)
         return;

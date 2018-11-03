@@ -113,15 +113,15 @@ static int ScsiDataInAndPrint(int argc, wchar_t **argv,
         }
     }
 
-    Error = SpdOpenDevice(argv[1], &DeviceHandle);
+    Error = SpdIoctlOpenDevice(argv[1], &DeviceHandle);
     if (ERROR_SUCCESS != Error)
         goto exit;
 
-    Error = SpdMemAlignAlloc(DataLength, 511, &DataBuffer);
+    Error = SpdIoctlMemAlignAlloc(DataLength, 511, &DataBuffer);
     if (ERROR_SUCCESS != Error)
         goto exit;
 
-    Error = SpdScsiControl(DeviceHandle, Ptl, Cdb, 1/*SCSI_IOCTL_DATA_IN*/,
+    Error = SpdIoctlScsiExecute(DeviceHandle, Ptl, Cdb, 1/*SCSI_IOCTL_DATA_IN*/,
         DataBuffer, &DataLength, &ScsiStatus, SenseInfoBuffer);
     if (ERROR_SUCCESS != Error)
         goto exit;
@@ -132,7 +132,7 @@ static int ScsiDataInAndPrint(int argc, wchar_t **argv,
         ScsiPrintSenseInfo(ScsiStatus, SenseInfoBuffer);
 
 exit:
-    SpdMemAlignFree(DataBuffer);
+    SpdIoctlMemAlignFree(DataBuffer);
 
     if (INVALID_HANDLE_VALUE != DeviceHandle)
         CloseHandle(DeviceHandle);
@@ -148,7 +148,7 @@ static int devpath(int argc, wchar_t **argv)
     WCHAR PathBuf[1024];
     DWORD Error;
 
-    Error = SpdGetDevicePath(argv[1], PathBuf, sizeof PathBuf);
+    Error = SpdIoctlGetDevicePath(0, argv[1], PathBuf, sizeof PathBuf);
     if (ERROR_SUCCESS != Error)
         goto exit;
 

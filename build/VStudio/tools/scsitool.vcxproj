@@ -194,7 +194,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\src\scsitool\scsitext.c" />
     <ClCompile Include="..\..\..\src\scsitool\scsitool.c" />
-    <ClCompile Include="..\..\..\src\shared\scsictl.c" />
+    <ClCompile Include="..\..\..\src\shared\ioctl.c" />
     <ClCompile Include="..\..\..\src\shared\strtoint.c" />
   </ItemGroup>
   <ItemGroup>
