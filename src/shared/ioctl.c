@@ -88,7 +88,7 @@ exit:
     return Error;
 }
 
-SPD_API UINT32 SpdIoctlGetDevicePath(GUID *ClassGuid, PWSTR DeviceName,
+SPD_API DWORD SpdIoctlGetDevicePath(GUID *ClassGuid, PWSTR DeviceName,
     PWCHAR PathBuf, UINT32 PathBufSize)
 {
     BOOLEAN IsHwid = FALSE;
@@ -165,7 +165,7 @@ exit:
     return Error;
 }
 
-SPD_API UINT32 SpdIoctlOpenDevice(PWSTR DeviceName, PHANDLE PDeviceHandle)
+SPD_API DWORD SpdIoctlOpenDevice(PWSTR DeviceName, PHANDLE PDeviceHandle)
 {
     WCHAR PathBuf[1024];
     HANDLE DeviceHandle = INVALID_HANDLE_VALUE;
@@ -193,7 +193,7 @@ exit:
     return Error;
 }
 
-SPD_API UINT32 SpdIoctlScsiExecute(HANDLE DeviceHandle,
+SPD_API DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
     UINT32 Ptl, PCDB Cdb, UCHAR DataDirection, PVOID DataBuffer, PUINT32 PDataLength,
     PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32])
 {
@@ -262,7 +262,7 @@ exit:
     return Error;
 }
 
-SPD_API UINT32 SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP)
+SPD_API DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP)
 {
     if (AlignmentMask + 1 < sizeof(PVOID))
         AlignmentMask = sizeof(PVOID) - 1;

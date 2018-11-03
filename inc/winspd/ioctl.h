@@ -113,23 +113,23 @@ typedef struct
 #pragma warning(pop)
 
 #if !defined(WINSPD_SYS_INTERNAL)
-SPD_API UINT32 SpdIoctlGetDevicePath(GUID *ClassGuid, PWSTR DeviceName,
+SPD_API DWORD SpdIoctlGetDevicePath(GUID *ClassGuid, PWSTR DeviceName,
     PWCHAR PathBuf, UINT32 PathBufSize);
-SPD_API UINT32 SpdIoctlOpenDevice(PWSTR DeviceName, PHANDLE PDeviceHandle);
-SPD_API UINT32 SpdIoctlProvision(HANDLE DeviceHandle,
+SPD_API DWORD SpdIoctlOpenDevice(PWSTR DeviceName, PHANDLE PDeviceHandle);
+SPD_API DWORD SpdIoctlProvision(HANDLE DeviceHandle,
     SPD_IOCTL_STORAGE_UNIT_PARAMS *Params, BOOLEAN Public);
-SPD_API UINT32 SpdIoctlUnprovision(HANDLE DeviceHandle,
+SPD_API DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
     GUID *Guid, BOOLEAN Public);
-SPD_API UINT32 SpdIoctlGetList(HANDLE DeviceHandle,
+SPD_API DWORD SpdIoctlGetList(HANDLE DeviceHandle,
     PWCHAR ListBuf, PUINT32 PListSize);
-SPD_API UINT32 SpdIoctlTransact(HANDLE DeviceHandle,
+SPD_API DWORD SpdIoctlTransact(HANDLE DeviceHandle,
     PVOID ResponseBuf, UINT32 ResponseBufSize,
     PVOID RequestBuf, UINT32 *PRequestBufSize,
     BOOLEAN Batch);
-SPD_API UINT32 SpdIoctlScsiExecute(HANDLE DeviceHandle,
+SPD_API DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
     UINT32 Ptl, PCDB Cdb, UCHAR DataDirection, PVOID DataBuffer, PUINT32 PDataLength,
     PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32]);
-SPD_API UINT32 SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP);
+SPD_API DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP);
 SPD_API VOID SpdIoctlMemAlignFree(PVOID P);
 #endif
 
