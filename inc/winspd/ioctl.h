@@ -121,11 +121,10 @@ SPD_API DWORD SpdIoctlProvision(HANDLE DeviceHandle,
 SPD_API DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
     GUID *Guid, BOOLEAN Public);
 SPD_API DWORD SpdIoctlGetList(HANDLE DeviceHandle,
-    PWCHAR ListBuf, PUINT32 PListSize);
+    BOOLEAN ListAll, PWCHAR ListBuf, PUINT32 PListSize);
 SPD_API DWORD SpdIoctlTransact(HANDLE DeviceHandle,
     PVOID ResponseBuf, UINT32 ResponseBufSize,
-    PVOID RequestBuf, UINT32 *PRequestBufSize,
-    BOOLEAN Batch);
+    PVOID RequestBuf, UINT32 *PRequestBufSize);
 SPD_API DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
     UINT32 Ptl, PCDB Cdb, UCHAR DataDirection, PVOID DataBuffer, PUINT32 PDataLength,
     PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32]);
