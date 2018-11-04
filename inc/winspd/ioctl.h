@@ -22,8 +22,6 @@
 #ifndef WINSPD_IOCTL_H_INCLUDED
 #define WINSPD_IOCTL_H_INCLUDED
 
-#include <devioctl.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -121,7 +119,7 @@ SPD_API DWORD SpdIoctlProvision(HANDLE DeviceHandle,
 SPD_API DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
     GUID *Guid, BOOLEAN Public);
 SPD_API DWORD SpdIoctlGetList(HANDLE DeviceHandle,
-    BOOLEAN ListAll, PWCHAR ListBuf, PUINT32 PListSize);
+    BOOLEAN ListAll, GUID *ListBuf, PUINT32 PListSize);
 SPD_API DWORD SpdIoctlTransact(HANDLE DeviceHandle,
     PVOID ResponseBuf, UINT32 ResponseBufSize,
     PVOID RequestBuf, UINT32 *PRequestBufSize);

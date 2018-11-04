@@ -317,7 +317,7 @@ exit:
 }
 
 SPD_API DWORD SpdIoctlGetList(HANDLE DeviceHandle,
-    BOOLEAN ListAll, PWCHAR ListBuf, PUINT32 PListSize)
+    BOOLEAN ListAll, GUID *ListBuf, PUINT32 PListSize)
 {
     SPD_IOCTL_LIST_PARAMS Params;
     DWORD BytesTransferred;
