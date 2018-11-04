@@ -43,20 +43,20 @@ extern "C" {
 typedef struct _SPD_STORAGE_UNIT SPD_STORAGE_UNIT;
 typedef struct _SPD_STORAGE_UNIT_INTERFACE
 {
-    UINT8 (*Read)(SPD_STORAGE_UNIT *StorageUnit, UINT64 BlockAddress, PVOID Buffer, UINT32 Length,
+    UCHAR (*Read)(SPD_STORAGE_UNIT *StorageUnit, UINT64 BlockAddress, PVOID Buffer, UINT32 Length,
         PSENSE_DATA SenseData);
-    UINT8 (*Write)(SPD_STORAGE_UNIT *StorageUnit, UINT64 BlockAddress, PVOID Buffer, UINT32 Length,
+    UCHAR (*Write)(SPD_STORAGE_UNIT *StorageUnit, UINT64 BlockAddress, PVOID Buffer, UINT32 Length,
         PSENSE_DATA SenseData);
-    UINT8 (*Flush)(SPD_STORAGE_UNIT *StorageUnit, UINT64 BlockAddress, UINT32 Count,
+    UCHAR (*Flush)(SPD_STORAGE_UNIT *StorageUnit, UINT64 BlockAddress, UINT32 Count,
         PSENSE_DATA SenseData);
-    UINT8 (*Unmap)(SPD_STORAGE_UNIT *StorageUnit, PUNMAP_BLOCK_DESCRIPTOR Descriptors, UINT32 Count,
+    UCHAR (*Unmap)(SPD_STORAGE_UNIT *StorageUnit, PUNMAP_BLOCK_DESCRIPTOR Descriptors, UINT32 Count,
         PSENSE_DATA SenseData);
 
     /*
      * This ensures that this interface will always contain 16 function pointers.
      * Please update when changing the interface as it is important for future compatibility.
      */
-    UINT8 (*Reserved[12])();
+    UCHAR (*Reserved[12])();
 } SPD_STORAGE_UNIT_INTERFACE;
 typedef struct _SPD_STORAGE_UNIT
 {

@@ -194,7 +194,7 @@ exit:
 }
 
 DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
-    UINT32 Ptl, PCDB Cdb, UCHAR DataDirection, PVOID DataBuffer, PUINT32 PDataLength,
+    UINT32 Ptl, PCDB Cdb, INT DataDirection, PVOID DataBuffer, PUINT32 PDataLength,
     PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32])
 {
     typedef struct
@@ -231,7 +231,11 @@ DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
         goto exit;
     }
     Scsi.Base.SenseInfoLength = sizeof(Scsi.SenseInfoBuffer);
-    Scsi.Base.DataIn = DataDirection;
+    Scsi.Base.DataIn = 0 < DataDirection ?
+        SCSI_IOCTL_DATA_IN :
+        (0 > DataDirection ?
+            SCSI_IOCTL_DATA_OUT :
+            SCSI_IOCTL_DATA_UNSPECIFIED);
     Scsi.Base.DataTransferLength = 0 != PDataLength ? *PDataLength : 0;
     Scsi.Base.TimeOutValue = 10;
     Scsi.Base.DataBuffer = DataBuffer;

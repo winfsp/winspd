@@ -90,7 +90,7 @@ static int ScsiDataInAndPrint(int argc, wchar_t **argv,
         usage();
 
     HANDLE DeviceHandle = INVALID_HANDLE_VALUE;
-    DWORD Ptl = 0;
+    UINT32 Ptl = 0;
     PVOID DataBuffer = 0;
     UCHAR ScsiStatus;
     UCHAR SenseInfoBuffer[32];
@@ -121,7 +121,7 @@ static int ScsiDataInAndPrint(int argc, wchar_t **argv,
     if (ERROR_SUCCESS != Error)
         goto exit;
 
-    Error = SpdIoctlScsiExecute(DeviceHandle, Ptl, Cdb, 1/*SCSI_IOCTL_DATA_IN*/,
+    Error = SpdIoctlScsiExecute(DeviceHandle, Ptl, Cdb, +1,
         DataBuffer, &DataLength, &ScsiStatus, SenseInfoBuffer);
     if (ERROR_SUCCESS != Error)
         goto exit;
