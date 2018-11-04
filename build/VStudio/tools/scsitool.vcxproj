@@ -198,7 +198,6 @@
     <ClCompile Include="..\..\..\src\shared\strtoint.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\inc\winspd\winspd.h" />
     <ClInclude Include="..\..\..\src\scsitool\scsitool.h" />
     <ClInclude Include="..\..\..\src\shared\minimal.h" />
   </ItemGroup>

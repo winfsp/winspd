@@ -1,19 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Include">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
     <Filter Include="Source">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
     <Filter Include="Source\shared">
       <UniqueIdentifier>{64dfc8c1-e6d7-4bab-a138-29d5fd12b4ac}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Include\winspd">
-      <UniqueIdentifier>{b62a10c5-f7bb-4bb8-ad51-b662da1f9f14}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -33,9 +26,6 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\src\shared\minimal.h">
       <Filter>Source\shared</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\inc\winspd\winspd.h">
-      <Filter>Include\winspd</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\scsitool\scsitool.h">
       <Filter>Source</Filter>
