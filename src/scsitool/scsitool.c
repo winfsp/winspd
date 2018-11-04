@@ -201,9 +201,9 @@ static int inquiry(int argc, wchar_t **argv)
         "u1  Obsolete\n"
         "u1  CMDQUE\n"
         "u1  VS\n"
-        "S8  T10 VENDOR IDENTIFICATION\n"
-        "S16 PRODUCT IDENTIFICATION\n"
-        "S8  PRODUCT REVISION LEVEL\n"
+        "A8  T10 VENDOR IDENTIFICATION\n"
+        "A16 PRODUCT IDENTIFICATION\n"
+        "A8  PRODUCT REVISION LEVEL\n"
         "X20 Vendor specific\n"
         "u4  Reserved\n"
         "u2  CLOCKING\n"
@@ -263,7 +263,7 @@ static int inquiry_vpd80(int argc, wchar_t **argv)
         "u8  PAGE CODE (80h)\n"
         "u8  Reserved\n"
         "u8  PAGE LENGTH (n-3)\n"
-        "X255 PRODUCT SERIAL NUMBER\n";
+        "A255 PRODUCT SERIAL NUMBER\n";
 
     return ScsiDataInAndPrint(argc, argv, &Cdb, VPD_MAX_BUFFER_SIZE, Format);
 }
@@ -284,7 +284,16 @@ static int inquiry_vpd83(int argc, wchar_t **argv)
         "u5  PERIPHERAL DEVICE TYPE\n"
         "u8  PAGE CODE (83h)\n"
         "u16 PAGE LENGTH (n-3)\n"
-        "X255 Identification descriptor list\n";
+        "*"
+        "u4  PROTOCOL IDENTIFIER\n"
+        "u4  CODE SET\n"
+        "u1  PIV\n"
+        "u1  Reserved\n"
+        "u2  ASSOCIATION\n"
+        "u4  IDENTIFIER TYPE\n"
+        "u8  Reserved\n"
+        "u8  IDENTIFIER LENGTH (m-3)\n"
+        "Am  IDENTIFIER\n";
 
     return ScsiDataInAndPrint(argc, argv, &Cdb, VPD_MAX_BUFFER_SIZE, Format);
 }

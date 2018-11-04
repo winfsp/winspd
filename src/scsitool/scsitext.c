@@ -29,7 +29,7 @@ void ScsiText(
     void *data,
     const char *format, void *buf, size_t len)
 {
-    unsigned type, width, minusv;
+    unsigned type, width, nminusv, mminusv, m;
     const char *star = 0;
     const char *name;
     const char *warn;
@@ -38,9 +38,10 @@ void ScsiText(
     size_t lval;
     size_t bitpos = 0;
 
+    m = 1;
     for (const char *p = format; len * 8 > bitpos;)
     {
-        minusv = -1;
+        nminusv = mminusv = -1;
         warn = 0;
 
         type = *p;
@@ -61,7 +62,13 @@ void ScsiText(
         }
         p++;
 
-        width = (unsigned)strtoint(p, 10, 0, &p);
+        if ('m' == *p)
+        {
+            width = m;
+            p++;
+        }
+        else
+            width = (unsigned)strtoint(p, 10, 0, &p);
 
         while (' ' == *p)
             p++;
@@ -70,11 +77,15 @@ void ScsiText(
         while (*p && '\n' != *p)
         {
             const char *q;
-            unsigned m;
+            unsigned v;
 
             if ('(' == p[0] && 'n' == p[1] && '-' == p[2] &&
-                (m = (unsigned)strtoint(p + 3, 10, 0, &q), ')' == *q))
-                minusv = m;
+                (v = (unsigned)strtoint(p + 3, 10, 0, &q), ')' == *q))
+                nminusv = v;
+            else
+            if ('(' == p[0] && 'm' == p[1] && '-' == p[2] &&
+                (v = (unsigned)strtoint(p + 3, 10, 0, &q), ')' == *q))
+                mminusv = v;
 
             p++;
         }
@@ -112,14 +123,17 @@ void ScsiText(
                 bitpos = endpos;
             }
 
-            if (-1 != minusv)
+            if (-1 != nminusv)
             {
-                size_t newlen = uval + minusv + 1;
+                size_t newlen = uval + nminusv + 1;
                 warn = len != newlen ?
                     "data buffer length mismatch" : 0;
                 if (len > newlen)
                     len = newlen;
             }
+            else
+            if (-1 != mminusv)
+                m = (unsigned)uval;
 
             if (0 == invariant_strncmp("Reserved", name, p - name) && 0 != uval)
                 warn = "non-zero reserved value";
@@ -149,7 +163,7 @@ void ScsiLineTextFn(void *data,
         size = namelen + 1 + 64 + warnlen;
         break;
 
-    case 'S':
+    case 'A':
         size = namelen + 1 + lval + warnlen;
         break;
 
@@ -180,15 +194,20 @@ void ScsiLineTextFn(void *data,
         if (0xffffffffULL < uval)
         {
             bufp += wsprintfA(bufp, "%lx", (unsigned long)(uval >> 32));
-            bufp += wsprintfA(bufp, "%08lx", (unsigned long)uval);
+            bufp += wsprintfA(bufp, "%08lxh", (unsigned long)uval);
         }
+        else if (10 > uval)
+            bufp += wsprintfA(bufp, "%lu", (unsigned long)uval);
         else
-            bufp += wsprintfA(bufp, "%lx", (unsigned long)uval);
+            bufp += wsprintfA(bufp, "%lu %lxh", (unsigned long)uval, (unsigned long)uval);
         break;
 
-    case 'S':
-        memcpy(bufp, pval, lval);
-        bufp += lval;
+    case 'A':
+        for (size_t i = 0; lval > i; i++)
+        {
+            char c = ((char *)pval)[i];
+            *bufp++ = 0x20 <= c && c < 0x7f ? c : '.';
+        }
         break;
 
     case 'X':
