@@ -88,7 +88,7 @@ exit:
     return Error;
 }
 
-SPD_API DWORD SpdIoctlGetDevicePath(GUID *ClassGuid, PWSTR DeviceName,
+DWORD SpdIoctlGetDevicePath(GUID *ClassGuid, PWSTR DeviceName,
     PWCHAR PathBuf, UINT32 PathBufSize)
 {
     BOOLEAN IsHwid = FALSE;
@@ -165,7 +165,7 @@ exit:
     return Error;
 }
 
-SPD_API DWORD SpdIoctlOpenDevice(PWSTR DeviceName, PHANDLE PDeviceHandle)
+DWORD SpdIoctlOpenDevice(PWSTR DeviceName, PHANDLE PDeviceHandle)
 {
     WCHAR PathBuf[1024];
     HANDLE DeviceHandle = INVALID_HANDLE_VALUE;
@@ -193,7 +193,7 @@ exit:
     return Error;
 }
 
-SPD_API DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
+DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
     UINT32 Ptl, PCDB Cdb, UCHAR DataDirection, PVOID DataBuffer, PUINT32 PDataLength,
     PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32])
 {
@@ -262,7 +262,7 @@ exit:
     return Error;
 }
 
-SPD_API DWORD SpdIoctlProvision(HANDLE DeviceHandle,
+DWORD SpdIoctlProvision(HANDLE DeviceHandle,
     SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams, BOOLEAN Public)
 {
     SPD_IOCTL_PROVISION_PARAMS Params;
@@ -289,7 +289,7 @@ exit:
     return Error;
 }
 
-SPD_API DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
+DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
     GUID *Guid, BOOLEAN Public)
 {
     SPD_IOCTL_UNPROVISION_PARAMS Params;
@@ -316,7 +316,7 @@ exit:
     return Error;
 }
 
-SPD_API DWORD SpdIoctlGetList(HANDLE DeviceHandle,
+DWORD SpdIoctlGetList(HANDLE DeviceHandle,
     BOOLEAN ListAll, GUID *ListBuf, PUINT32 PListSize)
 {
     SPD_IOCTL_LIST_PARAMS Params;
@@ -344,14 +344,14 @@ exit:
     return Error;
 }
 
-SPD_API DWORD SpdIoctlTransact(HANDLE DeviceHandle,
+DWORD SpdIoctlTransact(HANDLE DeviceHandle,
     PVOID ResponseBuf, UINT32 ResponseBufSize,
     PVOID RequestBuf, UINT32 *PRequestBufSize)
 {
     return ERROR_INVALID_FUNCTION;
 }
 
-SPD_API DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP)
+DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP)
 {
     if (AlignmentMask + 1 < sizeof(PVOID))
         AlignmentMask = sizeof(PVOID) - 1;
@@ -368,7 +368,7 @@ SPD_API DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP
     return ERROR_SUCCESS;
 }
 
-SPD_API VOID SpdIoctlMemAlignFree(PVOID P)
+VOID SpdIoctlMemAlignFree(PVOID P)
 {
     if (0 == P)
         return;

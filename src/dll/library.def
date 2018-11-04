@@ -1,0 +1,10 @@
+EXPORTS
+	SpdIoctlGetDevicePath
+	SpdIoctlOpenDevice
+	SpdIoctlProvision
+	SpdIoctlUnprovision
+	SpdIoctlGetList
+	SpdIoctlTransact
+	SpdIoctlScsiExecute
+	SpdIoctlMemAlignAlloc
+	SpdIoctlMemAlignFree

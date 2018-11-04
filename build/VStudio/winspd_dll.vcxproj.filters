@@ -35,4 +35,9 @@
       <Filter>Source\shared</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\dll\library.def">
+      <Filter>Source</Filter>
+    </None>
+  </ItemGroup>
 </Project>

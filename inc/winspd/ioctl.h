@@ -26,13 +26,6 @@
 extern "C" {
 #endif
 
-/* static_assert is a C++11 feature, but seems to work with C on MSVC 2015 */
-#if defined(WINSPD_SYS_INTERNAL) || defined(WINSPD_DLL_INTERNAL)
-#define SPD_IOCTL_STATIC_ASSERT(e,m)    static_assert(e,m)
-#else
-#define SPD_IOCTL_STATIC_ASSERT(e,m)    static_assert(1,"")
-#endif
-
 #define SPD_IOCTL_DRIVER_NAME           "WinSpd"
 #define SPD_IOCTL_VENDOR_ID             "WinSpd  "
 
@@ -111,23 +104,23 @@ typedef struct
 #pragma warning(pop)
 
 #if !defined(WINSPD_SYS_INTERNAL)
-SPD_API DWORD SpdIoctlGetDevicePath(GUID *ClassGuid, PWSTR DeviceName,
+DWORD SpdIoctlGetDevicePath(GUID *ClassGuid, PWSTR DeviceName,
     PWCHAR PathBuf, UINT32 PathBufSize);
-SPD_API DWORD SpdIoctlOpenDevice(PWSTR DeviceName, PHANDLE PDeviceHandle);
-SPD_API DWORD SpdIoctlProvision(HANDLE DeviceHandle,
+DWORD SpdIoctlOpenDevice(PWSTR DeviceName, PHANDLE PDeviceHandle);
+DWORD SpdIoctlProvision(HANDLE DeviceHandle,
     SPD_IOCTL_STORAGE_UNIT_PARAMS *Params, BOOLEAN Public);
-SPD_API DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
+DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
     GUID *Guid, BOOLEAN Public);
-SPD_API DWORD SpdIoctlGetList(HANDLE DeviceHandle,
+DWORD SpdIoctlGetList(HANDLE DeviceHandle,
     BOOLEAN ListAll, GUID *ListBuf, PUINT32 PListSize);
-SPD_API DWORD SpdIoctlTransact(HANDLE DeviceHandle,
+DWORD SpdIoctlTransact(HANDLE DeviceHandle,
     PVOID ResponseBuf, UINT32 ResponseBufSize,
     PVOID RequestBuf, UINT32 *PRequestBufSize);
-SPD_API DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
+DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
     UINT32 Ptl, PCDB Cdb, UCHAR DataDirection, PVOID DataBuffer, PUINT32 PDataLength,
     PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32]);
-SPD_API DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP);
-SPD_API VOID SpdIoctlMemAlignFree(PVOID P);
+DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP);
+VOID SpdIoctlMemAlignFree(PVOID P);
 #endif
 
 #ifdef __cplusplus

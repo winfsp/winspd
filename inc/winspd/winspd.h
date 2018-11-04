@@ -30,13 +30,6 @@
 #include <windows.h>
 #include <scsi.h>
 
-#if defined(SPD_API)
-#elif defined(WINSPD_DLL_INTERNAL)
-#define SPD_API                         __declspec(dllexport)
-#else
-#define SPD_API                         __declspec(dllimport)
-#endif
-
 #include <winspd/ioctl.h>
 
 #ifdef __cplusplus
@@ -65,8 +58,6 @@ typedef struct _SPD_STORAGE_UNIT_INTERFACE
      */
     UINT8 (*Reserved[12])();
 } SPD_STORAGE_UNIT_INTERFACE;
-SPD_IOCTL_STATIC_ASSERT(sizeof(SPD_STORAGE_UNIT_INTERFACE) == 16 * sizeof(UINT8 (*)()),
-    "SPD_STORAGE_UNIT_INTERFACE must have 16 entries.");
 typedef struct _SPD_STORAGE_UNIT
 {
     UINT16 Version;

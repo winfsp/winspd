@@ -26,25 +26,10 @@ HINSTANCE DllInstance;
 
 BOOL WINAPI DllMain(HINSTANCE Instance, DWORD Reason, PVOID Reserved)
 {
-    BOOLEAN Dynamic;
-
     switch (Reason)
     {
     case DLL_PROCESS_ATTACH:
         DllInstance = Instance;
-        break;
-
-    case DLL_PROCESS_DETACH:
-        /*
-         * These functions are called during DLL_PROCESS_DETACH. We must therefore keep
-         * finalization tasks to a minimum.
-         *
-         * See the following documents:
-         *     https://msdn.microsoft.com/en-us/library/windows/desktop/dn633971(v=vs.85).aspx
-         *     https://blogs.msdn.microsoft.com/oldnewthing/20070503-00/?p=27003/
-         *     https://blogs.msdn.microsoft.com/oldnewthing/20100122-00/?p=15193/
-         */
-        Dynamic = 0 == Reserved;
         break;
     }
 
