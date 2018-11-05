@@ -57,16 +57,21 @@ ULONG SpdHwFindAdapter(
     return Result;
 }
 
-BOOLEAN SpdHwInitialize(PVOID DeviceExtension)
+BOOLEAN SpdHwInitialize(PVOID DeviceExtension0)
 {
     BOOLEAN Result = FALSE;
     SPD_ENTER(adapter);
+
+    SPD_DEVICE_EXTENSION *DeviceExtension = DeviceExtension0;
+
+    KeInitializeSpinLock(&DeviceExtension->SpinLock);
+    InitializeListHead(&DeviceExtension->LogicalUnitList);
 
     Result = TRUE;
 
     SPD_LEAVE(adapter,
         "%p", " = %d",
-        DeviceExtension, Result);
+        DeviceExtension0, Result);
     return Result;
 }
 

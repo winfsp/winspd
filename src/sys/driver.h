@@ -163,10 +163,12 @@ UCHAR SpdSrbFreeDumpPointers(PVOID DeviceExtension, PVOID Srb);
 /* extensions */
 typedef struct
 {
-    UINT32 dummy;
+    KSPIN_LOCK SpinLock;
+    LIST_ENTRY LogicalUnitList;
 } SPD_DEVICE_EXTENSION;
 typedef struct
 {
+    LIST_ENTRY ListEntry;
     SPD_DEVICE_EXTENSION *DeviceExtension;
     UCHAR DeviceType;
     UINT32 RemovableMedia:1;
