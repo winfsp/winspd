@@ -194,7 +194,7 @@ exit:
 }
 
 DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
-    UINT32 Ptl, PCDB Cdb, INT DataDirection, PVOID DataBuffer, PUINT32 PDataLength,
+    UINT32 Btl, PCDB Cdb, INT DataDirection, PVOID DataBuffer, PUINT32 PDataLength,
     PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32])
 {
     typedef struct
@@ -208,9 +208,9 @@ DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
 
     memset(&Scsi, 0, sizeof Scsi);
     Scsi.Base.Length = sizeof Scsi.Base;
-    Scsi.Base.PathId = (Ptl >> 16) & 0xff;
-    Scsi.Base.TargetId = (Ptl >> 8) & 0xff;
-    Scsi.Base.Lun = Ptl & 0xff;
+    Scsi.Base.PathId = (Btl >> 16) & 0xff;
+    Scsi.Base.TargetId = (Btl >> 8) & 0xff;
+    Scsi.Base.Lun = Btl & 0xff;
     switch (Cdb->AsByte[0] & 0xE0)
     {
     case 0 << 5:

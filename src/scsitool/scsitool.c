@@ -90,7 +90,7 @@ static int ScsiDataInAndPrint(int argc, wchar_t **argv,
         usage();
 
     HANDLE DeviceHandle = INVALID_HANDLE_VALUE;
-    UINT32 Ptl = 0;
+    UINT32 Btl = 0;
     PVOID DataBuffer = 0;
     UCHAR ScsiStatus;
     UCHAR SenseInfoBuffer[32];
@@ -100,15 +100,15 @@ static int ScsiDataInAndPrint(int argc, wchar_t **argv,
     {
         const wchar_t *p = argv[2];
 
-        Ptl |= (UCHAR)wcstoint(p, 10, 0, &p);
+        Btl |= (UCHAR)wcstoint(p, 10, 0, &p);
         if (':' == *p++)
         {
-            Ptl <<= 8;
-            Ptl |= (UCHAR)wcstoint(p, 10, 0, &p);
+            Btl <<= 8;
+            Btl |= (UCHAR)wcstoint(p, 10, 0, &p);
             if (':' == *p++)
             {
-                Ptl <<= 8;
-                Ptl |= (UCHAR)wcstoint(p, 10, 0, &p);
+                Btl <<= 8;
+                Btl |= (UCHAR)wcstoint(p, 10, 0, &p);
             }
         }
     }
@@ -121,7 +121,7 @@ static int ScsiDataInAndPrint(int argc, wchar_t **argv,
     if (ERROR_SUCCESS != Error)
         goto exit;
 
-    Error = SpdIoctlScsiExecute(DeviceHandle, Ptl, Cdb, +1,
+    Error = SpdIoctlScsiExecute(DeviceHandle, Btl, Cdb, +1,
         DataBuffer, &DataLength, &ScsiStatus, SenseInfoBuffer);
     if (ERROR_SUCCESS != Error)
         goto exit;

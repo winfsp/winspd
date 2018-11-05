@@ -117,7 +117,7 @@ DWORD SpdIoctlTransact(HANDLE DeviceHandle,
     PVOID ResponseBuf, UINT32 ResponseBufSize,
     PVOID RequestBuf, UINT32 *PRequestBufSize);
 DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
-    UINT32 Ptl, PCDB Cdb, INT DataDirection, PVOID DataBuffer, PUINT32 PDataLength,
+    UINT32 Btl, PCDB Cdb, INT DataDirection, PVOID DataBuffer, PUINT32 PDataLength,
     PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32]);
 DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP);
 VOID SpdIoctlMemAlignFree(PVOID P);
