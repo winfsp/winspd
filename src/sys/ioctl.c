@@ -22,7 +22,7 @@
 #include <sys/driver.h>
 
 static VOID SpdIoctlProvision(
-    ULONG InputBufferLength, ULONG ProcessId,
+    ULONG InputBufferLength, ULONG OutputBufferLength, ULONG ProcessId,
     SPD_IOCTL_PROVISION_PARAMS *Params,
     PIO_STATUS_BLOCK PIoStatus)
 {
@@ -114,19 +114,11 @@ VOID SpdHwProcessServiceRequest(PVOID DeviceExtension, PVOID Irp0)
     switch (((SPD_IOCTL_BASE_PARAMS *)Params)->Code)
     {
     case SPD_IOCTL_PROVISION:
-        SpdIoctlProvision(InputBufferLength, IoGetRequestorProcessId(Irp),
+        SpdIoctlProvision(InputBufferLength, OutputBufferLength, IoGetRequestorProcessId(Irp),
             Params, &Irp->IoStatus);
         break;
     case SPD_IOCTL_UNPROVISION:
         SpdIoctlUnprovision(InputBufferLength, IoGetRequestorProcessId(Irp),
-            Params, &Irp->IoStatus);
-        break;
-    case SPD_IOCTL_PROVISION_PUBLIC:
-        SpdIoctlProvision(InputBufferLength, 0,
-            Params, &Irp->IoStatus);
-        break;
-    case SPD_IOCTL_UNPROVISION_PUBLIC:
-        SpdIoctlUnprovision(InputBufferLength, 0,
             Params, &Irp->IoStatus);
         break;
     case SPD_IOCTL_LIST:

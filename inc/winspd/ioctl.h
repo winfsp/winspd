@@ -38,8 +38,6 @@ extern "C" {
 /* IOCTL_MINIPORT_PROCESS_SERVICE_IRP codes */
 #define SPD_IOCTL_PROVISION             ('p')
 #define SPD_IOCTL_UNPROVISION           ('u')
-#define SPD_IOCTL_PROVISION_PUBLIC      ('P')
-#define SPD_IOCTL_UNPROVISION_PUBLIC    ('U')
 #define SPD_IOCTL_LIST                  ('l')
 #define SPD_IOCTL_TRANSACT              ('t')
 
@@ -64,28 +62,42 @@ typedef struct
 typedef struct
 {
     SPD_IOCTL_BASE_PARAMS Base;
-    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
-} SPD_IOCTL_PROVISION_PARAMS;
-typedef struct
-{
-    SPD_IOCTL_BASE_PARAMS Base;
-    GUID Guid;                          /* identity */
-} SPD_IOCTL_UNPROVISION_PARAMS;
-typedef struct
-{
-    SPD_IOCTL_BASE_PARAMS Base;
-    UINT32 ListAll:1;                   /* include privately provisioned */
-    SPD_IOCTL_DECLSPEC_ALIGN UINT8 Buffer[];
-} SPD_IOCTL_LIST_PARAMS;
-typedef struct
-{
-    SPD_IOCTL_BASE_PARAMS Base;
-    GUID Guid;                          /* identity */
-    UINT64 Hint;
     union
     {
         struct
         {
+            SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
+        } Req;
+        struct
+        {
+            UINT32 Btl;
+        } Rsp;
+    } Dir;
+} SPD_IOCTL_PROVISION_PARAMS;
+typedef struct
+{
+    SPD_IOCTL_BASE_PARAMS Base;
+    union
+    {
+        struct
+        {
+            UINT32 Btl;
+        } Req;
+    } Dir;
+} SPD_IOCTL_UNPROVISION_PARAMS;
+typedef struct
+{
+    SPD_IOCTL_BASE_PARAMS Base;
+} SPD_IOCTL_LIST_PARAMS;
+typedef struct
+{
+    SPD_IOCTL_BASE_PARAMS Base;
+    union
+    {
+        struct
+        {
+            UINT32 Btl;
+            UINT64 Hint;
             UINT8 Kind;
             UINT32 Length;
             UINT64 Address;
@@ -95,11 +107,12 @@ typedef struct
         } Req;
         struct
         {
+            UINT32 Btl;
+            UINT64 Hint;
             UINT8 ScsiStatus;
             SENSE_DATA SenseData;
         } Rsp;
-    } Direction;
-    SPD_IOCTL_DECLSPEC_ALIGN UINT8 Buffer[];
+    } Dir;
 } SPD_IOCTL_TRANSACT_PARAMS;
 #pragma warning(pop)
 
@@ -107,18 +120,19 @@ typedef struct
 DWORD SpdIoctlGetDevicePath(GUID *ClassGuid, PWSTR DeviceName,
     PWCHAR PathBuf, UINT32 PathBufSize);
 DWORD SpdIoctlOpenDevice(PWSTR DeviceName, PHANDLE PDeviceHandle);
-DWORD SpdIoctlProvision(HANDLE DeviceHandle,
-    SPD_IOCTL_STORAGE_UNIT_PARAMS *Params, BOOLEAN Public);
-DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
-    GUID *Guid, BOOLEAN Public);
-DWORD SpdIoctlGetList(HANDLE DeviceHandle,
-    BOOLEAN ListAll, GUID *ListBuf, PUINT32 PListSize);
-DWORD SpdIoctlTransact(HANDLE DeviceHandle,
-    PVOID ResponseBuf, UINT32 ResponseBufSize,
-    PVOID RequestBuf, UINT32 *PRequestBufSize);
 DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
     UINT32 Btl, PCDB Cdb, INT DataDirection, PVOID DataBuffer, PUINT32 PDataLength,
     PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32]);
+DWORD SpdIoctlProvision(HANDLE DeviceHandle,
+    SPD_IOCTL_STORAGE_UNIT_PARAMS *Params, PUINT32 PBtl);
+DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
+    UINT32 Btl);
+DWORD SpdIoctlGetList(HANDLE DeviceHandle,
+    PUINT32 ListBuf, PUINT32 PListSize);
+DWORD SpdIoctlTransact(HANDLE DeviceHandle,
+    UINT32 Btl,
+    PVOID ResponseBuf, UINT32 ResponseBufSize,
+    PVOID RequestBuf, UINT32 *PRequestBufSize);
 DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP);
 VOID SpdIoctlMemAlignFree(PVOID P);
 #endif

@@ -267,7 +267,7 @@ exit:
 }
 
 DWORD SpdIoctlProvision(HANDLE DeviceHandle,
-    SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams, BOOLEAN Public)
+    SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams, PUINT32 PBtl)
 {
     SPD_IOCTL_PROVISION_PARAMS Params;
     DWORD BytesTransferred;
@@ -275,8 +275,9 @@ DWORD SpdIoctlProvision(HANDLE DeviceHandle,
 
     memset(&Params, 0, sizeof Params);
     Params.Base.Size = sizeof Params;
-    Params.Base.Code = Public ? SPD_IOCTL_PROVISION_PUBLIC : SPD_IOCTL_PROVISION;
-    memcpy(&Params.StorageUnitParams, StorageUnitParams, sizeof Params.StorageUnitParams);
+    Params.Base.Code = SPD_IOCTL_PROVISION;
+    memcpy(&Params.Dir.Req.StorageUnitParams, StorageUnitParams,
+        sizeof *StorageUnitParams);
 
     if (!DeviceIoControl(DeviceHandle, IOCTL_MINIPORT_PROCESS_SERVICE_IRP,
         &Params, sizeof Params,
@@ -287,6 +288,7 @@ DWORD SpdIoctlProvision(HANDLE DeviceHandle,
         goto exit;
     }
 
+    *PBtl = Params.Dir.Rsp.Btl;
     Error = ERROR_SUCCESS;
 
 exit:
@@ -294,7 +296,7 @@ exit:
 }
 
 DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
-    GUID *Guid, BOOLEAN Public)
+    UINT32 Btl)
 {
     SPD_IOCTL_UNPROVISION_PARAMS Params;
     DWORD BytesTransferred;
@@ -302,8 +304,8 @@ DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
 
     memset(&Params, 0, sizeof Params);
     Params.Base.Size = sizeof Params;
-    Params.Base.Code = Public ? SPD_IOCTL_UNPROVISION_PUBLIC : SPD_IOCTL_UNPROVISION;
-    memcpy(&Params.Guid, Guid, sizeof Params.Guid);
+    Params.Base.Code = SPD_IOCTL_UNPROVISION;
+    Params.Dir.Req.Btl = Btl;
 
     if (!DeviceIoControl(DeviceHandle, IOCTL_MINIPORT_PROCESS_SERVICE_IRP,
         &Params, sizeof Params,
@@ -321,7 +323,7 @@ exit:
 }
 
 DWORD SpdIoctlGetList(HANDLE DeviceHandle,
-    BOOLEAN ListAll, GUID *ListBuf, PUINT32 PListSize)
+    PUINT32 ListBuf, PUINT32 PListSize)
 {
     SPD_IOCTL_LIST_PARAMS Params;
     DWORD BytesTransferred;
@@ -330,7 +332,6 @@ DWORD SpdIoctlGetList(HANDLE DeviceHandle,
     memset(&Params, 0, sizeof Params);
     Params.Base.Size = sizeof Params;
     Params.Base.Code = SPD_IOCTL_LIST;
-    Params.ListAll = !!ListAll;
 
     if (!DeviceIoControl(DeviceHandle, IOCTL_MINIPORT_PROCESS_SERVICE_IRP,
         &Params, sizeof Params,
@@ -349,6 +350,7 @@ exit:
 }
 
 DWORD SpdIoctlTransact(HANDLE DeviceHandle,
+    UINT32 Btl,
     PVOID ResponseBuf, UINT32 ResponseBufSize,
     PVOID RequestBuf, UINT32 *PRequestBufSize)
 {
