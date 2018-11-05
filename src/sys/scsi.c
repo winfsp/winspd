@@ -127,9 +127,9 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
         if (INQUIRYDATABUFFERSIZE > DataTransferLength)
             return SRB_STATUS_DATA_OVERRUN;
         PINQUIRYDATA InquiryData = DataBuffer;
-        InquiryData->DeviceType = LogicalUnit->DeviceType;
+        InquiryData->DeviceType = LogicalUnit->StorageUnitParams.DeviceType;
         InquiryData->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
-        InquiryData->RemovableMedia = !!LogicalUnit->RemovableMedia;
+        InquiryData->RemovableMedia = !!LogicalUnit->StorageUnitParams.RemovableMedia;
         InquiryData->Versions = 5; /* "The device complies to the standard." */
         InquiryData->ResponseDataFormat = 2;
         InquiryData->CommandQueue = 1;
@@ -137,10 +137,10 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
             RTL_SIZEOF_THROUGH_FIELD(INQUIRYDATA, AdditionalLength);
         RtlCopyMemory(InquiryData->VendorId, SPD_IOCTL_VENDOR_ID,
             sizeof SPD_IOCTL_VENDOR_ID - 1);
-        RtlCopyMemory(InquiryData->ProductId, LogicalUnit->ProductId,
-            sizeof LogicalUnit->ProductId);
-        RtlCopyMemory(InquiryData->ProductRevisionLevel, LogicalUnit->ProductRevisionLevel,
-            sizeof LogicalUnit->ProductRevisionLevel);
+        RtlCopyMemory(InquiryData->ProductId, LogicalUnit->StorageUnitParams.ProductId,
+            sizeof LogicalUnit->StorageUnitParams.ProductId);
+        RtlCopyMemory(InquiryData->ProductRevisionLevel, LogicalUnit->StorageUnitParams.ProductRevisionLevel,
+            sizeof LogicalUnit->StorageUnitParams.ProductRevisionLevel);
         SrbSetDataTransferLength(Srb, INQUIRYDATABUFFERSIZE);
         return SRB_STATUS_SUCCESS;
     }
@@ -154,9 +154,9 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
             PageCount = 3,
             IdentifierLength =
                 sizeof SPD_IOCTL_VENDOR_ID - 1 +
-                sizeof LogicalUnit->ProductId +
-                sizeof LogicalUnit->ProductRevisionLevel +
-                sizeof LogicalUnit->SerialNumber,
+                sizeof LogicalUnit->StorageUnitParams.ProductId +
+                sizeof LogicalUnit->StorageUnitParams.ProductRevisionLevel +
+                sizeof LogicalUnit->StorageUnitParams.Guid,
         };
 
         switch (Cdb->CDB6INQUIRY3.PageCode)
@@ -165,7 +165,7 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
             if (sizeof(VPD_SUPPORTED_PAGES_PAGE) + PageCount > DataTransferLength)
                 return SRB_STATUS_DATA_OVERRUN;
             SupportedPages = DataBuffer;
-            SupportedPages->DeviceType = LogicalUnit->DeviceType;
+            SupportedPages->DeviceType = LogicalUnit->StorageUnitParams.DeviceType;
             SupportedPages->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
             SupportedPages->PageCode = VPD_SUPPORTED_PAGES;
             SupportedPages->PageLength = PageCount;
@@ -177,17 +177,17 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
 
         case VPD_SERIAL_NUMBER:
             if (sizeof(VPD_SERIAL_NUMBER_PAGE) +
-                sizeof LogicalUnit->SerialNumber > DataTransferLength)
+                sizeof LogicalUnit->StorageUnitParams.Guid > DataTransferLength)
                 return SRB_STATUS_DATA_OVERRUN;
             SerialNumber = DataBuffer;
-            SerialNumber->DeviceType = LogicalUnit->DeviceType;
+            SerialNumber->DeviceType = LogicalUnit->StorageUnitParams.DeviceType;
             SerialNumber->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
             SerialNumber->PageCode = VPD_SERIAL_NUMBER;
-            SerialNumber->PageLength = sizeof LogicalUnit->SerialNumber;
-            RtlCopyMemory(SerialNumber->SerialNumber, LogicalUnit->SerialNumber,
-                sizeof LogicalUnit->SerialNumber);
+            SerialNumber->PageLength = sizeof LogicalUnit->StorageUnitParams.Guid;
+            RtlCopyMemory(SerialNumber->SerialNumber, &LogicalUnit->StorageUnitParams.Guid,
+                sizeof LogicalUnit->StorageUnitParams.Guid);
             SrbSetDataTransferLength(Srb, sizeof(VPD_SERIAL_NUMBER_PAGE) +
-                sizeof LogicalUnit->SerialNumber);
+                sizeof LogicalUnit->StorageUnitParams.Guid);
             return SRB_STATUS_SUCCESS;
 
         case VPD_DEVICE_IDENTIFIERS:
@@ -195,7 +195,7 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
                 sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + IdentifierLength > DataTransferLength)
                 return SRB_STATUS_DATA_OVERRUN;
             Identification = DataBuffer;
-            Identification->DeviceType = LogicalUnit->DeviceType;
+            Identification->DeviceType = LogicalUnit->StorageUnitParams.DeviceType;
             Identification->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
             Identification->PageCode = VPD_DEVICE_IDENTIFIERS;
             Identification->PageLength =
@@ -213,19 +213,19 @@ UCHAR SpdScsiInquiry(SPD_LOGICAL_UNIT *LogicalUnit, PVOID Srb, PCDB Cdb)
                 sizeof SPD_IOCTL_VENDOR_ID - 1);
             RtlCopyMemory(((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->Identifier +
                     sizeof SPD_IOCTL_VENDOR_ID - 1,
-                LogicalUnit->ProductId,
-                sizeof LogicalUnit->ProductId);
+                LogicalUnit->StorageUnitParams.ProductId,
+                sizeof LogicalUnit->StorageUnitParams.ProductId);
             RtlCopyMemory(((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->Identifier +
                     sizeof SPD_IOCTL_VENDOR_ID - 1 +
-                    sizeof LogicalUnit->ProductId,
-                LogicalUnit->ProductRevisionLevel,
-                sizeof LogicalUnit->ProductRevisionLevel);
+                    sizeof LogicalUnit->StorageUnitParams.ProductId,
+                LogicalUnit->StorageUnitParams.ProductRevisionLevel,
+                sizeof LogicalUnit->StorageUnitParams.ProductRevisionLevel);
             RtlCopyMemory(((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->Identifier +
                     sizeof SPD_IOCTL_VENDOR_ID - 1 +
-                    sizeof LogicalUnit->ProductId +
-                    sizeof LogicalUnit->ProductRevisionLevel,
-                LogicalUnit->SerialNumber,
-                sizeof LogicalUnit->SerialNumber);
+                    sizeof LogicalUnit->StorageUnitParams.ProductId +
+                    sizeof LogicalUnit->StorageUnitParams.ProductRevisionLevel,
+                &LogicalUnit->StorageUnitParams.Guid,
+                sizeof LogicalUnit->StorageUnitParams.Guid);
             SrbSetDataTransferLength(Srb, sizeof(VPD_IDENTIFICATION_PAGE) +
                 sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + IdentifierLength);
             return SRB_STATUS_SUCCESS;

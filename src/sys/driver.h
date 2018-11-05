@@ -169,12 +169,7 @@ typedef struct
 typedef struct
 {
     LIST_ENTRY ListEntry;
-    SPD_DEVICE_EXTENSION *DeviceExtension;
-    UCHAR DeviceType;
-    UINT32 RemovableMedia:1;
-    UCHAR ProductId[16];
-    UCHAR ProductRevisionLevel[4];
-    UCHAR SerialNumber[8];
+    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
 } SPD_LOGICAL_UNIT;
 
 #endif
