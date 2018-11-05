@@ -64,7 +64,7 @@ typedef struct
 typedef struct
 {
     SPD_IOCTL_BASE_PARAMS Base;
-    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnit;
+    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
 } SPD_IOCTL_PROVISION_PARAMS;
 typedef struct
 {

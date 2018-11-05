@@ -276,7 +276,7 @@ DWORD SpdIoctlProvision(HANDLE DeviceHandle,
     memset(&Params, 0, sizeof Params);
     Params.Base.Size = sizeof Params;
     Params.Base.Code = Public ? SPD_IOCTL_PROVISION_PUBLIC : SPD_IOCTL_PROVISION;
-    memcpy(&Params.StorageUnit, StorageUnitParams, sizeof Params.StorageUnit);
+    memcpy(&Params.StorageUnitParams, StorageUnitParams, sizeof Params.StorageUnitParams);
 
     if (!DeviceIoControl(DeviceHandle, IOCTL_MINIPORT_PROCESS_SERVICE_IRP,
         &Params, sizeof Params,
