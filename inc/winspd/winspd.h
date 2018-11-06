@@ -49,7 +49,7 @@ typedef struct _SPD_STORAGE_UNIT_INTERFACE
         PSENSE_DATA SenseData);
     UCHAR (*Flush)(SPD_STORAGE_UNIT *StorageUnit, UINT64 BlockAddress, UINT32 Count,
         PSENSE_DATA SenseData);
-    UCHAR (*Unmap)(SPD_STORAGE_UNIT *StorageUnit, PUNMAP_BLOCK_DESCRIPTOR Descriptors, UINT32 Count,
+    UCHAR (*Unmap)(SPD_STORAGE_UNIT *StorageUnit, UINT64 BlockAddresses[], UINT32 Lengths[], UINT32 Count,
         PSENSE_DATA SenseData);
 
     /*

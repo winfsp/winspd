@@ -41,19 +41,66 @@ extern "C" {
 #define SPD_IOCTL_LIST                  ('l')
 #define SPD_IOCTL_TRANSACT              ('t')
 
+#define SPD_IOCTL_MAX_UNMAP_DESCR       16
+
 /* IOCTL_MINIPORT_PROCESS_SERVICE_IRP marshalling */
 #pragma warning(push)
 #pragma warning(disable:4200)           /* zero-sized array in struct/union */
 typedef struct
 {
-    GUID Guid;                          /* identity */
     UINT64 BlockCount;                  /* geometry */
     UINT32 BlockLength;                 /* geometry */
     UCHAR ProductId[16];
     UCHAR ProductRevisionLevel[4];
+    GUID Guid;
     UINT8 DeviceType;                   /* must be 0: direct access block device */
     UINT32 RemovableMedia:1;            /* must be 0: no removable media */
 } SPD_IOCTL_STORAGE_UNIT_PARAMS;
+typedef struct
+{
+    UINT64 Hint;
+    UINT8 Kind;
+    union
+    {
+        struct
+        {
+            UINT64 Address;
+            UINT64 BlockAddress;
+            UINT32 Length;
+            UINT32 ForceUnitAccess:1;
+            UINT32 Reserved:31;
+        } Read;
+        struct
+        {
+            UINT64 Address;
+            UINT64 BlockAddress;
+            UINT32 Length;
+            UINT32 ForceUnitAccess:1;
+            UINT32 Reserved:31;
+        } Write;
+        struct
+        {
+            UINT64 BlockAddress;
+            UINT32 Length;
+        } Flush;
+        struct
+        {
+            UINT16 Count;
+            UINT64 BlockAddresses[SPD_IOCTL_MAX_UNMAP_DESCR];
+            UINT32 Lengths[SPD_IOCTL_MAX_UNMAP_DESCR];
+        } Unmap;
+    } Op;
+} SPD_IOCTL_TRANSACT_REQ;
+typedef struct
+{
+    UINT64 Hint;
+    UINT8 Kind;
+    struct
+    {
+        UINT8 ScsiStatus;
+        SENSE_DATA SenseData;
+    } Status;
+} SPD_IOCTL_TRANSACT_RSP;
 typedef struct
 {
     SPD_IOCTL_DECLSPEC_ALIGN UINT16 Size;
@@ -92,26 +139,13 @@ typedef struct
 typedef struct
 {
     SPD_IOCTL_BASE_PARAMS Base;
+    UINT32 Btl;
+    UINT32 ReqValid:1;
+    UINT32 RspValid:1;
     union
     {
-        struct
-        {
-            UINT32 Btl;
-            UINT64 Hint;
-            UINT8 Kind;
-            UINT32 Length;
-            UINT64 Address;
-            UINT64 BlockAddress;
-            UINT32 ForceUnitAccess:1;
-            UINT32 Reserved:31;
-        } Req;
-        struct
-        {
-            UINT32 Btl;
-            UINT64 Hint;
-            UINT8 ScsiStatus;
-            SENSE_DATA SenseData;
-        } Rsp;
+        SPD_IOCTL_TRANSACT_REQ Req;
+        SPD_IOCTL_TRANSACT_RSP Rsp;
     } Dir;
 } SPD_IOCTL_TRANSACT_PARAMS;
 #pragma warning(pop)
@@ -130,9 +164,7 @@ DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
 DWORD SpdIoctlGetList(HANDLE DeviceHandle,
     PUINT32 ListBuf, PUINT32 PListSize);
 DWORD SpdIoctlTransact(HANDLE DeviceHandle,
-    UINT32 Btl,
-    PVOID ResponseBuf, UINT32 ResponseBufSize,
-    PVOID RequestBuf, UINT32 *PRequestBufSize);
+    UINT32 Btl, SPD_IOCTL_TRANSACT_RSP *Rsp, SPD_IOCTL_TRANSACT_REQ *Req);
 DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP);
 VOID SpdIoctlMemAlignFree(PVOID P);
 #endif

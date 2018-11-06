@@ -350,11 +350,41 @@ exit:
 }
 
 DWORD SpdIoctlTransact(HANDLE DeviceHandle,
-    UINT32 Btl,
-    PVOID ResponseBuf, UINT32 ResponseBufSize,
-    PVOID RequestBuf, UINT32 *PRequestBufSize)
+    UINT32 Btl, SPD_IOCTL_TRANSACT_RSP *Rsp, SPD_IOCTL_TRANSACT_REQ *Req)
 {
-    return ERROR_INVALID_FUNCTION;
+    SPD_IOCTL_TRANSACT_PARAMS Params;
+    DWORD BytesTransferred;
+    DWORD Error;
+
+    memset(&Params, 0, sizeof Params);
+    Params.Base.Size = sizeof Params;
+    Params.Base.Code = SPD_IOCTL_TRANSACT;
+    Params.Btl = Btl;
+    Params.ReqValid = 0 != Req;
+    Params.RspValid = 0 != Rsp;
+
+    if (Params.RspValid)
+        memcpy(&Params.Dir.Rsp, Rsp, sizeof *Rsp);
+
+    if (!DeviceIoControl(DeviceHandle, IOCTL_MINIPORT_PROCESS_SERVICE_IRP,
+        &Params, sizeof Params,
+        0, 0,
+        &BytesTransferred, 0))
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    if (0 != Req)
+        if (Params.ReqValid)
+            memcpy(Req, &Params.Dir.Req, sizeof *Req);
+        else
+            memset(Req, 0, sizeof *Req);
+
+    Error = ERROR_SUCCESS;
+
+exit:
+    return Error;
 }
 
 DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP)
