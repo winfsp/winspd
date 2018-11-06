@@ -114,11 +114,11 @@ typedef struct
         struct
         {
             SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
-        } Req;
+        } Par;
         struct
         {
             UINT32 Btl;
-        } Rsp;
+        } Ret;
     } Dir;
 } SPD_IOCTL_PROVISION_PARAMS;
 typedef struct
@@ -129,7 +129,7 @@ typedef struct
         struct
         {
             UINT32 Btl;
-        } Req;
+        } Par;
     } Dir;
 } SPD_IOCTL_UNPROVISION_PARAMS;
 typedef struct

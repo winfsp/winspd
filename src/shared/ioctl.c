@@ -276,7 +276,7 @@ DWORD SpdIoctlProvision(HANDLE DeviceHandle,
     memset(&Params, 0, sizeof Params);
     Params.Base.Size = sizeof Params;
     Params.Base.Code = SPD_IOCTL_PROVISION;
-    memcpy(&Params.Dir.Req.StorageUnitParams, StorageUnitParams,
+    memcpy(&Params.Dir.Par.StorageUnitParams, StorageUnitParams,
         sizeof *StorageUnitParams);
 
     if (!DeviceIoControl(DeviceHandle, IOCTL_MINIPORT_PROCESS_SERVICE_IRP,
@@ -288,7 +288,7 @@ DWORD SpdIoctlProvision(HANDLE DeviceHandle,
         goto exit;
     }
 
-    *PBtl = Params.Dir.Rsp.Btl;
+    *PBtl = Params.Dir.Ret.Btl;
     Error = ERROR_SUCCESS;
 
 exit:
@@ -305,7 +305,7 @@ DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
     memset(&Params, 0, sizeof Params);
     Params.Base.Size = sizeof Params;
     Params.Base.Code = SPD_IOCTL_UNPROVISION;
-    Params.Dir.Req.Btl = Btl;
+    Params.Dir.Par.Btl = Btl;
 
     if (!DeviceIoControl(DeviceHandle, IOCTL_MINIPORT_PROCESS_SERVICE_IRP,
         &Params, sizeof Params,
