@@ -29,6 +29,15 @@ extern "C" {
 #define SPD_IOCTL_DRIVER_NAME           "WinSpd"
 #define SPD_IOCTL_VENDOR_ID             "WinSpd  "
 
+#define SPD_IOCTL_BTL(B,T,L)            (((B) << 16) | ((T) << 8) | (L))
+#define SPD_IOCTL_BTL_B(Btl)            (((Btl) >> 16) & 0xff)
+#define SPD_IOCTL_BTL_T(Btl)            (((Btl) >> 8) & 0xff)
+#define SPD_IOCTL_BTL_L(Btl)            ((Btl) & 0xff)
+#define SPD_IOCTL_MAX_BUS_COUNT         1
+#define SPD_IOCTL_MAX_TARGET_COUNT      255
+#define SPD_IOCTL_MAX_LUN_COUNT         1
+#define SPD_IOCTL_MAX_UNMAP_DESCR       16
+
 /* alignment macros */
 #define SPD_IOCTL_ALIGN_UP(x, s)        (((x) + ((s) - 1L)) & ~((s) - 1L))
 #define SPD_IOCTL_DEFAULT_ALIGNMENT     8
@@ -41,18 +50,16 @@ extern "C" {
 #define SPD_IOCTL_LIST                  ('l')
 #define SPD_IOCTL_TRANSACT              ('t')
 
-#define SPD_IOCTL_MAX_UNMAP_DESCR       16
-
 /* IOCTL_MINIPORT_PROCESS_SERVICE_IRP marshalling */
 #pragma warning(push)
 #pragma warning(disable:4200)           /* zero-sized array in struct/union */
 typedef struct
 {
+    GUID Guid;                          /* identity */
     UINT64 BlockCount;                  /* geometry */
     UINT32 BlockLength;                 /* geometry */
     UCHAR ProductId[16];
     UCHAR ProductRevisionLevel[4];
-    GUID Guid;
     UINT8 DeviceType;                   /* must be 0: direct access block device */
     UINT32 RemovableMedia:1;            /* must be 0: no removable media */
 } SPD_IOCTL_STORAGE_UNIT_PARAMS;

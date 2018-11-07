@@ -21,74 +21,154 @@
 
 #include <sys/driver.h>
 
-static VOID SpdIoctlProvision(
-    ULONG InputBufferLength, ULONG OutputBufferLength, ULONG ProcessId,
-    SPD_IOCTL_PROVISION_PARAMS *Params,
-    PIO_STATUS_BLOCK PIoStatus)
+static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
+    ULONG Length, SPD_IOCTL_PROVISION_PARAMS *Params,
+    PIRP Irp)
 {
     ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
 
-    if (sizeof *Params > InputBufferLength)
+    static GUID NullGuid = { 0 };
+    SPD_LOGICAL_UNIT *LogicalUnit;
+    KIRQL Irql;
+    UINT32 Btl;
+
+    if (sizeof *Params > Length)
     {
-        PIoStatus->Status = STATUS_INVALID_PARAMETER;
+        Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         goto exit;
     }
 
-    PIoStatus->Status = STATUS_INVALID_PARAMETER;
+    if (RtlEqualMemory(&NullGuid, &Params->Dir.Par.StorageUnitParams.Guid, sizeof NullGuid) ||
+        0 == Params->Dir.Par.StorageUnitParams.BlockCount ||
+        0 == Params->Dir.Par.StorageUnitParams.BlockLength ||
+        DIRECT_ACCESS_DEVICE != Params->Dir.Par.StorageUnitParams.DeviceType ||
+        0 != Params->Dir.Par.StorageUnitParams.RemovableMedia)
+    {
+        Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+        goto exit;
+    }
+
+    KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
+
+    LogicalUnit = 0;
+    for (
+        PLIST_ENTRY Head = &DeviceExtension->LogicalUnitList, Entry = Head->Flink;
+        Head != Entry;
+        Entry = Entry->Flink)
+    {
+        SPD_LOGICAL_UNIT *Unit = CONTAINING_RECORD(Entry, SPD_LOGICAL_UNIT, ListEntry);
+        if (RtlEqualMemory(&Params->Dir.Par.StorageUnitParams.Guid, &Unit->StorageUnitParams.Guid,
+            sizeof Unit->StorageUnitParams.Guid))
+        {
+            LogicalUnit = Unit;
+            break;
+        }
+    }
+
+    Btl = (ULONG)-1;
+    for (ULONG I = 0; ARRAYSIZE(DeviceExtension->LogicalUnitBitmap) > I; I++)
+    {
+        ULONG J;
+        if (BitScanForward(&J, DeviceExtension->LogicalUnitBitmap[I]))
+        {
+            Btl = SPD_IOCTL_BTL(0, I * 8 + J, 0);
+            break;
+        }
+    }
+
+    KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
+
+    if (0 != LogicalUnit)
+    {
+        Irp->IoStatus.Status = STATUS_OBJECT_NAME_COLLISION;
+        goto exit;
+    }
+
+    if (-1 == Btl)
+    {
+        Irp->IoStatus.Status = STATUS_CANNOT_MAKE;
+        goto exit;
+    }
+
+    LogicalUnit = StorPortGetLogicalUnit(DeviceExtension,
+        SPD_IOCTL_BTL_B(Btl), SPD_IOCTL_BTL_T(Btl), SPD_IOCTL_BTL_L(Btl));
+    if (0 == LogicalUnit)
+    {
+        Irp->IoStatus.Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto exit;
+    }
+
+    ASSERT(
+        (0 == LogicalUnit->ListEntry.Flink && 0 == LogicalUnit->ListEntry.Blink) ||
+        IsListEmpty(&LogicalUnit->ListEntry));
+    RtlZeroMemory(LogicalUnit, sizeof *LogicalUnit);
+    RtlCopyMemory(&LogicalUnit->StorageUnitParams, &Params->Dir.Par.StorageUnitParams,
+        sizeof Params->Dir.Par.StorageUnitParams);
+
+    KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
+    InsertTailList(&DeviceExtension->LogicalUnitList, &LogicalUnit->ListEntry);
+    KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
+
+    RtlZeroMemory(Params, sizeof *Params);
+    Params->Base.Size = sizeof *Params;
+    Params->Base.Code = SPD_IOCTL_TRANSACT;
+    Params->Dir.Ret.Btl = Btl;
+
+    Irp->IoStatus.Status = STATUS_SUCCESS;
+    Irp->IoStatus.Information = sizeof *Params;
+
+    StorPortNotification(BusChangeDetected, DeviceExtension, (UCHAR)0);
 
 exit:;
 }
 
-static VOID SpdIoctlUnprovision(
-    ULONG InputBufferLength, ULONG ProcessId,
-    SPD_IOCTL_UNPROVISION_PARAMS *Params,
-    PIO_STATUS_BLOCK PIoStatus)
+static VOID SpdIoctlUnprovision(SPD_DEVICE_EXTENSION *DeviceExtension,
+    ULONG Length, SPD_IOCTL_UNPROVISION_PARAMS *Params,
+    PIRP Irp)
 {
     ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
 
-    if (sizeof *Params > InputBufferLength)
+    if (sizeof *Params > Length)
     {
-        PIoStatus->Status = STATUS_INVALID_PARAMETER;
+        Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         goto exit;
     }
 
-    PIoStatus->Status = STATUS_INVALID_PARAMETER;
+    Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
 
 exit:;
 }
 
-static VOID SpdIoctlList(
-    ULONG InputBufferLength, ULONG OutputBufferLength,
-    SPD_IOCTL_LIST_PARAMS *Params,
-    PIO_STATUS_BLOCK PIoStatus)
+static VOID SpdIoctlList(SPD_DEVICE_EXTENSION *DeviceExtension,
+    ULONG Length, SPD_IOCTL_LIST_PARAMS *Params,
+    PIRP Irp)
 {
     ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
 
-    if (sizeof *Params > InputBufferLength)
+    if (sizeof *Params > Length)
     {
-        PIoStatus->Status = STATUS_INVALID_PARAMETER;
+        Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         goto exit;
     }
 
-    PIoStatus->Status = STATUS_INVALID_PARAMETER;
+    Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
 
 exit:;
 }
 
-static VOID SpdIoctlTransact(
-    ULONG InputBufferLength, ULONG OutputBufferLength, ULONG ProcessId,
-    SPD_IOCTL_TRANSACT_PARAMS *Params,
-    PIO_STATUS_BLOCK PIoStatus)
+static VOID SpdIoctlTransact(SPD_DEVICE_EXTENSION *DeviceExtension,
+    ULONG Length, SPD_IOCTL_TRANSACT_PARAMS *Params,
+    PIRP Irp)
 {
     ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
 
-    if (sizeof *Params > InputBufferLength)
+    if (sizeof *Params > Length)
     {
-        PIoStatus->Status = STATUS_INVALID_PARAMETER;
+        Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         goto exit;
     }
 
-    PIoStatus->Status = STATUS_INVALID_PARAMETER;
+    Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
 
 exit:;
 }
@@ -100,12 +180,12 @@ VOID SpdHwProcessServiceRequest(PVOID DeviceExtension, PVOID Irp0)
 
     PIRP Irp = Irp0;
     PIO_STACK_LOCATION IrpSp = IoGetCurrentIrpStackLocation(Irp);
-    ULONG InputBufferLength = IrpSp->Parameters.DeviceIoControl.InputBufferLength;
-    ULONG OutputBufferLength = IrpSp->Parameters.DeviceIoControl.OutputBufferLength;
+    ULONG Length = IrpSp->Parameters.DeviceIoControl.InputBufferLength;
     PVOID Params = Irp->AssociatedIrp.SystemBuffer;
 
-    if (sizeof(SPD_IOCTL_BASE_PARAMS) > InputBufferLength ||
-        ((SPD_IOCTL_BASE_PARAMS *)Params)->Size > InputBufferLength)
+    if (0 == Params ||
+        sizeof(SPD_IOCTL_BASE_PARAMS) > Length ||
+        ((SPD_IOCTL_BASE_PARAMS *)Params)->Size > Length)
     {
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         goto exit;
@@ -114,20 +194,16 @@ VOID SpdHwProcessServiceRequest(PVOID DeviceExtension, PVOID Irp0)
     switch (((SPD_IOCTL_BASE_PARAMS *)Params)->Code)
     {
     case SPD_IOCTL_PROVISION:
-        SpdIoctlProvision(InputBufferLength, OutputBufferLength, IoGetRequestorProcessId(Irp),
-            Params, &Irp->IoStatus);
+        SpdIoctlProvision(DeviceExtension, Length, Params, Irp);
         break;
     case SPD_IOCTL_UNPROVISION:
-        SpdIoctlUnprovision(InputBufferLength, IoGetRequestorProcessId(Irp),
-            Params, &Irp->IoStatus);
+        SpdIoctlUnprovision(DeviceExtension, Length, Params, Irp);
         break;
     case SPD_IOCTL_LIST:
-        SpdIoctlList(InputBufferLength, OutputBufferLength,
-            Params, &Irp->IoStatus);
+        SpdIoctlList(DeviceExtension, Length, Params, Irp);
         break;
     case SPD_IOCTL_TRANSACT:
-        SpdIoctlTransact(InputBufferLength, OutputBufferLength, IoGetRequestorProcessId(Irp),
-            Params, &Irp->IoStatus);
+        SpdIoctlTransact(DeviceExtension, Length, Params, Irp);
         break;
     default:
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;

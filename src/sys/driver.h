@@ -165,11 +165,24 @@ typedef struct
 {
     KSPIN_LOCK SpinLock;
     LIST_ENTRY LogicalUnitList;
+    UINT32 LogicalUnitBitmap[8];
 } SPD_DEVICE_EXTENSION;
 typedef struct
 {
     LIST_ENTRY ListEntry;
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
 } SPD_LOGICAL_UNIT;
+
+/*
+ * Fixes
+ */
+
+/* RtlEqualMemory: this is defined as memcmp, which does not exist on Win7 x86! */
+#undef RtlEqualMemory
+static inline
+LOGICAL RtlEqualMemory(const VOID *Source1, const VOID *Source2, SIZE_T Length)
+{
+    return Length == RtlCompareMemory(Source1, Source2, Length);
+}
 
 #endif
