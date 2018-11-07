@@ -33,10 +33,8 @@ extern "C" {
 #define SPD_IOCTL_BTL_B(Btl)            (((Btl) >> 16) & 0xff)
 #define SPD_IOCTL_BTL_T(Btl)            (((Btl) >> 8) & 0xff)
 #define SPD_IOCTL_BTL_L(Btl)            ((Btl) & 0xff)
-#define SPD_IOCTL_MAX_BUS_COUNT         1
-#define SPD_IOCTL_MAX_TARGET_COUNT      255
-#define SPD_IOCTL_MAX_LUN_COUNT         1
 #define SPD_IOCTL_MAX_UNMAP_DESCR       16
+#define SPD_IOCTL_MAX_STORAGE_UNITS     64
 
 /* alignment macros */
 #define SPD_IOCTL_ALIGN_UP(x, s)        (((x) + ((s) - 1L)) & ~((s) - 1L))

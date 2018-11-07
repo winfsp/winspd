@@ -28,9 +28,10 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
     ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
 
     static GUID NullGuid = { 0 };
-    SPD_LOGICAL_UNIT *LogicalUnit;
-    KIRQL Irql;
+    SPD_STORAGE_UNIT *StorageUnit = 0;
+    SPD_STORAGE_UNIT *DuplicateUnit;
     UINT32 Btl;
+    KIRQL Irql;
 
     if (sizeof *Params > Length)
     {
@@ -48,66 +49,47 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
         goto exit;
     }
 
-    KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
-
-    LogicalUnit = 0;
-    for (
-        PLIST_ENTRY Head = &DeviceExtension->LogicalUnitList, Entry = Head->Flink;
-        Head != Entry;
-        Entry = Entry->Flink)
-    {
-        SPD_LOGICAL_UNIT *Unit = CONTAINING_RECORD(Entry, SPD_LOGICAL_UNIT, ListEntry);
-        if (RtlEqualMemory(&Params->Dir.Par.StorageUnitParams.Guid, &Unit->StorageUnitParams.Guid,
-            sizeof Unit->StorageUnitParams.Guid))
-        {
-            LogicalUnit = Unit;
-            break;
-        }
-    }
-
-    Btl = (ULONG)-1;
-    for (ULONG I = 0; ARRAYSIZE(DeviceExtension->LogicalUnitBitmap) > I; I++)
-    {
-        ULONG J;
-        if (BitScanForward(&J, DeviceExtension->LogicalUnitBitmap[I]))
-        {
-            Btl = SPD_IOCTL_BTL(0, I * 8 + J, 0);
-            break;
-        }
-    }
-
-    KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
-
-    if (0 != LogicalUnit)
-    {
-        Irp->IoStatus.Status = STATUS_OBJECT_NAME_COLLISION;
-        goto exit;
-    }
-
-    if (-1 == Btl)
-    {
-        Irp->IoStatus.Status = STATUS_CANNOT_MAKE;
-        goto exit;
-    }
-
-    LogicalUnit = StorPortGetLogicalUnit(DeviceExtension,
-        SPD_IOCTL_BTL_B(Btl), SPD_IOCTL_BTL_T(Btl), SPD_IOCTL_BTL_L(Btl));
-    if (0 == LogicalUnit)
+    StorageUnit = SpdAllocNonPaged(sizeof *StorageUnit, SpdTagStorageUnit);
+    if (0 == StorageUnit)
     {
         Irp->IoStatus.Status = STATUS_INSUFFICIENT_RESOURCES;
         goto exit;
     }
 
-    ASSERT(
-        (0 == LogicalUnit->ListEntry.Flink && 0 == LogicalUnit->ListEntry.Blink) ||
-        IsListEmpty(&LogicalUnit->ListEntry));
-    RtlZeroMemory(LogicalUnit, sizeof *LogicalUnit);
-    RtlCopyMemory(&LogicalUnit->StorageUnitParams, &Params->Dir.Par.StorageUnitParams,
+    RtlZeroMemory(StorageUnit, sizeof *StorageUnit);
+    RtlCopyMemory(&StorageUnit->StorageUnitParams, &Params->Dir.Par.StorageUnitParams,
         sizeof Params->Dir.Par.StorageUnitParams);
 
     KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
-    InsertTailList(&DeviceExtension->LogicalUnitList, &LogicalUnit->ListEntry);
+    DuplicateUnit = 0;
+    Btl = (ULONG)-1;
+    for (ULONG I = 0; DeviceExtension->StorageUnitCount > I; I++)
+    {
+        SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
+        if (0 == Unit)
+            Btl = SPD_BTL_FROM_INDEX(I);
+        else
+        if (RtlEqualMemory(&Params->Dir.Par.StorageUnitParams.Guid, &Unit->StorageUnitParams.Guid,
+            sizeof Unit->StorageUnitParams.Guid))
+        {
+            DuplicateUnit = Unit;
+            break;
+        }
+    }
+    if (0 == DuplicateUnit && -1 != Btl)
+        DeviceExtension->StorageUnits[SPD_INDEX_FROM_BTL(Btl)] = StorageUnit;
     KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
+
+    if (0 != DuplicateUnit)
+    {
+        Irp->IoStatus.Status = STATUS_OBJECT_NAME_COLLISION;
+        goto exit;
+    }
+    if (-1 == Btl)
+    {
+        Irp->IoStatus.Status = STATUS_CANNOT_MAKE;
+        goto exit;
+    }
 
     RtlZeroMemory(Params, sizeof *Params);
     Params->Base.Size = sizeof *Params;
@@ -120,6 +102,8 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
     StorPortNotification(BusChangeDetected, DeviceExtension, (UCHAR)0);
 
 exit:;
+    if (!NT_SUCCESS(Irp->IoStatus.Status) && 0 != StorageUnit)
+        SpdFree(StorageUnit, SpdTagStorageUnit);
 }
 
 static VOID SpdIoctlUnprovision(SPD_DEVICE_EXTENSION *DeviceExtension,

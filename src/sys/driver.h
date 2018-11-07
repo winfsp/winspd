@@ -129,6 +129,11 @@ const char *SpdStringizeSrb(PVOID Srb, char Buffer[], size_t Size);
         goto spd_leave_label;           \
     } while (0,0)
 
+/* memory allocation */
+#define SpdAllocNonPaged(Size, Tag)     ExAllocatePoolWithTag(NonPagedPool, Size, Tag)
+#define SpdFree(Pointer, Tag)           ExFreePoolWithTag(Pointer, Tag)
+#define SpdTagStorageUnit               'SdpS'
+
 /* virtual miniport functions */
 HW_INITIALIZE_TRACING SpdHwInitializeTracing;
 HW_CLEANUP_TRACING SpdHwCleanupTracing;
@@ -161,17 +166,38 @@ UCHAR SpdSrbDumpPointers(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbFreeDumpPointers(PVOID DeviceExtension, PVOID Srb);
 
 /* extensions */
-typedef struct
+typedef struct _SPD_STORAGE_UNIT SPD_STORAGE_UNIT;
+typedef struct _SPD_DEVICE_EXTENSION
 {
     KSPIN_LOCK SpinLock;
-    LIST_ENTRY LogicalUnitList;
-    UINT32 LogicalUnitBitmap[8];
+    ULONG StorageUnitCount;
+    SPD_STORAGE_UNIT *StorageUnits[];
 } SPD_DEVICE_EXTENSION;
-typedef struct
+typedef struct _SPD_STORAGE_UNIT
 {
-    LIST_ENTRY ListEntry;
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
-} SPD_LOGICAL_UNIT;
+} SPD_STORAGE_UNIT;
+static inline SPD_STORAGE_UNIT *SpdGetStorageUnit(PVOID DeviceExtension0,
+    UCHAR PathId, UCHAR TargetId, UCHAR Lun)
+{
+    ASSERT(DISPATCH_LEVEL >= KeGetCurrentIrql());
+
+    SPD_DEVICE_EXTENSION *DeviceExtension = DeviceExtension0;
+    SPD_STORAGE_UNIT *StorageUnit;
+    KIRQL Irql;
+
+    if (0 != PathId || 0 != Lun)
+        return 0;
+
+    KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
+    StorageUnit = DeviceExtension->StorageUnitCount > TargetId ?
+        DeviceExtension->StorageUnits[TargetId] : 0;
+    KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
+
+    return StorageUnit;
+}
+#define SPD_INDEX_FROM_BTL(Btl)         SPD_IOCTL_BTL_T(Btl)
+#define SPD_BTL_FROM_INDEX(Idx)         SPD_IOCTL_BTL(0, Idx, 0)
 
 /*
  * Fixes

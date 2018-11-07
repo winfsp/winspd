@@ -37,13 +37,13 @@ ULONG SpdHwFindAdapter(
     ConfigInfo->MaximumTransferLength = SP_UNINITIALIZED_VALUE;
     ConfigInfo->NumberOfPhysicalBreaks = SP_UNINITIALIZED_VALUE;
     ConfigInfo->AlignmentMask = 0;
-    ConfigInfo->NumberOfBuses = SPD_IOCTL_MAX_BUS_COUNT;
+    ConfigInfo->NumberOfBuses = 1;
     ConfigInfo->ScatterGather = TRUE;
     ConfigInfo->Master = TRUE;
     ConfigInfo->CachesData = TRUE;
     ConfigInfo->AdapterScansDown = FALSE;
-    ConfigInfo->MaximumNumberOfTargets = SPD_IOCTL_MAX_TARGET_COUNT;
-    ConfigInfo->MaximumNumberOfLogicalUnits = SPD_IOCTL_MAX_LUN_COUNT;
+    ConfigInfo->MaximumNumberOfTargets = SPD_IOCTL_MAX_STORAGE_UNITS;
+    ConfigInfo->MaximumNumberOfLogicalUnits = 1;
     ConfigInfo->WmiDataProvider = FALSE;
     ConfigInfo->SynchronizationModel = StorSynchronizeFullDuplex;
     ConfigInfo->VirtualDevice = TRUE;
@@ -65,8 +65,7 @@ BOOLEAN SpdHwInitialize(PVOID DeviceExtension0)
     SPD_DEVICE_EXTENSION *DeviceExtension = DeviceExtension0;
 
     KeInitializeSpinLock(&DeviceExtension->SpinLock);
-    InitializeListHead(&DeviceExtension->LogicalUnitList);
-    RtlFillMemory(&DeviceExtension->LogicalUnitBitmap, 0xff, sizeof DeviceExtension->LogicalUnitBitmap);
+    DeviceExtension->StorageUnitCount = SPD_IOCTL_MAX_STORAGE_UNITS;
 
     Result = TRUE;
 
