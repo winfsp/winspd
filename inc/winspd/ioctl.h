@@ -33,8 +33,8 @@ extern "C" {
 #define SPD_IOCTL_BTL_B(Btl)            (((Btl) >> 16) & 0xff)
 #define SPD_IOCTL_BTL_T(Btl)            (((Btl) >> 8) & 0xff)
 #define SPD_IOCTL_BTL_L(Btl)            ((Btl) & 0xff)
-#define SPD_IOCTL_MAX_UNMAP_DESCR       16
-#define SPD_IOCTL_MAX_STORAGE_UNITS     64
+#define SPD_IOCTL_UNMAP_DESCR_MAX_COUNT 16
+#define SPD_IOCTL_STORAGE_UNIT_MAX_COUNT 64
 
 /* alignment macros */
 #define SPD_IOCTL_ALIGN_UP(x, s)        (((x) + ((s) - 1L)) & ~((s) - 1L))
@@ -91,8 +91,8 @@ typedef struct
         struct
         {
             UINT16 Count;
-            UINT64 BlockAddresses[SPD_IOCTL_MAX_UNMAP_DESCR];
-            UINT32 Lengths[SPD_IOCTL_MAX_UNMAP_DESCR];
+            UINT64 BlockAddresses[SPD_IOCTL_UNMAP_DESCR_MAX_COUNT];
+            UINT32 Lengths[SPD_IOCTL_UNMAP_DESCR_MAX_COUNT];
         } Unmap;
     } Op;
 } SPD_IOCTL_TRANSACT_REQ;

@@ -170,12 +170,13 @@ typedef struct _SPD_STORAGE_UNIT SPD_STORAGE_UNIT;
 typedef struct _SPD_DEVICE_EXTENSION
 {
     KSPIN_LOCK SpinLock;
-    ULONG StorageUnitCount;
+    ULONG StorageUnitMaxCount;
     SPD_STORAGE_UNIT *StorageUnits[];
 } SPD_DEVICE_EXTENSION;
 typedef struct _SPD_STORAGE_UNIT
 {
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
+    ULONG ProcessId;
 } SPD_STORAGE_UNIT;
 static inline SPD_STORAGE_UNIT *SpdGetStorageUnit(PVOID DeviceExtension0,
     UCHAR PathId, UCHAR TargetId, UCHAR Lun)
@@ -190,7 +191,7 @@ static inline SPD_STORAGE_UNIT *SpdGetStorageUnit(PVOID DeviceExtension0,
         return 0;
 
     KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
-    StorageUnit = DeviceExtension->StorageUnitCount > TargetId ?
+    StorageUnit = DeviceExtension->StorageUnitMaxCount > TargetId ?
         DeviceExtension->StorageUnits[TargetId] : 0;
     KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
 

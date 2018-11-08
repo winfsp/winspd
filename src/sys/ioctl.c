@@ -59,11 +59,12 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
     RtlZeroMemory(StorageUnit, sizeof *StorageUnit);
     RtlCopyMemory(&StorageUnit->StorageUnitParams, &Params->Dir.Par.StorageUnitParams,
         sizeof Params->Dir.Par.StorageUnitParams);
+    StorageUnit->ProcessId = IoGetRequestorProcessId(Irp);
 
     KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
     DuplicateUnit = 0;
     Btl = (ULONG)-1;
-    for (ULONG I = 0; DeviceExtension->StorageUnitCount > I; I++)
+    for (ULONG I = 0; DeviceExtension->StorageUnitMaxCount > I; I++)
     {
         SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
         if (0 == Unit)
@@ -101,7 +102,7 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
 
     StorPortNotification(BusChangeDetected, DeviceExtension, (UCHAR)0);
 
-exit:;
+exit:
     if (!NT_SUCCESS(Irp->IoStatus.Status) && 0 != StorageUnit)
         SpdFree(StorageUnit, SpdTagStorageUnit);
 }
@@ -112,13 +113,46 @@ static VOID SpdIoctlUnprovision(SPD_DEVICE_EXTENSION *DeviceExtension,
 {
     ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
 
+    SPD_STORAGE_UNIT *StorageUnit;
+    ULONG ProcessId;
+    KIRQL Irql;
+
     if (sizeof *Params > Length)
     {
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         goto exit;
     }
 
-    Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+    ProcessId = IoGetRequestorProcessId(Irp);
+
+    StorageUnit = 0;
+    KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
+    ULONG Index = SPD_INDEX_FROM_BTL(Params->Dir.Par.Btl);
+    if (DeviceExtension->StorageUnitMaxCount > Index)
+    {
+        StorageUnit = DeviceExtension->StorageUnits[Index];
+        if (ProcessId == StorageUnit->ProcessId)
+            DeviceExtension->StorageUnits[Index] = 0;
+    }
+    KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
+
+    if (0 == StorageUnit)
+    {
+        Irp->IoStatus.Status = STATUS_OBJECT_NAME_NOT_FOUND;
+        goto exit;
+    }
+    if (ProcessId != StorageUnit->ProcessId)
+    {
+        Irp->IoStatus.Status = STATUS_ACCESS_DENIED;
+        goto exit;
+    }
+
+    SpdFree(StorageUnit, SpdTagStorageUnit);
+
+    Irp->IoStatus.Status = STATUS_SUCCESS;
+    Irp->IoStatus.Information = sizeof *Params;
+
+    StorPortNotification(BusChangeDetected, DeviceExtension, (UCHAR)0);
 
 exit:;
 }

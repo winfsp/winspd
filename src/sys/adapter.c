@@ -42,7 +42,7 @@ ULONG SpdHwFindAdapter(
     ConfigInfo->Master = TRUE;
     ConfigInfo->CachesData = TRUE;
     ConfigInfo->AdapterScansDown = FALSE;
-    ConfigInfo->MaximumNumberOfTargets = SPD_IOCTL_MAX_STORAGE_UNITS;
+    ConfigInfo->MaximumNumberOfTargets = SPD_IOCTL_STORAGE_UNIT_MAX_COUNT;
     ConfigInfo->MaximumNumberOfLogicalUnits = 1;
     ConfigInfo->WmiDataProvider = FALSE;
     ConfigInfo->SynchronizationModel = StorSynchronizeFullDuplex;
@@ -65,7 +65,7 @@ BOOLEAN SpdHwInitialize(PVOID DeviceExtension0)
     SPD_DEVICE_EXTENSION *DeviceExtension = DeviceExtension0;
 
     KeInitializeSpinLock(&DeviceExtension->SpinLock);
-    DeviceExtension->StorageUnitCount = SPD_IOCTL_MAX_STORAGE_UNITS;
+    DeviceExtension->StorageUnitMaxCount = SPD_IOCTL_STORAGE_UNIT_MAX_COUNT;
 
     Result = TRUE;
 
