@@ -60,6 +60,13 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
     RtlCopyMemory(&StorageUnit->StorageUnitParams, &Params->Dir.Par.StorageUnitParams,
         sizeof Params->Dir.Par.StorageUnitParams);
     StorageUnit->ProcessId = IoGetRequestorProcessId(Irp);
+#define Guid                            Params->Dir.Par.StorageUnitParams.Guid
+    RtlStringCbPrintfA(StorageUnit->SerialNumber, sizeof StorageUnit->SerialNumber,
+        "%08lx-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+        Guid.Data1, Guid.Data2, Guid.Data3,
+        Guid.Data4[0], Guid.Data4[1], Guid.Data4[2], Guid.Data4[3],
+        Guid.Data4[4], Guid.Data4[5], Guid.Data4[6], Guid.Data4[7]);
+#undef Guid
 
     KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
     DuplicateUnit = 0;
