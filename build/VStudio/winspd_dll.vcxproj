@@ -197,6 +197,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\dll\debug.c" />
     <ClCompile Include="..\..\src\dll\library.c" />
     <ClCompile Include="..\..\src\dll\stgunit.c" />
     <ClCompile Include="..\..\src\shared\ioctl.c" />
