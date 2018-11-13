@@ -28,6 +28,7 @@ extern "C" {
 
 #define SPD_IOCTL_DRIVER_NAME           "WinSpd"
 #define SPD_IOCTL_VENDOR_ID             "WinSpd  "
+#define SPD_IOCTL_HARDWARE_ID           "root\\winspd"
 
 #define SPD_IOCTL_BTL(B,T,L)            (((B) << 16) | ((T) << 8) | (L))
 #define SPD_IOCTL_BTL_B(Btl)            (((Btl) >> 16) & 0xff)
@@ -51,6 +52,15 @@ extern "C" {
 /* IOCTL_MINIPORT_PROCESS_SERVICE_IRP marshalling */
 #pragma warning(push)
 #pragma warning(disable:4200)           /* zero-sized array in struct/union */
+enum
+{
+    SpdIoctlTransactReservedKind = 0,
+    SpdIoctlTransactReadKind,
+    SpdIoctlTransactWriteKind,
+    SpdIoctlTransactFlushKind,
+    SpdIoctlTransactUnmapKind,
+    SpdIoctlTransactKindCount,
+};
 typedef struct
 {
     GUID Guid;                          /* identity */
@@ -60,7 +70,12 @@ typedef struct
     UCHAR ProductRevisionLevel[4];
     UINT8 DeviceType;                   /* must be 0: direct access block device */
     UINT32 RemovableMedia:1;            /* must be 0: no removable media */
+    UINT64 Reserved[9];
 } SPD_IOCTL_STORAGE_UNIT_PARAMS;
+#if defined(WINSPD_SYS_INTERNAL)
+static_assert(128 == sizeof(SPD_IOCTL_STORAGE_UNIT_PARAMS),
+    "128 == sizeof(SPD_IOCTL_STORAGE_UNIT_PARAMS)");
+#endif
 typedef struct
 {
     UINT64 Hint;
@@ -163,7 +178,7 @@ DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
     UINT32 Btl, PCDB Cdb, INT DataDirection, PVOID DataBuffer, PUINT32 PDataLength,
     PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32]);
 DWORD SpdIoctlProvision(HANDLE DeviceHandle,
-    SPD_IOCTL_STORAGE_UNIT_PARAMS *Params, PUINT32 PBtl);
+    const SPD_IOCTL_STORAGE_UNIT_PARAMS *Params, PUINT32 PBtl);
 DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
     UINT32 Btl);
 DWORD SpdIoctlGetList(HANDLE DeviceHandle,

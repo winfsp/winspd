@@ -22,14 +22,23 @@
 #include <winspd/winspd.h>
 #include <shared/minimal.h>
 
+VOID SpdStorageUnitFinalize(BOOLEAN Dynamic);
+
 HINSTANCE DllInstance;
 
 BOOL WINAPI DllMain(HINSTANCE Instance, DWORD Reason, PVOID Reserved)
 {
+    BOOLEAN Dynamic;
+
     switch (Reason)
     {
     case DLL_PROCESS_ATTACH:
         DllInstance = Instance;
+        break;
+
+    case DLL_PROCESS_DETACH:
+        Dynamic = 0 == Reserved;
+        SpdStorageUnitFinalize(Dynamic);
         break;
     }
 

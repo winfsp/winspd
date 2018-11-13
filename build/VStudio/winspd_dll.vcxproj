@@ -198,6 +198,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\dll\library.c" />
+    <ClCompile Include="..\..\src\dll\stgunit.c" />
     <ClCompile Include="..\..\src\shared\ioctl.c" />
   </ItemGroup>
   <ItemGroup>

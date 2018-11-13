@@ -62,7 +62,99 @@ typedef struct _SPD_STORAGE_UNIT
 {
     UINT16 Version;
     PVOID UserContext;
+    HANDLE DeviceHandle;
+    UINT32 Btl;
+    const SPD_STORAGE_UNIT_INTERFACE *Interface;
+    HANDLE DispatcherThread;
+    ULONG DispatcherThreadCount;
+    DWORD DispatcherError;
+    UINT32 DebugLog;
 } SPD_STORAGE_UNIT;
+typedef struct _SPD_STORAGE_UNIT_OPERATION_CONTEXT
+{
+    SPD_IOCTL_TRANSACT_REQ *Request;
+    SPD_IOCTL_TRANSACT_RSP *Response;
+} SPD_STORAGE_UNIT_OPERATION_CONTEXT;
+/**
+ * Create a storage unit object.
+ *
+ * @param StorageUnitParams
+ *     Parameters for the newly created storage unit.
+ * @param Interface
+ *     A pointer to the operations that implement this storage unit.
+ * @param PStorageUnit [out]
+ *     Pointer that will receive the storage unit object created on successful return from this
+ *     call.
+ * @return
+ *     ERROR_SUCCESS or error code.
+ */
+DWORD SpdStorageUnitCreate(
+    const SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams,
+    const SPD_STORAGE_UNIT_INTERFACE *Interface,
+    SPD_STORAGE_UNIT **PStorageUnit);
+/**
+ * Delete a storage unit object.
+ *
+ * @param StorageUnit
+ *     The storage unit object.
+ */
+VOID SpdStorageUnitDelete(SPD_STORAGE_UNIT *StorageUnit);
+/**
+ * Start the storage unit dispatcher.
+ *
+ * @param StorageUnit
+ *     The storage unit object.
+ * @param ThreadCount
+ *     The number of threads for the dispatcher. A value of 0 will create a default
+ *     number of threads and should be chosen in most cases.
+ * @return
+ *     ERROR_SUCCESS or error code.
+ */
+DWORD SpdStorageUnitStartDispatcher(SPD_STORAGE_UNIT *StorageUnit, ULONG ThreadCount);
+/**
+ * Stop the storage unit dispatcher.
+ *
+ * @param StorageUnit
+ *     The storage unit object.
+ */
+VOID SpdStorageUnitStopDispatcher(SPD_STORAGE_UNIT *StorageUnit);
+/**
+ * Send a response to the kernel.
+ *
+ * @param StorageUnit
+ *     The storage unit object.
+ * @param Response
+ *     The response buffer.
+ */
+VOID SpdStorageUnitSendResponse(SPD_STORAGE_UNIT *StorageUnit,
+    SPD_IOCTL_TRANSACT_RSP *Response);
+/**
+ * Get the current operation context.
+ *
+ * This function may be used only when servicing one of the SPD_STORAGE_UNIT_INTERFACE operations.
+ * The current operation context is stored in thread local storage. It allows access to the
+ * Request and Response associated with this operation.
+ *
+ * @return
+ *     The current operation context.
+ */
+SPD_STORAGE_UNIT_OPERATION_CONTEXT *SpdStorageUnitGetOperationContext(VOID);
+static inline
+VOID SpdStorageUnitGetDispatcherError(SPD_STORAGE_UNIT *StorageUnit,
+    DWORD *PDispatcherError)
+{
+    /* 32-bit reads are atomic */
+    *PDispatcherError = StorageUnit->DispatcherError;
+    MemoryBarrier();
+}
+static inline
+VOID SpdStorageUnitSetDispatcherError(SPD_STORAGE_UNIT *StorageUnit,
+    DWORD DispatcherError)
+{
+    if (ERROR_SUCCESS == DispatcherError)
+        return;
+    InterlockedCompareExchange(&StorageUnit->DispatcherError, DispatcherError, 0);
+}
 
 #ifdef __cplusplus
 }

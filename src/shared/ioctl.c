@@ -267,7 +267,7 @@ exit:
 }
 
 DWORD SpdIoctlProvision(HANDLE DeviceHandle,
-    SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams, PUINT32 PBtl)
+    const SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams, PUINT32 PBtl)
 {
     SPD_IOCTL_PROVISION_PARAMS Params;
     DWORD BytesTransferred;
