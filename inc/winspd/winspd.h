@@ -161,6 +161,14 @@ VOID SpdStorageUnitSetDispatcherError(SPD_STORAGE_UNIT *StorageUnit,
     InterlockedCompareExchange(&StorageUnit->DispatcherError, DispatcherError, 0);
 }
 
+/*
+ * Utility
+ */
+VOID SpdDebugLogSetHandle(HANDLE Handle);
+VOID SpdDebugLog(const char *Format, ...);
+VOID SpdDebugLogRequest(SPD_IOCTL_TRANSACT_REQ *Request);
+VOID SpdDebugLogResponse(SPD_IOCTL_TRANSACT_RSP *Response);
+
 #ifdef __cplusplus
 }
 #endif

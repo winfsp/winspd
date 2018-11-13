@@ -1,10 +1,24 @@
 EXPORTS
+
+	; ioctl.h
 	SpdIoctlGetDevicePath
 	SpdIoctlOpenDevice
+	SpdIoctlScsiExecute
 	SpdIoctlProvision
 	SpdIoctlUnprovision
 	SpdIoctlGetList
 	SpdIoctlTransact
-	SpdIoctlScsiExecute
 	SpdIoctlMemAlignAlloc
 	SpdIoctlMemAlignFree
+
+	; winspd.h
+	SpdStorageUnitCreate
+	SpdStorageUnitDelete
+	SpdStorageUnitStartDispatcher
+	SpdStorageUnitStopDispatcher
+	SpdStorageUnitSendResponse
+	SpdStorageUnitGetOperationContext
+	SpdDebugLogSetHandle
+	SpdDebugLog
+	SpdDebugLogRequest
+	SpdDebugLogResponse
