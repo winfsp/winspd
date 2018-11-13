@@ -296,7 +296,7 @@ exit:
 }
 
 DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
-    UINT32 Btl)
+    const GUID *Guid)
 {
     SPD_IOCTL_UNPROVISION_PARAMS Params;
     DWORD BytesTransferred;
@@ -305,7 +305,7 @@ DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
     memset(&Params, 0, sizeof Params);
     Params.Base.Size = sizeof Params;
     Params.Base.Code = SPD_IOCTL_UNPROVISION;
-    Params.Dir.Par.Btl = Btl;
+    memcpy(&Params.Dir.Par.Guid, Guid, sizeof *Guid);
 
     if (!DeviceIoControl(DeviceHandle, IOCTL_MINIPORT_PROCESS_SERVICE_IRP,
         &Params, sizeof Params,

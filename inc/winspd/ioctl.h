@@ -52,15 +52,6 @@ extern "C" {
 /* IOCTL_MINIPORT_PROCESS_SERVICE_IRP marshalling */
 #pragma warning(push)
 #pragma warning(disable:4200)           /* zero-sized array in struct/union */
-enum
-{
-    SpdIoctlTransactReservedKind = 0,
-    SpdIoctlTransactReadKind,
-    SpdIoctlTransactWriteKind,
-    SpdIoctlTransactFlushKind,
-    SpdIoctlTransactUnmapKind,
-    SpdIoctlTransactKindCount,
-};
 typedef struct
 {
     GUID Guid;                          /* identity */
@@ -76,6 +67,15 @@ typedef struct
 static_assert(128 == sizeof(SPD_IOCTL_STORAGE_UNIT_PARAMS),
     "128 == sizeof(SPD_IOCTL_STORAGE_UNIT_PARAMS)");
 #endif
+enum
+{
+    SpdIoctlTransactReservedKind = 0,
+    SpdIoctlTransactReadKind,
+    SpdIoctlTransactWriteKind,
+    SpdIoctlTransactFlushKind,
+    SpdIoctlTransactUnmapKind,
+    SpdIoctlTransactKindCount,
+};
 typedef struct
 {
     UINT64 Hint;
@@ -148,7 +148,7 @@ typedef struct
     {
         struct
         {
-            UINT32 Btl;
+            GUID Guid;                  /* identity */
         } Par;
     } Dir;
 } SPD_IOCTL_UNPROVISION_PARAMS;
@@ -180,7 +180,7 @@ DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
 DWORD SpdIoctlProvision(HANDLE DeviceHandle,
     const SPD_IOCTL_STORAGE_UNIT_PARAMS *Params, PUINT32 PBtl);
 DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
-    UINT32 Btl);
+    const GUID *Guid);
 DWORD SpdIoctlGetList(HANDLE DeviceHandle,
     PUINT32 ListBuf, PUINT32 PListSize);
 DWORD SpdIoctlTransact(HANDLE DeviceHandle,

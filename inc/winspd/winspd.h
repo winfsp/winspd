@@ -66,6 +66,7 @@ typedef struct _SPD_STORAGE_UNIT
 {
     UINT16 Version;
     PVOID UserContext;
+    GUID Guid;
     HANDLE DeviceHandle;
     UINT32 Btl;
     const SPD_STORAGE_UNIT_INTERFACE *Interface;

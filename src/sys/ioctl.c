@@ -132,14 +132,20 @@ static VOID SpdIoctlUnprovision(SPD_DEVICE_EXTENSION *DeviceExtension,
 
     ProcessId = IoGetRequestorProcessId(Irp);
 
-    StorageUnit = 0;
     KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
-    ULONG Index = SPD_INDEX_FROM_BTL(Params->Dir.Par.Btl);
-    if (DeviceExtension->StorageUnitMaxCount > Index)
+    StorageUnit = 0;
+    for (ULONG I = 0; DeviceExtension->StorageUnitMaxCount > I; I++)
     {
-        StorageUnit = DeviceExtension->StorageUnits[Index];
-        if (ProcessId == StorageUnit->ProcessId)
-            DeviceExtension->StorageUnits[Index] = 0;
+        SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
+        if (0 == Unit)
+            ;
+        else
+        if (RtlEqualMemory(&Params->Dir.Par.Guid, &Unit->StorageUnitParams.Guid,
+            sizeof Unit->StorageUnitParams.Guid))
+        {
+            StorageUnit = Unit;
+            break;
+        }
     }
     KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
 

@@ -78,6 +78,7 @@ DWORD SpdStorageUnitCreate(
     if (ERROR_SUCCESS != Error)
         goto exit;
 
+    memcpy(&StorageUnit->Guid, &StorageUnitParams->Guid, sizeof StorageUnitParams->Guid);
     StorageUnit->DeviceHandle = DeviceHandle;
     StorageUnit->Btl = Btl;
     StorageUnit->Interface = Interface;
@@ -100,7 +101,7 @@ exit:
 
 VOID SpdStorageUnitDelete(SPD_STORAGE_UNIT *StorageUnit)
 {
-    SpdIoctlUnprovision(StorageUnit->DeviceHandle, StorageUnit->Btl);
+    SpdIoctlUnprovision(StorageUnit->DeviceHandle, &StorageUnit->Guid);
     CloseHandle(StorageUnit->DeviceHandle);
     MemFree(StorageUnit);
 }
@@ -208,7 +209,7 @@ exit:
 
     SpdStorageUnitSetDispatcherError(StorageUnit, Error);
 
-    //FspFsctlStop(FileSystem->VolumeHandle);
+    SpdIoctlUnprovision(StorageUnit->DeviceHandle, &StorageUnit->Guid);
 
     if (0 != DispatcherThread)
     {
@@ -249,7 +250,7 @@ VOID SpdStorageUnitStopDispatcher(SPD_STORAGE_UNIT *StorageUnit)
     if (0 == StorageUnit->DispatcherThread)
         return;
 
-    //FspFsctlStop(FileSystem->VolumeHandle);
+    SpdIoctlUnprovision(StorageUnit->DeviceHandle, &StorageUnit->Guid);
 
     WaitForSingleObject(StorageUnit->DispatcherThread, INFINITE);
     CloseHandle(StorageUnit->DispatcherThread);
@@ -273,7 +274,7 @@ VOID SpdStorageUnitSendResponse(SPD_STORAGE_UNIT *StorageUnit,
     {
         SpdStorageUnitSetDispatcherError(StorageUnit, Error);
 
-        //FspFsctlStop(FileSystem->VolumeHandle);
+        SpdIoctlUnprovision(StorageUnit->DeviceHandle, &StorageUnit->Guid);
     }
 }
 
