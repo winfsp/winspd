@@ -43,13 +43,17 @@ extern "C" {
 typedef struct _SPD_STORAGE_UNIT SPD_STORAGE_UNIT;
 typedef struct _SPD_STORAGE_UNIT_INTERFACE
 {
-    UCHAR (*Read)(SPD_STORAGE_UNIT *StorageUnit, UINT64 BlockAddress, PVOID Buffer, UINT32 Length,
+    UCHAR (*Read)(SPD_STORAGE_UNIT *StorageUnit,
+        UINT64 BlockAddress, PVOID Buffer, UINT32 Length, BOOLEAN Flush,
         PSENSE_DATA SenseData);
-    UCHAR (*Write)(SPD_STORAGE_UNIT *StorageUnit, UINT64 BlockAddress, PVOID Buffer, UINT32 Length,
+    UCHAR (*Write)(SPD_STORAGE_UNIT *StorageUnit,
+        UINT64 BlockAddress, PVOID Buffer, UINT32 Length, BOOLEAN Flush,
         PSENSE_DATA SenseData);
-    UCHAR (*Flush)(SPD_STORAGE_UNIT *StorageUnit, UINT64 BlockAddress, UINT32 Count,
+    UCHAR (*Flush)(SPD_STORAGE_UNIT *StorageUnit,
+        UINT64 BlockAddress, UINT32 Count,
         PSENSE_DATA SenseData);
-    UCHAR (*Unmap)(SPD_STORAGE_UNIT *StorageUnit, UINT64 BlockAddresses[], UINT32 Lengths[], UINT32 Count,
+    UCHAR (*Unmap)(SPD_STORAGE_UNIT *StorageUnit,
+        UINT64 BlockAddresses[], UINT32 Lengths[], UINT32 Count,
         PSENSE_DATA SenseData);
 
     /*

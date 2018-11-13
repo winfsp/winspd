@@ -158,6 +158,7 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
                     Request->Op.Read.BlockAddress,
                     (PVOID)(UINT_PTR)Request->Op.Read.Address,
                     Request->Op.Read.Length,
+                    Request->Op.Read.ForceUnitAccess,
                     &Response->Status.SenseData);
             break;
         case SpdIoctlTransactWriteKind:
@@ -167,6 +168,7 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
                     Request->Op.Write.BlockAddress,
                     (PVOID)(UINT_PTR)Request->Op.Write.Address,
                     Request->Op.Write.Length,
+                    Request->Op.Read.ForceUnitAccess,
                     &Response->Status.SenseData);
             break;
         case SpdIoctlTransactFlushKind:
