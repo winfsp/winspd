@@ -35,28 +35,50 @@ UCHAR Read(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddress, PVOID Buffer, UINT32 Length, BOOLEAN Flush,
     PSENSE_DATA SenseData)
 {
-    return 0;
+    RAWDISK *RawDisk = StorageUnit->UserContext;
+    PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
+
+    memcpy(Buffer, FileBuffer, Length);
+
+    return SCSISTAT_GOOD;
 }
 
 UCHAR Write(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddress, PVOID Buffer, UINT32 Length, BOOLEAN Flush,
     PSENSE_DATA SenseData)
 {
-    return 0;
+    RAWDISK *RawDisk = StorageUnit->UserContext;
+    PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
+
+    memcpy(FileBuffer, Buffer, Length);
+
+    return SCSISTAT_GOOD;
 }
 
 UCHAR Flush(SPD_STORAGE_UNIT *StorageUnit,
-    UINT64 BlockAddress, UINT32 Count,
+    UINT64 BlockAddress, UINT32 Length,
     PSENSE_DATA SenseData)
 {
-    return 0;
+    RAWDISK *RawDisk = StorageUnit->UserContext;
+    PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
+
+    if (!FlushViewOfFile(FileBuffer, Length))
+        goto error;
+    if (!FlushFileBuffers(RawDisk->Handle))
+        goto error;
+
+    return SCSISTAT_GOOD;
+
+error:
+    // !!!: fix sense data
+    return SCSISTAT_CHECK_CONDITION;
 }
 
 UCHAR Unmap(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddresses[], UINT32 Lengths[], UINT32 Count,
     PSENSE_DATA SenseData)
 {
-    return 0;
+    return SCSISTAT_GOOD;
 }
 
 static SPD_STORAGE_UNIT_INTERFACE RawDiskInterface =
