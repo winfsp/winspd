@@ -14,6 +14,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{F809D260
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "scsitool", "tools\scsitool.vcxproj", "{33A69A34-B54D-42BA-B397-3BFA8FF53E47}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "testing", "testing", "{FF400823-92A9-4015-9D81-23D769D02AFA}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "rawdisk", "testing\rawdisk.vcxproj", "{9D6788F9-E009-4B01-AE54-2A80EE38E1F9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -50,11 +54,20 @@ Global
 		{33A69A34-B54D-42BA-B397-3BFA8FF53E47}.Release|x64.Build.0 = Release|x64
 		{33A69A34-B54D-42BA-B397-3BFA8FF53E47}.Release|x86.ActiveCfg = Release|Win32
 		{33A69A34-B54D-42BA-B397-3BFA8FF53E47}.Release|x86.Build.0 = Release|Win32
+		{9D6788F9-E009-4B01-AE54-2A80EE38E1F9}.Debug|x64.ActiveCfg = Debug|x64
+		{9D6788F9-E009-4B01-AE54-2A80EE38E1F9}.Debug|x64.Build.0 = Debug|x64
+		{9D6788F9-E009-4B01-AE54-2A80EE38E1F9}.Debug|x86.ActiveCfg = Debug|Win32
+		{9D6788F9-E009-4B01-AE54-2A80EE38E1F9}.Debug|x86.Build.0 = Debug|Win32
+		{9D6788F9-E009-4B01-AE54-2A80EE38E1F9}.Release|x64.ActiveCfg = Release|x64
+		{9D6788F9-E009-4B01-AE54-2A80EE38E1F9}.Release|x64.Build.0 = Release|x64
+		{9D6788F9-E009-4B01-AE54-2A80EE38E1F9}.Release|x86.ActiveCfg = Release|Win32
+		{9D6788F9-E009-4B01-AE54-2A80EE38E1F9}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{33A69A34-B54D-42BA-B397-3BFA8FF53E47} = {F809D260-BBDF-431C-8F4B-BCD0F5BF3C01}
+		{9D6788F9-E009-4B01-AE54-2A80EE38E1F9} = {FF400823-92A9-4015-9D81-23D769D02AFA}
 	EndGlobalSection
 EndGlobal

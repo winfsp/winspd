@@ -23,7 +23,7 @@
 
 #define info(format, ...)               printlog(GetStdHandle(STD_OUTPUT_HANDLE), format, __VA_ARGS__)
 #define warn(format, ...)               printlog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__)
-#define fatal(ExitCode, format, ...)    (warn(format, __VA_ARGS__), ExitProcess(ExitCode))
+#define fail(ExitCode, format, ...)     (warn(format, __VA_ARGS__), ExitProcess(ExitCode))
 
 static void usage(void);
 
@@ -319,7 +319,7 @@ static int report_luns(int argc, wchar_t **argv)
 
 static void usage(void)
 {
-    fatal(ERROR_INVALID_PARAMETER,
+    fail(ERROR_INVALID_PARAMETER,
         "usage: %s COMMAND ARGS\n"
         "\n"
         "commands:\n"
