@@ -36,6 +36,9 @@
 extern "C" {
 #endif
 
+typedef SPD_IOCTL_STORAGE_UNIT_PARAMS SPD_STORAGE_UNIT_PARAMS;
+typedef SPD_IOCTL_STORAGE_UNIT_STATUS SPD_STORAGE_UNIT_STATUS;
+
 /**
  * @class SPD_STORAGE_UNIT_INTERFACE
  * Storage unit interface.
@@ -43,24 +46,24 @@ extern "C" {
 typedef struct _SPD_STORAGE_UNIT SPD_STORAGE_UNIT;
 typedef struct _SPD_STORAGE_UNIT_INTERFACE
 {
-    UCHAR (*Read)(SPD_STORAGE_UNIT *StorageUnit,
+    BOOLEAN (*Read)(SPD_STORAGE_UNIT *StorageUnit,
         UINT64 BlockAddress, PVOID Buffer, UINT32 Length, BOOLEAN Flush,
-        PSENSE_DATA SenseData);
-    UCHAR (*Write)(SPD_STORAGE_UNIT *StorageUnit,
+        SPD_STORAGE_UNIT_STATUS *Status);
+    BOOLEAN (*Write)(SPD_STORAGE_UNIT *StorageUnit,
         UINT64 BlockAddress, PVOID Buffer, UINT32 Length, BOOLEAN Flush,
-        PSENSE_DATA SenseData);
-    UCHAR (*Flush)(SPD_STORAGE_UNIT *StorageUnit,
+        SPD_STORAGE_UNIT_STATUS *Status);
+    BOOLEAN (*Flush)(SPD_STORAGE_UNIT *StorageUnit,
         UINT64 BlockAddress, UINT32 Length,
-        PSENSE_DATA SenseData);
-    UCHAR (*Unmap)(SPD_STORAGE_UNIT *StorageUnit,
+        SPD_STORAGE_UNIT_STATUS *Status);
+    BOOLEAN (*Unmap)(SPD_STORAGE_UNIT *StorageUnit,
         UINT64 BlockAddresses[], UINT32 Lengths[], UINT32 Count,
-        PSENSE_DATA SenseData);
+        SPD_STORAGE_UNIT_STATUS *Status);
 
     /*
      * This ensures that this interface will always contain 16 function pointers.
      * Please update when changing the interface as it is important for future compatibility.
      */
-    UCHAR (*Reserved[12])();
+    BOOLEAN (*Reserved[12])();
 } SPD_STORAGE_UNIT_INTERFACE;
 typedef struct _SPD_STORAGE_UNIT
 {
@@ -94,7 +97,7 @@ typedef struct _SPD_STORAGE_UNIT_OPERATION_CONTEXT
  *     ERROR_SUCCESS or error code.
  */
 DWORD SpdStorageUnitCreate(
-    const SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams,
+    const SPD_STORAGE_UNIT_PARAMS *StorageUnitParams,
     const SPD_STORAGE_UNIT_INTERFACE *Interface,
     SPD_STORAGE_UNIT **PStorageUnit);
 /**

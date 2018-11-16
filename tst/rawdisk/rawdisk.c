@@ -31,33 +31,33 @@ typedef struct _RAWDISK
     PVOID Pointer;
 } RAWDISK;
 
-UCHAR Read(SPD_STORAGE_UNIT *StorageUnit,
+BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddress, PVOID Buffer, UINT32 Length, BOOLEAN Flush,
-    PSENSE_DATA SenseData)
+    SPD_STORAGE_UNIT_STATUS *Status)
 {
     RAWDISK *RawDisk = StorageUnit->UserContext;
     PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
 
     memcpy(Buffer, FileBuffer, Length);
 
-    return SCSISTAT_GOOD;
+    return TRUE;
 }
 
-UCHAR Write(SPD_STORAGE_UNIT *StorageUnit,
+BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddress, PVOID Buffer, UINT32 Length, BOOLEAN Flush,
-    PSENSE_DATA SenseData)
+    SPD_STORAGE_UNIT_STATUS *Status)
 {
     RAWDISK *RawDisk = StorageUnit->UserContext;
     PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
 
     memcpy(FileBuffer, Buffer, Length);
 
-    return SCSISTAT_GOOD;
+    return TRUE;
 }
 
-UCHAR Flush(SPD_STORAGE_UNIT *StorageUnit,
+BOOLEAN Flush(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddress, UINT32 Length,
-    PSENSE_DATA SenseData)
+    SPD_STORAGE_UNIT_STATUS *Status)
 {
     RAWDISK *RawDisk = StorageUnit->UserContext;
     PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
@@ -67,18 +67,18 @@ UCHAR Flush(SPD_STORAGE_UNIT *StorageUnit,
     if (!FlushFileBuffers(RawDisk->Handle))
         goto error;
 
-    return SCSISTAT_GOOD;
+    return TRUE;
 
 error:
     // !!!: fix sense data
-    return SCSISTAT_CHECK_CONDITION;
+    return TRUE;
 }
 
-UCHAR Unmap(SPD_STORAGE_UNIT *StorageUnit,
+BOOLEAN Unmap(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddresses[], UINT32 Lengths[], UINT32 Count,
-    PSENSE_DATA SenseData)
+    SPD_STORAGE_UNIT_STATUS *Status)
 {
-    return SCSISTAT_GOOD;
+    return TRUE;
 }
 
 static SPD_STORAGE_UNIT_INTERFACE RawDiskInterface =
@@ -98,7 +98,7 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
     HANDLE Mapping = 0;
     PVOID Pointer = 0;
     LARGE_INTEGER FileSize;
-    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
+    SPD_STORAGE_UNIT_PARAMS StorageUnitParams;
     SPD_STORAGE_UNIT *StorageUnit = 0;
     DWORD Error;
 

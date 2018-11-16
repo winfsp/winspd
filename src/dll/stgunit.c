@@ -41,7 +41,7 @@ VOID SpdStorageUnitFinalize(BOOLEAN Dynamic)
 }
 
 DWORD SpdStorageUnitCreate(
-    const SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams,
+    const SPD_STORAGE_UNIT_PARAMS *StorageUnitParams,
     const SPD_STORAGE_UNIT_INTERFACE *Interface,
     SPD_STORAGE_UNIT **PStorageUnit)
 {
@@ -113,6 +113,7 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
     SPD_IOCTL_TRANSACT_RSP ResponseBuf, *Response;
     SPD_STORAGE_UNIT_OPERATION_CONTEXT OperationContext;
     HANDLE DispatcherThread = 0;
+    BOOLEAN Complete;
     DWORD Error;
 
     if (1 < StorageUnit->DispatcherThreadCount)
@@ -133,6 +134,7 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
     Response = 0;
     for (;;)
     {
+        memset(Request, 0, sizeof *Request);
         Error = SpdIoctlTransact(StorageUnit->DeviceHandle, StorageUnit->Btl, Response, Request);
         if (ERROR_SUCCESS != Error)
             goto exit;
@@ -144,63 +146,64 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
         {
             if (SpdIoctlTransactKindCount <= Request->Kind ||
                 (StorageUnit->DebugLog & (1 << Request->Kind)))
-                /*SpdDebugLogRequest(Request)*/;
+                SpdDebugLogRequest(Request);
         }
 
         Response = &ResponseBuf;
+        memset(Response, 0, sizeof *Response);
         Response->Hint = Request->Hint;
         Response->Kind = Request->Kind;
         switch (Request->Kind)
         {
         case SpdIoctlTransactReadKind:
             if (0 != StorageUnit->Interface->Read)
-                Response->Status.ScsiStatus = StorageUnit->Interface->Read(
+                Complete = StorageUnit->Interface->Read(
                     StorageUnit,
                     Request->Op.Read.BlockAddress,
                     (PVOID)(UINT_PTR)Request->Op.Read.Address,
                     Request->Op.Read.Length,
                     Request->Op.Read.ForceUnitAccess,
-                    &Response->Status.SenseData);
+                    &Response->Status);
             break;
         case SpdIoctlTransactWriteKind:
             if (0 != StorageUnit->Interface->Write)
-                Response->Status.ScsiStatus = StorageUnit->Interface->Write(
+                Complete = StorageUnit->Interface->Write(
                     StorageUnit,
                     Request->Op.Write.BlockAddress,
                     (PVOID)(UINT_PTR)Request->Op.Write.Address,
                     Request->Op.Write.Length,
                     Request->Op.Write.ForceUnitAccess,
-                    &Response->Status.SenseData);
+                    &Response->Status);
             break;
         case SpdIoctlTransactFlushKind:
             if (0 != StorageUnit->Interface->Flush)
-                Response->Status.ScsiStatus = StorageUnit->Interface->Flush(
+                Complete = StorageUnit->Interface->Flush(
                     StorageUnit,
                     Request->Op.Flush.BlockAddress,
                     Request->Op.Flush.Length,
-                    &Response->Status.SenseData);
+                    &Response->Status);
             break;
         case SpdIoctlTransactUnmapKind:
             if (0 != StorageUnit->Interface->Unmap)
-                Response->Status.ScsiStatus = StorageUnit->Interface->Unmap(
+                Complete = StorageUnit->Interface->Unmap(
                     StorageUnit,
                     Request->Op.Unmap.BlockAddresses,
                     Request->Op.Unmap.Lengths,
                     Request->Op.Unmap.Count,
-                    &Response->Status.SenseData);
+                    &Response->Status);
             break;
         default:
             break;
         }
 
-        if (StorageUnit->DebugLog)
+        if (Complete && StorageUnit->DebugLog)
         {
             if (SpdIoctlTransactKindCount <= Response->Kind ||
                 (StorageUnit->DebugLog & (1 << Response->Kind)))
-                /*SpdDebugLogResponse(Response)*/;
+                SpdDebugLogResponse(Response);
         }
 
-        if ((UCHAR)-1 == Response->Status.ScsiStatus)
+        if (!Complete)
             Response = 0;
     }
 
@@ -266,7 +269,7 @@ VOID SpdStorageUnitSendResponse(SPD_STORAGE_UNIT *StorageUnit,
     {
         if (SpdIoctlTransactKindCount <= Response->Kind ||
             (StorageUnit->DebugLog & (1 << Response->Kind)))
-            /*SpdDebugLogResponse(Response)*/;
+            SpdDebugLogResponse(Response);
     }
 
     Error = SpdIoctlTransact(StorageUnit->DeviceHandle, StorageUnit->Btl, Response, 0);

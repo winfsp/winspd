@@ -52,6 +52,15 @@ extern "C" {
 /* IOCTL_MINIPORT_PROCESS_SERVICE_IRP marshalling */
 #pragma warning(push)
 #pragma warning(disable:4200)           /* zero-sized array in struct/union */
+enum
+{
+    SpdIoctlTransactReservedKind = 0,
+    SpdIoctlTransactReadKind,
+    SpdIoctlTransactWriteKind,
+    SpdIoctlTransactFlushKind,
+    SpdIoctlTransactUnmapKind,
+    SpdIoctlTransactKindCount,
+};
 typedef struct
 {
     GUID Guid;                          /* identity */
@@ -67,15 +76,18 @@ typedef struct
 static_assert(128 == sizeof(SPD_IOCTL_STORAGE_UNIT_PARAMS),
     "128 == sizeof(SPD_IOCTL_STORAGE_UNIT_PARAMS)");
 #endif
-enum
+typedef struct
 {
-    SpdIoctlTransactReservedKind = 0,
-    SpdIoctlTransactReadKind,
-    SpdIoctlTransactWriteKind,
-    SpdIoctlTransactFlushKind,
-    SpdIoctlTransactUnmapKind,
-    SpdIoctlTransactKindCount,
-};
+    UINT8 ScsiStatus;
+    UINT8 SenseKey;
+    UINT8 ASC;
+    UINT8 ASCQ;
+    UINT64 Information;
+    UINT64 ReservedCSI;
+    UINT32 ReservedSKS;
+    UINT32 ReservedFRU:8;
+    UINT32 InformationValid:1;
+} SPD_IOCTL_STORAGE_UNIT_STATUS;
 typedef struct
 {
     UINT64 Hint;
@@ -115,11 +127,7 @@ typedef struct
 {
     UINT64 Hint;
     UINT8 Kind;
-    struct
-    {
-        UINT8 ScsiStatus;
-        SENSE_DATA SenseData;
-    } Status;
+    SPD_IOCTL_STORAGE_UNIT_STATUS Status;
 } SPD_IOCTL_TRANSACT_RSP;
 typedef struct
 {

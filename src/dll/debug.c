@@ -132,37 +132,109 @@ VOID SpdDebugLogRequest(SPD_IOCTL_TRANSACT_REQ *Request)
     }
 }
 
+static const char *SpdDebugLogScsiStatusSym(UINT8 ScsiStatus)
+{
+    switch (ScsiStatus)
+    {
+    case SCSISTAT_GOOD:
+        return "GOOD";
+    case SCSISTAT_CHECK_CONDITION:
+        return "CHECK_CONDITION";
+    case SCSISTAT_CONDITION_MET:
+        return "CONDITION_MET";
+    case SCSISTAT_BUSY:
+        return "BUSY";
+    case SCSISTAT_RESERVATION_CONFLICT:
+        return "RESERVATION_CONFLICT";
+    case SCSISTAT_QUEUE_FULL:
+        return "TASK_SET_FULL";
+    case 0x30:
+        return "ACA_ACTIVE";
+    case 0x40:
+        return "TASK_ABORTED";
+    default:
+        return "UNKNOWN";
+    }
+}
+
+static const char *SpdDebugLogSenseKeySym(UINT8 SenseKey)
+{
+    switch (SenseKey)
+    {
+    case SCSI_SENSE_NO_SENSE:
+        return "NO_SENSE";
+    case SCSI_SENSE_RECOVERED_ERROR:
+        return "RECOVERED_ERROR";
+    case SCSI_SENSE_NOT_READY:
+        return "NOT_READY";
+    case SCSI_SENSE_MEDIUM_ERROR:
+        return "MEDIUM_ERROR";
+    case SCSI_SENSE_HARDWARE_ERROR:
+        return "HARDWARE_ERROR";
+    case SCSI_SENSE_ILLEGAL_REQUEST:
+        return "ILLEGAL_REQUEST";
+    case SCSI_SENSE_UNIT_ATTENTION:
+        return "UNIT_ATTENTION";
+    case SCSI_SENSE_DATA_PROTECT:
+        return "DATA_PROTECT";
+    case SCSI_SENSE_BLANK_CHECK:
+        return "BLANK_CHECK";
+    case SCSI_SENSE_UNIQUE:
+        return "VENDOR_SPECIFIC";
+    case SCSI_SENSE_COPY_ABORTED:
+        return "COPY_ABORTED";
+    case SCSI_SENSE_ABORTED_COMMAND:
+        return "ABORTED_COMMAND";
+    case SCSI_SENSE_VOL_OVERFLOW:
+        return "VOL_OVERFLOW";
+    case SCSI_SENSE_MISCOMPARE:
+        return "MISCOMPARE";
+    default:
+        return "UNKNOWN";
+    }
+}
+
+static VOID SpdDebugLogResponseStatus(SPD_IOCTL_TRANSACT_RSP *Response, const char *Name)
+{
+    if (SCSISTAT_GOOD == Response->Status.ScsiStatus)
+        SpdDebugLog("%S[TID=%04lx]: %p: <<%s Status=%s\n",
+            SpdDiagIdent(), GetCurrentThreadId(), (PVOID)Response->Hint, Name,
+            SpdDebugLogScsiStatusSym(Response->Status.ScsiStatus));
+    else if (!Response->Status.InformationValid)
+        SpdDebugLog("%S[TID=%04lx]: %p: <<%s Status=%u SenseKey=%s ASC/ASCQ=%lu/%lu\n",
+            SpdDiagIdent(), GetCurrentThreadId(), (PVOID)Response->Hint, Name,
+            SpdDebugLogScsiStatusSym(Response->Status.ScsiStatus),
+            SpdDebugLogSenseKeySym(Response->Status.SenseKey),
+            (unsigned)Response->Status.ASC,
+            (unsigned)Response->Status.ASCQ);
+    else
+        SpdDebugLog("%S[TID=%04lx]: %p: <<%s Status=%u SenseKey=%s ASC/ASCQ=%lu/%lu Information=%lx:%lx\n",
+            SpdDiagIdent(), GetCurrentThreadId(), (PVOID)Response->Hint, Name,
+            SpdDebugLogScsiStatusSym(Response->Status.ScsiStatus),
+            SpdDebugLogSenseKeySym(Response->Status.SenseKey),
+            (unsigned)Response->Status.ASC,
+            (unsigned)Response->Status.ASCQ,
+            MAKE_UINT32_PAIR(Response->Status.Information));
+}
+
 VOID SpdDebugLogResponse(SPD_IOCTL_TRANSACT_RSP *Response)
 {
-    if (-1 == Response->Status.ScsiStatus)
-        return;
-
     switch (Response->Kind)
     {
     case SpdIoctlTransactReadKind:
-        SpdDebugLog("%S[TID=%04lx]: %p: <<Read Status=%u\n",
-            SpdDiagIdent(), GetCurrentThreadId(), (PVOID)Response->Hint,
-            (unsigned)Response->Status.ScsiStatus);
+        SpdDebugLogResponseStatus(Response, "Read");
         break;
     case SpdIoctlTransactWriteKind:
-        SpdDebugLog("%S[TID=%04lx]: %p: <<Write Status=%u\n",
-            SpdDiagIdent(), GetCurrentThreadId(), (PVOID)Response->Hint,
-            (unsigned)Response->Status.ScsiStatus);
+        SpdDebugLogResponseStatus(Response, "Write");
         break;
     case SpdIoctlTransactFlushKind:
-        SpdDebugLog("%S[TID=%04lx]: %p: <<Flush Status=%u\n",
-            SpdDiagIdent(), GetCurrentThreadId(), (PVOID)Response->Hint,
-            (unsigned)Response->Status.ScsiStatus);
+        SpdDebugLogResponseStatus(Response, "Flush");
         break;
     case SpdIoctlTransactUnmapKind:
-        SpdDebugLog("%S[TID=%04lx]: %p: <<Unmap Status=%u\n",
-            SpdDiagIdent(), GetCurrentThreadId(), (PVOID)Response->Hint,
-            (unsigned)Response->Status.ScsiStatus);
+        SpdDebugLogResponseStatus(Response, "Unmap");
         break;
     default:
-        SpdDebugLog("%S[TID=%04lx]: %p: <<INVALID Status=%u\n",
-            SpdDiagIdent(), GetCurrentThreadId(), (PVOID)Response->Hint,
-            (unsigned)Response->Status.ScsiStatus);
+        SpdDebugLogResponseStatus(Response, "INVALID");
         break;
     }
 }
