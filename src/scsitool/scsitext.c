@@ -125,7 +125,7 @@ void ScsiText(
 
             if (-1 != nminusv)
             {
-                size_t newlen = uval + nminusv + 1;
+                size_t newlen = (size_t)(uval + nminusv + 1);
                 warn = len != newlen ?
                     "data buffer length mismatch" : 0;
                 if (len > newlen)
