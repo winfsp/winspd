@@ -32,6 +32,10 @@ typedef struct _RAWDISK
     BOOLEAN Sparse;
 } RAWDISK;
 
+static BOOLEAN Flush(SPD_STORAGE_UNIT *StorageUnit,
+    UINT64 BlockAddress, UINT32 BlockCount,
+    SPD_STORAGE_UNIT_STATUS *Status);
+
 static inline BOOLEAN ExceptionFilter(ULONG Code, PEXCEPTION_POINTERS Pointers,
     PUINT_PTR PDataAddress)
 {
@@ -43,10 +47,17 @@ static inline BOOLEAN ExceptionFilter(ULONG Code, PEXCEPTION_POINTERS Pointers,
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
-BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
-    PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN Flush,
+static BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
+    PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN FlushFlag,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
+    if (FlushFlag)
+    {
+        Flush(StorageUnit, BlockAddress, BlockCount, Status);
+        if (SCSISTAT_GOOD != Status->ScsiStatus)
+            return TRUE;
+    }
+
     RAWDISK *RawDisk = StorageUnit->UserContext;
     PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
     UINT_PTR ExceptionDataAddress;
@@ -72,8 +83,8 @@ BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
     return TRUE;
 }
 
-BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
-    PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN Flush,
+static BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
+    PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN FlushFlag,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
     RAWDISK *RawDisk = StorageUnit->UserContext;
@@ -98,10 +109,13 @@ BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
         }
     }
 
+    if (SCSISTAT_GOOD == Status->ScsiStatus && FlushFlag)
+        Flush(StorageUnit, BlockAddress, BlockCount, Status);
+
     return TRUE;
 }
 
-BOOLEAN Flush(SPD_STORAGE_UNIT *StorageUnit,
+static BOOLEAN Flush(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddress, UINT32 BlockCount,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
@@ -123,7 +137,7 @@ error:
     return TRUE;
 }
 
-BOOLEAN Unmap(SPD_STORAGE_UNIT *StorageUnit,
+static BOOLEAN Unmap(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddresses[], UINT32 BlockCounts[], UINT32 Count,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
@@ -286,10 +300,10 @@ VOID RawDiskDelete(RAWDISK *RawDisk)
 {
     SpdStorageUnitDelete(RawDisk->StorageUnit);
 
+    FlushViewOfFile(RawDisk->Pointer, 0);
+    FlushFileBuffers(RawDisk->Handle);
     UnmapViewOfFile(RawDisk->Pointer);
-
     CloseHandle(RawDisk->Mapping);
-
     CloseHandle(RawDisk->Handle);
 
     MemFree(RawDisk);
