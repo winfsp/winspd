@@ -161,7 +161,7 @@ VOID SpdStorageUnitSetDispatcherError(SPD_STORAGE_UNIT *StorageUnit,
 {
     if (ERROR_SUCCESS == DispatcherError)
         return;
-    InterlockedCompareExchange(&StorageUnit->DispatcherError, DispatcherError, 0);
+    InterlockedCompareExchange(&StorageUnit->DispatcherError, DispatcherError, ERROR_SUCCESS);
 }
 
 /*
