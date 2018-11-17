@@ -156,43 +156,52 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
         switch (Request->Kind)
         {
         case SpdIoctlTransactReadKind:
-            if (0 != StorageUnit->Interface->Read)
-                Complete = StorageUnit->Interface->Read(
-                    StorageUnit,
-                    Request->Op.Read.BlockAddress,
-                    (PVOID)(UINT_PTR)Request->Op.Read.Address,
-                    Request->Op.Read.Length,
-                    Request->Op.Read.ForceUnitAccess,
-                    &Response->Status);
+            if (0 == StorageUnit->Interface->Read)
+                goto invalid;
+            Complete = StorageUnit->Interface->Read(
+                StorageUnit,
+                Request->Op.Read.BlockAddress,
+                (PVOID)(UINT_PTR)Request->Op.Read.Address,
+                Request->Op.Read.Length,
+                Request->Op.Read.ForceUnitAccess,
+                &Response->Status);
             break;
         case SpdIoctlTransactWriteKind:
-            if (0 != StorageUnit->Interface->Write)
-                Complete = StorageUnit->Interface->Write(
-                    StorageUnit,
-                    Request->Op.Write.BlockAddress,
-                    (PVOID)(UINT_PTR)Request->Op.Write.Address,
-                    Request->Op.Write.Length,
-                    Request->Op.Write.ForceUnitAccess,
-                    &Response->Status);
+            if (0 == StorageUnit->Interface->Write)
+                goto invalid;
+            Complete = StorageUnit->Interface->Write(
+                StorageUnit,
+                Request->Op.Write.BlockAddress,
+                (PVOID)(UINT_PTR)Request->Op.Write.Address,
+                Request->Op.Write.Length,
+                Request->Op.Write.ForceUnitAccess,
+                &Response->Status);
             break;
         case SpdIoctlTransactFlushKind:
-            if (0 != StorageUnit->Interface->Flush)
-                Complete = StorageUnit->Interface->Flush(
-                    StorageUnit,
-                    Request->Op.Flush.BlockAddress,
-                    Request->Op.Flush.Length,
-                    &Response->Status);
+            if (0 == StorageUnit->Interface->Flush)
+                goto invalid;
+            Complete = StorageUnit->Interface->Flush(
+                StorageUnit,
+                Request->Op.Flush.BlockAddress,
+                Request->Op.Flush.Length,
+                &Response->Status);
             break;
         case SpdIoctlTransactUnmapKind:
-            if (0 != StorageUnit->Interface->Unmap)
-                Complete = StorageUnit->Interface->Unmap(
-                    StorageUnit,
-                    Request->Op.Unmap.BlockAddresses,
-                    Request->Op.Unmap.Lengths,
-                    Request->Op.Unmap.Count,
-                    &Response->Status);
+            if (0 == StorageUnit->Interface->Unmap)
+                goto invalid;
+            Complete = StorageUnit->Interface->Unmap(
+                StorageUnit,
+                Request->Op.Unmap.BlockAddresses,
+                Request->Op.Unmap.Lengths,
+                Request->Op.Unmap.Count,
+                &Response->Status);
             break;
         default:
+        invalid:
+            Response->Status.ScsiStatus = SCSISTAT_CHECK_CONDITION;
+            Response->Status.SenseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+            Response->Status.ASC = SCSI_ADSENSE_ILLEGAL_COMMAND;
+            Complete = TRUE;
             break;
         }
 
