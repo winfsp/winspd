@@ -96,28 +96,28 @@ VOID SpdDebugLogRequest(SPD_IOCTL_TRANSACT_REQ *Request)
     {
     case SpdIoctlTransactReadKind:
         SpdDebugLog("%S[TID=%04lx]: %p: >>Read "
-            "BlockAddress=%lx:%lx, Address=%p, Length=%u, ForceUnitAccess=%u\n",
+            "Address=%p, BlockAddress=%lx:%lx, BlockCount=%u, ForceUnitAccess=%u\n",
             SpdDiagIdent(), GetCurrentThreadId(), (PVOID)Request->Hint,
-            MAKE_UINT32_PAIR(Request->Op.Read.BlockAddress),
             (PVOID)Request->Op.Read.Address,
-            (unsigned)Request->Op.Read.Length,
+            MAKE_UINT32_PAIR(Request->Op.Read.BlockAddress),
+            (unsigned)Request->Op.Read.BlockCount,
             (unsigned)Request->Op.Read.ForceUnitAccess);
         break;
     case SpdIoctlTransactWriteKind:
         SpdDebugLog("%S[TID=%04lx]: %p: >>Write "
-            "BlockAddress=%lx:%lx, Address=%p, Length=%u, ForceUnitAccess=%u\n",
+            "Address=%p, BlockAddress=%lx:%lx, BlockCount=%u, ForceUnitAccess=%u\n",
             SpdDiagIdent(), GetCurrentThreadId(), (PVOID)Request->Hint,
-            MAKE_UINT32_PAIR(Request->Op.Write.BlockAddress),
             (PVOID)Request->Op.Write.Address,
-            (unsigned)Request->Op.Write.Length,
+            MAKE_UINT32_PAIR(Request->Op.Write.BlockAddress),
+            (unsigned)Request->Op.Write.BlockCount,
             (unsigned)Request->Op.Write.ForceUnitAccess);
         break;
     case SpdIoctlTransactFlushKind:
         SpdDebugLog("%S[TID=%04lx]: %p: >>Flush "
-            "BlockAddress=%lx:%lx, Length=%u, ForceUnitAccess=%u\n",
+            "BlockAddress=%lx:%lx, BlockCount=%u, ForceUnitAccess=%u\n",
             SpdDiagIdent(), GetCurrentThreadId(), (PVOID)Request->Hint,
             MAKE_UINT32_PAIR(Request->Op.Flush.BlockAddress),
-            (unsigned)Request->Op.Flush.Length);
+            (unsigned)Request->Op.Flush.BlockCount);
         break;
     case SpdIoctlTransactUnmapKind:
         SpdDebugLog("%S[TID=%04lx]: %p: >>Unmap "

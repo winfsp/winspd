@@ -44,7 +44,7 @@ static inline BOOLEAN ExceptionFilter(ULONG Code, PEXCEPTION_POINTERS Pointers,
 }
 
 BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
-    UINT64 BlockAddress, PVOID Buffer, UINT32 Length, BOOLEAN Flush,
+    PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN Flush,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
     RAWDISK *RawDisk = StorageUnit->UserContext;
@@ -53,7 +53,7 @@ BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
 
     __try
     {
-        memcpy(Buffer, FileBuffer, Length);
+        memcpy(Buffer, FileBuffer, BlockCount * RawDisk->BlockLength);
     }
     __except (ExceptionFilter(GetExceptionCode(), GetExceptionInformation(), &ExceptionDataAddress))
     {
@@ -73,7 +73,7 @@ BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
 }
 
 BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
-    UINT64 BlockAddress, PVOID Buffer, UINT32 Length, BOOLEAN Flush,
+    PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN Flush,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
     RAWDISK *RawDisk = StorageUnit->UserContext;
@@ -82,7 +82,7 @@ BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
 
     __try
     {
-        memcpy(FileBuffer, Buffer, Length);
+        memcpy(FileBuffer, Buffer, BlockCount * RawDisk->BlockLength);
     }
     __except (ExceptionFilter(GetExceptionCode(), GetExceptionInformation(), &ExceptionDataAddress))
     {
@@ -102,13 +102,13 @@ BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
 }
 
 BOOLEAN Flush(SPD_STORAGE_UNIT *StorageUnit,
-    UINT64 BlockAddress, UINT32 Length,
+    UINT64 BlockAddress, UINT32 BlockCount,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
     RAWDISK *RawDisk = StorageUnit->UserContext;
     PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
 
-    if (!FlushViewOfFile(FileBuffer, Length))
+    if (!FlushViewOfFile(FileBuffer, BlockCount * RawDisk->BlockLength))
         goto error;
     if (!FlushFileBuffers(RawDisk->Handle))
         goto error;
@@ -124,7 +124,7 @@ error:
 }
 
 BOOLEAN Unmap(SPD_STORAGE_UNIT *StorageUnit,
-    UINT64 BlockAddresses[], UINT32 Lengths[], UINT32 Count,
+    UINT64 BlockAddresses[], UINT32 BlockCounts[], UINT32 Count,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
     RAWDISK *RawDisk = StorageUnit->UserContext;
@@ -135,7 +135,7 @@ BOOLEAN Unmap(SPD_STORAGE_UNIT *StorageUnit,
         for (UINT32 I = 0; Count > I; I++)
         {
             Zero.FileOffset.QuadPart = BlockAddresses[I];
-            Zero.BeyondFinalZero.QuadPart = BlockAddresses[I] + Lengths[I];
+            Zero.BeyondFinalZero.QuadPart = BlockAddresses[I] + BlockCounts[I] * RawDisk->BlockLength;
             DeviceIoControl(RawDisk->Handle,
                 FSCTL_SET_ZERO_DATA, &Zero, sizeof Zero, 0, 0, &BytesTransferred, 0);
             /* do not report errors! */

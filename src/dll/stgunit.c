@@ -160,9 +160,9 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
                 goto invalid;
             Complete = StorageUnit->Interface->Read(
                 StorageUnit,
-                Request->Op.Read.BlockAddress,
                 (PVOID)(UINT_PTR)Request->Op.Read.Address,
-                Request->Op.Read.Length,
+                Request->Op.Read.BlockAddress,
+                Request->Op.Read.BlockCount,
                 Request->Op.Read.ForceUnitAccess,
                 &Response->Status);
             break;
@@ -171,9 +171,9 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
                 goto invalid;
             Complete = StorageUnit->Interface->Write(
                 StorageUnit,
-                Request->Op.Write.BlockAddress,
                 (PVOID)(UINT_PTR)Request->Op.Write.Address,
-                Request->Op.Write.Length,
+                Request->Op.Write.BlockAddress,
+                Request->Op.Write.BlockCount,
                 Request->Op.Write.ForceUnitAccess,
                 &Response->Status);
             break;
@@ -183,7 +183,7 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
             Complete = StorageUnit->Interface->Flush(
                 StorageUnit,
                 Request->Op.Flush.BlockAddress,
-                Request->Op.Flush.Length,
+                Request->Op.Flush.BlockCount,
                 &Response->Status);
             break;
         case SpdIoctlTransactUnmapKind:
@@ -192,7 +192,7 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
             Complete = StorageUnit->Interface->Unmap(
                 StorageUnit,
                 Request->Op.Unmap.BlockAddresses,
-                Request->Op.Unmap.Lengths,
+                Request->Op.Unmap.BlockCounts,
                 Request->Op.Unmap.Count,
                 &Response->Status);
             break;

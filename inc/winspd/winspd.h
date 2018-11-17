@@ -47,16 +47,16 @@ typedef struct _SPD_STORAGE_UNIT SPD_STORAGE_UNIT;
 typedef struct _SPD_STORAGE_UNIT_INTERFACE
 {
     BOOLEAN (*Read)(SPD_STORAGE_UNIT *StorageUnit,
-        UINT64 BlockAddress, PVOID Buffer, UINT32 Length, BOOLEAN Flush,
+        PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN Flush,
         SPD_STORAGE_UNIT_STATUS *Status);
     BOOLEAN (*Write)(SPD_STORAGE_UNIT *StorageUnit,
-        UINT64 BlockAddress, PVOID Buffer, UINT32 Length, BOOLEAN Flush,
+        PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN Flush,
         SPD_STORAGE_UNIT_STATUS *Status);
     BOOLEAN (*Flush)(SPD_STORAGE_UNIT *StorageUnit,
-        UINT64 BlockAddress, UINT32 Length,
+        UINT64 BlockAddress, UINT32 BlockCount,
         SPD_STORAGE_UNIT_STATUS *Status);
     BOOLEAN (*Unmap)(SPD_STORAGE_UNIT *StorageUnit,
-        UINT64 BlockAddresses[], UINT32 Lengths[], UINT32 Count,
+        UINT64 BlockAddresses[], UINT32 BlockCounts[], UINT32 Count,
         SPD_STORAGE_UNIT_STATUS *Status);
 
     /*

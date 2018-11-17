@@ -98,7 +98,7 @@ typedef struct
         {
             UINT64 Address;
             UINT64 BlockAddress;
-            UINT32 Length;
+            UINT32 BlockCount;
             UINT32 ForceUnitAccess:1;
             UINT32 Reserved:31;
         } Read;
@@ -106,20 +106,20 @@ typedef struct
         {
             UINT64 Address;
             UINT64 BlockAddress;
-            UINT32 Length;
+            UINT32 BlockCount;
             UINT32 ForceUnitAccess:1;
             UINT32 Reserved:31;
         } Write;
         struct
         {
             UINT64 BlockAddress;
-            UINT32 Length;
+            UINT32 BlockCount;
         } Flush;
         struct
         {
             UINT16 Count;
             UINT64 BlockAddresses[SPD_IOCTL_UNMAP_DESCR_MAX_COUNT];
-            UINT32 Lengths[SPD_IOCTL_UNMAP_DESCR_MAX_COUNT];
+            UINT32 BlockCounts[SPD_IOCTL_UNMAP_DESCR_MAX_COUNT];
         } Unmap;
     } Op;
 } SPD_IOCTL_TRANSACT_REQ;
