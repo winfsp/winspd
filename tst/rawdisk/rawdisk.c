@@ -29,7 +29,19 @@ typedef struct _RAWDISK
     HANDLE Handle;
     HANDLE Mapping;
     PVOID Pointer;
+    BOOLEAN Sparse;
 } RAWDISK;
+
+static inline BOOLEAN ExceptionFilter(ULONG Code, PEXCEPTION_POINTERS Pointers,
+    PUINT_PTR PDataAddress)
+{
+    if (EXCEPTION_IN_PAGE_ERROR != Code)
+        return EXCEPTION_CONTINUE_SEARCH;
+
+    *PDataAddress = 2 <= Pointers->ExceptionRecord->NumberParameters ?
+        Pointers->ExceptionRecord->ExceptionInformation[1] : 0;
+    return EXCEPTION_EXECUTE_HANDLER;
+}
 
 BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddress, PVOID Buffer, UINT32 Length, BOOLEAN Flush,
@@ -37,8 +49,25 @@ BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
 {
     RAWDISK *RawDisk = StorageUnit->UserContext;
     PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
+    UINT_PTR ExceptionDataAddress;
 
-    memcpy(Buffer, FileBuffer, Length);
+    __try
+    {
+        memcpy(Buffer, FileBuffer, Length);
+    }
+    __except (ExceptionFilter(GetExceptionCode(), GetExceptionInformation(), &ExceptionDataAddress))
+    {
+        Status->ScsiStatus = SCSISTAT_CHECK_CONDITION;
+        Status->SenseKey = SCSI_SENSE_MEDIUM_ERROR;
+        Status->ASC = SCSI_ADSENSE_UNRECOVERED_ERROR;
+
+        if (0 != ExceptionDataAddress)
+        {
+            Status->Information = (UINT64)(ExceptionDataAddress - (UINT_PTR)RawDisk->Pointer) /
+                RawDisk->BlockLength;
+            Status->InformationValid = 1;
+        }
+    }
 
     return TRUE;
 }
@@ -49,8 +78,25 @@ BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
 {
     RAWDISK *RawDisk = StorageUnit->UserContext;
     PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
+    UINT_PTR ExceptionDataAddress;
 
-    memcpy(FileBuffer, Buffer, Length);
+    __try
+    {
+        memcpy(FileBuffer, Buffer, Length);
+    }
+    __except (ExceptionFilter(GetExceptionCode(), GetExceptionInformation(), &ExceptionDataAddress))
+    {
+        Status->ScsiStatus = SCSISTAT_CHECK_CONDITION;
+        Status->SenseKey = SCSI_SENSE_MEDIUM_ERROR;
+        Status->ASC = SCSI_ADSENSE_WRITE_ERROR;
+
+        if (0 != ExceptionDataAddress)
+        {
+            Status->Information = (UINT64)(ExceptionDataAddress - (UINT_PTR)RawDisk->Pointer) /
+                RawDisk->BlockLength;
+            Status->InformationValid = 1;
+        }
+    }
 
     return TRUE;
 }
@@ -70,7 +116,10 @@ BOOLEAN Flush(SPD_STORAGE_UNIT *StorageUnit,
     return TRUE;
 
 error:
-    // !!!: fix sense data
+    Status->ScsiStatus = SCSISTAT_CHECK_CONDITION;
+    Status->SenseKey = SCSI_SENSE_MEDIUM_ERROR;
+    Status->ASC = SCSI_ADSENSE_WRITE_ERROR;
+
     return TRUE;
 }
 
@@ -78,6 +127,20 @@ BOOLEAN Unmap(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddresses[], UINT32 Lengths[], UINT32 Count,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
+    RAWDISK *RawDisk = StorageUnit->UserContext;
+    FILE_ZERO_DATA_INFORMATION Zero;
+    DWORD BytesTransferred;
+
+    if (RawDisk->Sparse)
+        for (UINT32 I = 0; Count > I; I++)
+        {
+            Zero.FileOffset.QuadPart = BlockAddresses[I];
+            Zero.BeyondFinalZero.QuadPart = BlockAddresses[I] + Lengths[I];
+            DeviceIoControl(RawDisk->Handle,
+                FSCTL_SET_ZERO_DATA, &Zero, sizeof Zero, 0, 0, &BytesTransferred, 0);
+            /* do not report errors! */
+        }
+
     return TRUE;
 }
 
@@ -97,6 +160,8 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
     HANDLE Handle = INVALID_HANDLE_VALUE;
     HANDLE Mapping = 0;
     PVOID Pointer = 0;
+    FILE_SET_SPARSE_BUFFER Sparse;
+    DWORD BytesTransferred;
     LARGE_INTEGER FileSize;
     SPD_STORAGE_UNIT_PARAMS StorageUnitParams;
     SPD_STORAGE_UNIT *StorageUnit = 0;
@@ -140,6 +205,10 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
         Error = GetLastError();
         goto exit;
     }
+
+    Sparse.SetSparse = TRUE;
+    Sparse.SetSparse = DeviceIoControl(RawDiskFile,
+        FSCTL_SET_SPARSE, &Sparse, sizeof Sparse, 0, 0, &BytesTransferred, 0);
 
     if (!GetFileSizeEx(Handle, &FileSize))
     {
@@ -187,6 +256,7 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
     RawDisk->Handle = Handle;
     RawDisk->Mapping = Mapping;
     RawDisk->Pointer = Pointer;
+    RawDisk->Sparse = Sparse.SetSparse;
     StorageUnit->UserContext = RawDisk;
 
     Error = ERROR_SUCCESS;

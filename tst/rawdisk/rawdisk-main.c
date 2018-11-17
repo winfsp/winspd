@@ -167,6 +167,7 @@ int wmain(int argc, wchar_t **argv)
     return 0;
 }
 
+#if 0
 void wmainCRTStartup(void)
 {
     DWORD Argc;
@@ -178,3 +179,4 @@ void wmainCRTStartup(void)
 
     ExitProcess(wmain(Argc, Argv));
 }
+#endif
