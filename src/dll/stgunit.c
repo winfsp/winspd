@@ -198,9 +198,8 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
             break;
         default:
         invalid:
-            Response->Status.ScsiStatus = SCSISTAT_CHECK_CONDITION;
-            Response->Status.SenseKey = SCSI_SENSE_ILLEGAL_REQUEST;
-            Response->Status.ASC = SCSI_ADSENSE_ILLEGAL_COMMAND;
+            SpdStorageUnitStatusSetSense(&Response->Status,
+                SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_ILLEGAL_COMMAND, 0);
             Complete = TRUE;
             break;
         }
