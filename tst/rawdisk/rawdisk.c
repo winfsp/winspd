@@ -68,16 +68,10 @@ static BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
     }
     __except (ExceptionFilter(GetExceptionCode(), GetExceptionInformation(), &ExceptionDataAddress))
     {
-        Status->ScsiStatus = SCSISTAT_CHECK_CONDITION;
-        Status->SenseKey = SCSI_SENSE_MEDIUM_ERROR;
-        Status->ASC = SCSI_ADSENSE_UNRECOVERED_ERROR;
-
-        if (0 != ExceptionDataAddress)
-        {
-            Status->Information = (UINT64)(ExceptionDataAddress - (UINT_PTR)RawDisk->Pointer) /
-                RawDisk->BlockLength;
-            Status->InformationValid = 1;
-        }
+        UINT64 Information = (UINT64)(ExceptionDataAddress - (UINT_PTR)RawDisk->Pointer) /
+            RawDisk->BlockLength;
+        SpdStorageUnitStatusSetSense(Status,
+            SCSI_SENSE_MEDIUM_ERROR, SCSI_ADSENSE_UNRECOVERED_ERROR, 0 != Information ? &Information : 0);
     }
 
     return TRUE;
@@ -97,16 +91,10 @@ static BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
     }
     __except (ExceptionFilter(GetExceptionCode(), GetExceptionInformation(), &ExceptionDataAddress))
     {
-        Status->ScsiStatus = SCSISTAT_CHECK_CONDITION;
-        Status->SenseKey = SCSI_SENSE_MEDIUM_ERROR;
-        Status->ASC = SCSI_ADSENSE_WRITE_ERROR;
-
-        if (0 != ExceptionDataAddress)
-        {
-            Status->Information = (UINT64)(ExceptionDataAddress - (UINT_PTR)RawDisk->Pointer) /
-                RawDisk->BlockLength;
-            Status->InformationValid = 1;
-        }
+        UINT64 Information = (UINT64)(ExceptionDataAddress - (UINT_PTR)RawDisk->Pointer) /
+            RawDisk->BlockLength;
+        SpdStorageUnitStatusSetSense(Status,
+            SCSI_SENSE_MEDIUM_ERROR, SCSI_ADSENSE_WRITE_ERROR, 0 != Information ? &Information : 0);
     }
 
     if (SCSISTAT_GOOD == Status->ScsiStatus && FlushFlag)
@@ -130,9 +118,8 @@ static BOOLEAN Flush(SPD_STORAGE_UNIT *StorageUnit,
     return TRUE;
 
 error:
-    Status->ScsiStatus = SCSISTAT_CHECK_CONDITION;
-    Status->SenseKey = SCSI_SENSE_MEDIUM_ERROR;
-    Status->ASC = SCSI_ADSENSE_WRITE_ERROR;
+    SpdStorageUnitStatusSetSense(Status,
+        SCSI_SENSE_MEDIUM_ERROR, SCSI_ADSENSE_WRITE_ERROR, 0);
 
     return TRUE;
 }

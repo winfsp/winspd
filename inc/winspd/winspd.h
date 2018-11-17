@@ -165,6 +165,24 @@ VOID SpdStorageUnitSetDispatcherError(SPD_STORAGE_UNIT *StorageUnit,
 }
 
 /*
+ * Helpers
+ */
+static inline
+VOID SpdStorageUnitStatusSetSense(SPD_STORAGE_UNIT_STATUS *Status,
+    UINT8 SenseKey, UINT8 ASC, PUINT64 PInformation)
+{
+    Status->ScsiStatus = SCSISTAT_CHECK_CONDITION;
+    Status->SenseKey = SenseKey;
+    Status->ASC = ASC;
+
+    if (0 != PInformation)
+    {
+        Status->Information = *PInformation;
+        Status->InformationValid = 1;
+    }
+}
+
+/*
  * Utility
  */
 VOID SpdDebugLogSetHandle(HANDLE Handle);
