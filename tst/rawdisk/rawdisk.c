@@ -135,8 +135,8 @@ static BOOLEAN Unmap(SPD_STORAGE_UNIT *StorageUnit,
     if (RawDisk->Sparse)
         for (UINT32 I = 0; Count > I; I++)
         {
-            Zero.FileOffset.QuadPart = BlockAddresses[I];
-            Zero.BeyondFinalZero.QuadPart = BlockAddresses[I] + BlockCounts[I] * RawDisk->BlockLength;
+            Zero.FileOffset.QuadPart = BlockAddresses[I] * RawDisk->BlockLength;
+            Zero.BeyondFinalZero.QuadPart = (BlockAddresses[I] + BlockCounts[I]) * RawDisk->BlockLength;
             DeviceIoControl(RawDisk->Handle,
                 FSCTL_SET_ZERO_DATA, &Zero, sizeof Zero, 0, 0, &BytesTransferred, 0);
             /* do not report errors! */
