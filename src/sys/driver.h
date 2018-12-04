@@ -322,15 +322,16 @@ typedef struct _SPD_STORAGE_UNIT
     ULONG ProcessId;
     SPD_IOQ *Ioq;
 } SPD_STORAGE_UNIT;
-static inline SPD_STORAGE_UNIT *SpdGetStorageUnit(PVOID DeviceExtension0,
-    UCHAR PathId, UCHAR TargetId, UCHAR Lun)
+static inline SPD_STORAGE_UNIT *SpdGetStorageUnit(PVOID DeviceExtension0, PVOID Srb)
 {
     ASSERT(DISPATCH_LEVEL >= KeGetCurrentIrql());
 
     SPD_DEVICE_EXTENSION *DeviceExtension = DeviceExtension0;
+    UCHAR PathId, TargetId, Lun;
     SPD_STORAGE_UNIT *StorageUnit;
     KIRQL Irql;
 
+    SrbGetPathTargetLun(Srb, &PathId, &TargetId, &Lun);
     if (0 != PathId || 0 != Lun)
         return 0;
 

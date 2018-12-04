@@ -91,7 +91,18 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
 
 UCHAR SpdSrbAbortCommand(PVOID DeviceExtension, PVOID Srb)
 {
-    return SRB_STATUS_INVALID_REQUEST;
+    SPD_STORAGE_UNIT *StorageUnit;
+    NTSTATUS Result;
+
+    StorageUnit = SpdGetStorageUnit(DeviceExtension, Srb);
+    if (0 == StorageUnit)
+        return SRB_STATUS_ABORT_FAILED;
+
+    Result = SpdIoqCancelSrb(StorageUnit->Ioq, Srb);
+    if (!NT_SUCCESS(Result))
+        return SRB_STATUS_ABORT_FAILED;
+    
+    return SRB_STATUS_SUCCESS;
 }
 
 UCHAR SpdSrbResetBus(PVOID DeviceExtension, PVOID Srb)
