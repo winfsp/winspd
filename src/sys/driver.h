@@ -343,6 +343,9 @@ static inline SPD_STORAGE_UNIT *SpdGetStorageUnit(PVOID DeviceExtension0,
 #define SPD_INDEX_FROM_BTL(Btl)         SPD_IOCTL_BTL_T(Btl)
 #define SPD_BTL_FROM_INDEX(Idx)         SPD_IOCTL_BTL(0, Idx, 0)
 
+/* extern */
+extern UCHAR SpdStorageUnitMaxCount;
+
 /*
  * Fixes
  */
