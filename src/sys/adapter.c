@@ -42,7 +42,7 @@ ULONG SpdHwFindAdapter(
     ConfigInfo->Master = TRUE;
     ConfigInfo->CachesData = TRUE;
     ConfigInfo->AdapterScansDown = FALSE;
-    ConfigInfo->MaximumNumberOfTargets = SPD_IOCTL_STORAGE_UNIT_MAX_COUNT;
+    ConfigInfo->MaximumNumberOfTargets = SpdStorageUnitMaxCount;
     ConfigInfo->MaximumNumberOfLogicalUnits = 1;
     ConfigInfo->WmiDataProvider = FALSE;
     ConfigInfo->SynchronizationModel = StorSynchronizeFullDuplex;
@@ -65,7 +65,7 @@ BOOLEAN SpdHwInitialize(PVOID DeviceExtension0)
     SPD_DEVICE_EXTENSION *DeviceExtension = DeviceExtension0;
 
     KeInitializeSpinLock(&DeviceExtension->SpinLock);
-    DeviceExtension->StorageUnitMaxCount = SPD_IOCTL_STORAGE_UNIT_MAX_COUNT;
+    DeviceExtension->StorageUnitMaxCount = SpdStorageUnitMaxCount;
 
     Result = TRUE;
 
@@ -85,16 +85,31 @@ VOID SpdHwFreeAdapterResources(PVOID DeviceExtension)
         DeviceExtension);
 }
 
-BOOLEAN SpdHwResetBus(PVOID DeviceExtension, ULONG PathId)
+BOOLEAN SpdHwResetBus(PVOID DeviceExtension0, ULONG PathId)
 {
     BOOLEAN Result = FALSE;
     SPD_ENTER(adapter);
 
-    Result = TRUE;
+    if (0 == PathId)
+    {
+        SPD_DEVICE_EXTENSION *DeviceExtension = DeviceExtension0;
+        SPD_STORAGE_UNIT *StorageUnit;
+
+        for (ULONG I = 0; DeviceExtension->StorageUnitMaxCount > I; I++)
+        {
+            StorageUnit = SpdGetStorageUnitByBtl(DeviceExtension, 0, (UCHAR)I, 0);
+            if (0 == StorageUnit)
+                continue;
+
+            SpdIoqReset(StorageUnit->Ioq, FALSE);
+        }
+
+        Result = TRUE;
+    }
 
     SPD_LEAVE(adapter,
         "%p, PathId=%lu", " = %d",
-        DeviceExtension, PathId, Result);
+        DeviceExtension0, PathId, Result);
     return Result;
 }
 

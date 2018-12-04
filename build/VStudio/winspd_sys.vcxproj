@@ -164,6 +164,7 @@
     <ClCompile Include="..\..\src\sys\driver.c" />
     <ClCompile Include="..\..\src\sys\io.c" />
     <ClCompile Include="..\..\src\sys\ioctl.c" />
+    <ClCompile Include="..\..\src\sys\ioq.c" />
     <ClCompile Include="..\..\src\sys\scsi.c" />
     <ClCompile Include="..\..\src\sys\tracing.c" />
   </ItemGroup>

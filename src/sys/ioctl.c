@@ -28,6 +28,7 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
     ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
 
     static GUID NullGuid = { 0 };
+    SPD_IOQ *Ioq = 0;
     SPD_STORAGE_UNIT *StorageUnit = 0;
     SPD_STORAGE_UNIT *DuplicateUnit;
     UINT32 Btl;
@@ -49,6 +50,10 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
         goto exit;
     }
 
+    Irp->IoStatus.Status = SpdIoqCreate(DeviceExtension, &Ioq);
+    if (!NT_SUCCESS(Irp->IoStatus.Status))
+        goto exit;
+
     StorageUnit = SpdAllocNonPaged(sizeof *StorageUnit, SpdTagStorageUnit);
     if (0 == StorageUnit)
     {
@@ -59,7 +64,6 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
     RtlZeroMemory(StorageUnit, sizeof *StorageUnit);
     RtlCopyMemory(&StorageUnit->StorageUnitParams, &Params->Dir.Par.StorageUnitParams,
         sizeof Params->Dir.Par.StorageUnitParams);
-    StorageUnit->ProcessId = IoGetRequestorProcessId(Irp);
 #define Guid                            Params->Dir.Par.StorageUnitParams.Guid
     RtlStringCbPrintfA(StorageUnit->SerialNumber, sizeof StorageUnit->SerialNumber,
         "%08lx-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
@@ -67,6 +71,8 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
         Guid.Data4[0], Guid.Data4[1], Guid.Data4[2], Guid.Data4[3],
         Guid.Data4[4], Guid.Data4[5], Guid.Data4[6], Guid.Data4[7]);
 #undef Guid
+    StorageUnit->ProcessId = IoGetRequestorProcessId(Irp);
+    StorageUnit->Ioq = Ioq;
 
     KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
     DuplicateUnit = 0;
@@ -110,8 +116,14 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
     StorPortNotification(BusChangeDetected, DeviceExtension, (UCHAR)0);
 
 exit:
-    if (!NT_SUCCESS(Irp->IoStatus.Status) && 0 != StorageUnit)
-        SpdFree(StorageUnit, SpdTagStorageUnit);
+    if (!NT_SUCCESS(Irp->IoStatus.Status))
+    {
+        if (0 != StorageUnit)
+            SpdFree(StorageUnit, SpdTagStorageUnit);
+
+        if (0 != Ioq)
+            SpdIoqDelete(Ioq);
+    }
 }
 
 static VOID SpdIoctlUnprovision(SPD_DEVICE_EXTENSION *DeviceExtension,
@@ -159,6 +171,8 @@ static VOID SpdIoctlUnprovision(SPD_DEVICE_EXTENSION *DeviceExtension,
         Irp->IoStatus.Status = STATUS_ACCESS_DENIED;
         goto exit;
     }
+
+    SpdIoqDelete(StorageUnit->Ioq);
 
     SpdFree(StorageUnit, SpdTagStorageUnit);
 
