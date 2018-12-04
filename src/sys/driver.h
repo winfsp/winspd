@@ -320,6 +320,7 @@ typedef struct _SPD_STORAGE_UNIT
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
     CHAR SerialNumber[36 + 1];
     ULONG ProcessId;
+    SPD_IOQ *Ioq;
 } SPD_STORAGE_UNIT;
 static inline SPD_STORAGE_UNIT *SpdGetStorageUnit(PVOID DeviceExtension0,
     UCHAR PathId, UCHAR TargetId, UCHAR Lun)
