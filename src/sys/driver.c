@@ -49,7 +49,7 @@ NTSTATUS DriverEntry(
     Data.DeviceExtensionSize = sizeof(SPD_DEVICE_EXTENSION) +
         sizeof(SPD_STORAGE_UNIT *) * SPD_IOCTL_STORAGE_UNIT_MAX_COUNT;
     Data.SpecificLuExtensionSize = 0;
-    Data.SrbExtensionSize = 0;
+    Data.SrbExtensionSize = sizeof(SPD_SRB_EXTENSION);
     Data.MapBuffers = STOR_MAP_NON_READ_WRITE_BUFFERS;
     Data.TaggedQueuing = TRUE;
     Data.AutoRequestSense = TRUE;

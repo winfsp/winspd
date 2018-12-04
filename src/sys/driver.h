@@ -133,6 +133,41 @@ const char *SpdStringizeSrb(PVOID Srb, char Buffer[], size_t Size);
 #define SpdAllocNonPaged(Size, Tag)     ExAllocatePoolWithTag(NonPagedPool, Size, Tag)
 #define SpdFree(Pointer, Tag)           ExFreePoolWithTag(Pointer, Tag)
 #define SpdTagStorageUnit               'SdpS'
+#define SpdTagIoq                       'QdpS'
+
+/* hash mix */
+/* Based on the MurmurHash3 fmix32/fmix64 function:
+ * See: https://code.google.com/p/smhasher/source/browse/trunk/MurmurHash3.cpp?r=152#68
+ */
+static inline
+UINT32 SpdHashMix32(UINT32 h)
+{
+    h ^= h >> 16;
+    h *= 0x85ebca6b;
+    h ^= h >> 13;
+    h *= 0xc2b2ae35;
+    h ^= h >> 16;
+    return h;
+}
+static inline
+UINT64 SpdHashMix64(UINT64 k)
+{
+    k ^= k >> 33;
+    k *= 0xff51afd7ed558ccdULL;
+    k ^= k >> 33;
+    k *= 0xc4ceb9fe1a85ec53ULL;
+    k ^= k >> 33;
+    return k;
+}
+static inline
+ULONG SpdHashMixPointer(PVOID Pointer)
+{
+#if _WIN64
+    return (ULONG)SpdHashMix64((UINT64)Pointer);
+#else
+    return (ULONG)SpdHashMix32((UINT32)Pointer);
+#endif
+}
 
 /* virtual miniport functions */
 HW_INITIALIZE_TRACING SpdHwInitializeTracing;
@@ -165,7 +200,114 @@ UCHAR SpdSrbWmi(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbDumpPointers(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbFreeDumpPointers(PVOID DeviceExtension, PVOID Srb);
 
-/* extensions */
+/*
+ * Queued Events
+ *
+ * Queued Events are an implementation of SynchronizationEvent's using
+ * a KQUEUE, originally from WinFsp. For a discussion see:
+ * https://github.com/billziss-gh/winfsp/wiki/Queued-Events
+ */
+typedef struct _SPD_QEVENT
+{
+    KQUEUE Queue;
+    LIST_ENTRY DummyEntry;
+    KSPIN_LOCK SpinLock;
+} SPD_QEVENT;
+static inline
+VOID SpdQeventInitialize(SPD_QEVENT *Qevent, ULONG ThreadCount)
+{
+    KeInitializeQueue(&Qevent->Queue, ThreadCount);
+    RtlZeroMemory(&Qevent->DummyEntry, sizeof Qevent->DummyEntry);
+    KeInitializeSpinLock(&Qevent->SpinLock);
+}
+static inline
+VOID SpdQeventFinalize(SPD_QEVENT *Qevent)
+{
+    KeRundownQueue(&Qevent->Queue);
+}
+static inline
+VOID SpdQeventSetNoLock(SPD_QEVENT *Qevent)
+{
+    ASSERT(KeGetCurrentIrql() == DISPATCH_LEVEL);
+    if (0 == KeReadStateQueue(&Qevent->Queue))
+        KeInsertQueue(&Qevent->Queue, &Qevent->DummyEntry);
+}
+static inline
+VOID SpdQeventSet(SPD_QEVENT *Qevent)
+{
+    KIRQL Irql;
+    KeAcquireSpinLock(&Qevent->SpinLock, &Irql);
+    SpdQeventSetNoLock(Qevent);
+    KeReleaseSpinLock(&Qevent->SpinLock, Irql);
+}
+static inline
+NTSTATUS SpdQeventWait(SPD_QEVENT *Qevent,
+    KPROCESSOR_MODE WaitMode, BOOLEAN Alertable, PLARGE_INTEGER PTimeout)
+{
+    PLIST_ENTRY ListEntry;
+    KeRemoveQueueEx(&Qevent->Queue, WaitMode, Alertable, PTimeout, &ListEntry, 1);
+    if (ListEntry == &Qevent->DummyEntry)
+        return STATUS_SUCCESS;
+    return (NTSTATUS)(UINT_PTR)ListEntry;
+}
+static inline
+NTSTATUS SpdQeventCancellableWait(SPD_QEVENT *Qevent,
+    PLARGE_INTEGER PTimeout, PIRP Irp)
+{
+    NTSTATUS Result;
+    UINT64 ExpirationTime = 0, InterruptTime;
+    if (0 != PTimeout && 0 > PTimeout->QuadPart)
+        ExpirationTime = KeQueryInterruptTime() - PTimeout->QuadPart;
+retry:
+    Result = SpdQeventWait(Qevent, KernelMode, TRUE, PTimeout);
+    if (STATUS_ALERTED == Result)
+    {
+        if (PsIsThreadTerminating(PsGetCurrentThread()))
+            return STATUS_THREAD_IS_TERMINATING;
+        if (0 != Irp && Irp->Cancel)
+            return STATUS_CANCELLED;
+        if (0 != ExpirationTime)
+        {
+            InterruptTime = KeQueryInterruptTime();
+            if (ExpirationTime <= InterruptTime)
+                return STATUS_TIMEOUT;
+            PTimeout->QuadPart = (INT64)InterruptTime - (INT64)ExpirationTime;
+        }
+        goto retry;
+    }
+    return Result;
+}
+
+/* I/O queue */
+typedef struct
+{
+    PVOID DeviceExtension;
+    KSPIN_LOCK SpinLock;
+    BOOLEAN Stopped;
+    SPD_QEVENT PendingEvent;
+    LIST_ENTRY PendingList, ProcessList;
+    ULONG ProcessBucketCount;
+    PVOID ProcessBuckets[];
+} SPD_IOQ;
+NTSTATUS SpdIoqCreate(PVOID DeviceExtension, SPD_IOQ **PIoq);
+VOID SpdIoqDelete(SPD_IOQ *Ioq);
+VOID SpdIoqReset(SPD_IOQ *Ioq, BOOLEAN Stop);
+BOOLEAN SpdIoqStopped(SPD_IOQ *Ioq);
+NTSTATUS SpdIoqCancelSrb(SPD_IOQ *Ioq, PVOID Srb);
+NTSTATUS SpdIoqPostSrb(SPD_IOQ *Ioq, PVOID Srb);
+NTSTATUS SpdIoqStartProcessingSrb(SPD_IOQ *Ioq, PLARGE_INTEGER Timeout, PIRP CancellableIrp,
+    VOID (*Prepare)(PVOID Context, PVOID Srb), PVOID Context);
+VOID SpdIoqEndProcessingSrb(SPD_IOQ *Ioq, UINT_PTR Hint,
+    VOID (*Complete)(PVOID Context, PVOID Srb), PVOID Context);
+typedef struct _SPD_SRB_EXTENSION
+{
+    LIST_ENTRY ListEntry;
+    PVOID HashNext;
+    PVOID Srb;
+} SPD_SRB_EXTENSION;
+#define SpdSrbExtension(Srb)            ((SPD_SRB_EXTENSION *)SrbGetMiniportContext(Srb))
+
+/* device extension */
 typedef struct _SPD_STORAGE_UNIT SPD_STORAGE_UNIT;
 typedef struct _SPD_DEVICE_EXTENSION
 {
