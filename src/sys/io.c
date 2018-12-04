@@ -42,6 +42,9 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
     case SRB_FUNCTION_RESET_DEVICE:
         SrbStatus = SpdSrbResetDevice(DeviceExtension, Srb);
         break;
+    case SRB_FUNCTION_RESET_LOGICAL_UNIT:
+        SrbStatus = SpdSrbResetLogicalUnit(DeviceExtension, Srb);
+        break;
     case SRB_FUNCTION_FLUSH:
         SrbStatus = SpdSrbFlush(DeviceExtension, Srb);
         break;
@@ -96,23 +99,55 @@ UCHAR SpdSrbAbortCommand(PVOID DeviceExtension, PVOID Srb)
 
     StorageUnit = SpdGetStorageUnit(DeviceExtension, Srb);
     if (0 == StorageUnit)
-        return SRB_STATUS_ABORT_FAILED;
+        return SRB_STATUS_NO_DEVICE;
 
     Result = SpdIoqCancelSrb(StorageUnit->Ioq, Srb);
     if (!NT_SUCCESS(Result))
         return SRB_STATUS_ABORT_FAILED;
-    
+
     return SRB_STATUS_SUCCESS;
 }
 
 UCHAR SpdSrbResetBus(PVOID DeviceExtension, PVOID Srb)
 {
-    return SRB_STATUS_INVALID_REQUEST;
+    UCHAR PathId, TargetId, Lun;
+
+    SrbGetPathTargetLun(Srb, &PathId, &TargetId, &Lun);
+    if (0 != PathId)
+        return SRB_STATUS_NO_DEVICE;
+
+    SpdHwResetBus(DeviceExtension, 0);
+
+    return SRB_STATUS_SUCCESS;
 }
 
 UCHAR SpdSrbResetDevice(PVOID DeviceExtension, PVOID Srb)
 {
-    return SRB_STATUS_INVALID_REQUEST;
+    SPD_STORAGE_UNIT *StorageUnit;
+    UCHAR PathId, TargetId, Lun;
+
+    SrbGetPathTargetLun(Srb, &PathId, &TargetId, &Lun);
+    StorageUnit = SpdGetStorageUnitByBtl(DeviceExtension,
+        PathId, TargetId, 0/*Lun: !valid*/);
+    if (0 == StorageUnit)
+        return SRB_STATUS_NO_DEVICE;
+
+    SpdIoqReset(StorageUnit->Ioq, FALSE);
+
+    return SRB_STATUS_SUCCESS;
+}
+
+UCHAR SpdSrbResetLogicalUnit(PVOID DeviceExtension, PVOID Srb)
+{
+    SPD_STORAGE_UNIT *StorageUnit;
+
+    StorageUnit = SpdGetStorageUnit(DeviceExtension, Srb);
+    if (0 == StorageUnit)
+        return SRB_STATUS_NO_DEVICE;
+
+    SpdIoqReset(StorageUnit->Ioq, FALSE);
+
+    return SRB_STATUS_SUCCESS;
 }
 
 UCHAR SpdSrbFlush(PVOID DeviceExtension, PVOID Srb)

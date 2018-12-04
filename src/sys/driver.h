@@ -192,6 +192,7 @@ UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbAbortCommand(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbResetBus(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbResetDevice(PVOID DeviceExtension, PVOID Srb);
+UCHAR SpdSrbResetLogicalUnit(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbFlush(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbShutdown(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbIoControl(PVOID DeviceExtension, PVOID Srb);
@@ -322,16 +323,16 @@ typedef struct _SPD_STORAGE_UNIT
     ULONG ProcessId;
     SPD_IOQ *Ioq;
 } SPD_STORAGE_UNIT;
-static inline SPD_STORAGE_UNIT *SpdGetStorageUnit(PVOID DeviceExtension0, PVOID Srb)
+static inline
+SPD_STORAGE_UNIT *SpdGetStorageUnitByBtl(PVOID DeviceExtension0,
+    UCHAR PathId, UCHAR TargetId, UCHAR Lun)
 {
     ASSERT(DISPATCH_LEVEL >= KeGetCurrentIrql());
 
     SPD_DEVICE_EXTENSION *DeviceExtension = DeviceExtension0;
-    UCHAR PathId, TargetId, Lun;
     SPD_STORAGE_UNIT *StorageUnit;
     KIRQL Irql;
 
-    SrbGetPathTargetLun(Srb, &PathId, &TargetId, &Lun);
     if (0 != PathId || 0 != Lun)
         return 0;
 
@@ -341,6 +342,14 @@ static inline SPD_STORAGE_UNIT *SpdGetStorageUnit(PVOID DeviceExtension0, PVOID 
     KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
 
     return StorageUnit;
+}
+static inline
+SPD_STORAGE_UNIT *SpdGetStorageUnit(PVOID DeviceExtension, PVOID Srb)
+{
+    UCHAR PathId, TargetId, Lun;
+
+    SrbGetPathTargetLun(Srb, &PathId, &TargetId, &Lun);
+    return SpdGetStorageUnitByBtl(DeviceExtension, PathId, TargetId, Lun);
 }
 #define SPD_INDEX_FROM_BTL(Btl)         SPD_IOCTL_BTL_T(Btl)
 #define SPD_BTL_FROM_INDEX(Idx)         SPD_IOCTL_BTL(0, Idx, 0)
