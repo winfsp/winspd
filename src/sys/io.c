@@ -51,9 +51,6 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
     case SRB_FUNCTION_SHUTDOWN:
         SrbStatus = SpdSrbShutdown(DeviceExtension, Srb);
         break;
-    case SRB_FUNCTION_IO_CONTROL:
-        SrbStatus = SpdSrbIoControl(DeviceExtension, Srb);
-        break;
     case SRB_FUNCTION_PNP:
         SrbStatus = SpdSrbPnp(DeviceExtension, Srb);
         break;
@@ -156,11 +153,6 @@ UCHAR SpdSrbFlush(PVOID DeviceExtension, PVOID Srb)
 }
 
 UCHAR SpdSrbShutdown(PVOID DeviceExtension, PVOID Srb)
-{
-    return SRB_STATUS_INVALID_REQUEST;
-}
-
-UCHAR SpdSrbIoControl(PVOID DeviceExtension, PVOID Srb)
 {
     return SRB_STATUS_INVALID_REQUEST;
 }
