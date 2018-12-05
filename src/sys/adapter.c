@@ -97,11 +97,13 @@ BOOLEAN SpdHwResetBus(PVOID DeviceExtension0, ULONG PathId)
 
         for (ULONG I = 0; DeviceExtension->StorageUnitMaxCount > I; I++)
         {
-            StorageUnit = SpdGetStorageUnitByBtl(DeviceExtension, 0, (UCHAR)I, 0);
+            StorageUnit = SpdStorageUnitReferenceByBtl(DeviceExtension, 0, (UCHAR)I, 0);
             if (0 == StorageUnit)
                 continue;
 
             SpdIoqReset(StorageUnit->Ioq, FALSE);
+
+            SpdStorageUnitDereference(DeviceExtension, StorageUnit);
         }
 
         Result = TRUE;

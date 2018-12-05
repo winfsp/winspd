@@ -94,15 +94,15 @@ UCHAR SpdSrbAbortCommand(PVOID DeviceExtension, PVOID Srb)
     SPD_STORAGE_UNIT *StorageUnit;
     NTSTATUS Result;
 
-    StorageUnit = SpdGetStorageUnit(DeviceExtension, Srb);
+    StorageUnit = SpdStorageUnitReference(DeviceExtension, Srb);
     if (0 == StorageUnit)
         return SRB_STATUS_NO_DEVICE;
 
     Result = SpdIoqCancelSrb(StorageUnit->Ioq, Srb);
-    if (!NT_SUCCESS(Result))
-        return SRB_STATUS_ABORT_FAILED;
 
-    return SRB_STATUS_SUCCESS;
+    SpdStorageUnitDereference(DeviceExtension, StorageUnit);
+
+    return NT_SUCCESS(Result) ? SRB_STATUS_SUCCESS : SRB_STATUS_ABORT_FAILED;
 }
 
 UCHAR SpdSrbResetBus(PVOID DeviceExtension, PVOID Srb)
@@ -124,12 +124,14 @@ UCHAR SpdSrbResetDevice(PVOID DeviceExtension, PVOID Srb)
     UCHAR PathId, TargetId, Lun;
 
     SrbGetPathTargetLun(Srb, &PathId, &TargetId, &Lun);
-    StorageUnit = SpdGetStorageUnitByBtl(DeviceExtension,
+    StorageUnit = SpdStorageUnitReferenceByBtl(DeviceExtension,
         PathId, TargetId, 0/*Lun: !valid*/);
     if (0 == StorageUnit)
         return SRB_STATUS_NO_DEVICE;
 
     SpdIoqReset(StorageUnit->Ioq, FALSE);
+
+    SpdStorageUnitDereference(DeviceExtension, StorageUnit);
 
     return SRB_STATUS_SUCCESS;
 }
@@ -138,11 +140,13 @@ UCHAR SpdSrbResetLogicalUnit(PVOID DeviceExtension, PVOID Srb)
 {
     SPD_STORAGE_UNIT *StorageUnit;
 
-    StorageUnit = SpdGetStorageUnit(DeviceExtension, Srb);
+    StorageUnit = SpdStorageUnitReference(DeviceExtension, Srb);
     if (0 == StorageUnit)
         return SRB_STATUS_NO_DEVICE;
 
     SpdIoqReset(StorageUnit->Ioq, FALSE);
+
+    SpdStorageUnitDereference(DeviceExtension, StorageUnit);
 
     return SRB_STATUS_SUCCESS;
 }

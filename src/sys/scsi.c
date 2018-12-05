@@ -38,11 +38,11 @@ UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
 {
     ASSERT(DISPATCH_LEVEL >= KeGetCurrentIrql());
 
-    SPD_STORAGE_UNIT *StorageUnit;
+    SPD_STORAGE_UNIT *StorageUnit = 0;
     PCDB Cdb;
     UCHAR SrbStatus = SRB_STATUS_PENDING;
 
-    StorageUnit = SpdGetStorageUnit(DeviceExtension, Srb);
+    StorageUnit = SpdStorageUnitReference(DeviceExtension, Srb);
     if (0 == StorageUnit)
     {
         SrbStatus = SRB_STATUS_NO_DEVICE;
@@ -109,6 +109,9 @@ UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
     }
 
 exit:
+    if (0 != StorageUnit)
+        SpdStorageUnitDereference(DeviceExtension, StorageUnit);
+
     return SrbStatus;
 }
 

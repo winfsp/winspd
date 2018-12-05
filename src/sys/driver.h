@@ -342,41 +342,12 @@ VOID SpdStorageUnitDereference(
     SPD_DEVICE_EXTENSION *DeviceExtension,
     SPD_STORAGE_UNIT *StorageUnit);
 static inline
-SPD_STORAGE_UNIT *SpdStorageUnitReference(PVOID DeviceExtension,
-    PVOID Srb)
+SPD_STORAGE_UNIT *SpdStorageUnitReference(PVOID DeviceExtension, PVOID Srb)
 {
     UCHAR PathId, TargetId, Lun;
 
     SrbGetPathTargetLun(Srb, &PathId, &TargetId, &Lun);
     return SpdStorageUnitReferenceByBtl(DeviceExtension, PathId, TargetId, Lun);
-}
-static inline
-SPD_STORAGE_UNIT *SpdGetStorageUnitByBtl(PVOID DeviceExtension0,
-    UCHAR PathId, UCHAR TargetId, UCHAR Lun)
-{
-    ASSERT(DISPATCH_LEVEL >= KeGetCurrentIrql());
-
-    SPD_DEVICE_EXTENSION *DeviceExtension = DeviceExtension0;
-    SPD_STORAGE_UNIT *StorageUnit;
-    KIRQL Irql;
-
-    if (0 != PathId || 0 != Lun)
-        return 0;
-
-    KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
-    StorageUnit = DeviceExtension->StorageUnitMaxCount > TargetId ?
-        DeviceExtension->StorageUnits[TargetId] : 0;
-    KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
-
-    return StorageUnit;
-}
-static inline
-SPD_STORAGE_UNIT *SpdGetStorageUnit(PVOID DeviceExtension, PVOID Srb)
-{
-    UCHAR PathId, TargetId, Lun;
-
-    SrbGetPathTargetLun(Srb, &PathId, &TargetId, &Lun);
-    return SpdGetStorageUnitByBtl(DeviceExtension, PathId, TargetId, Lun);
 }
 extern UCHAR SpdStorageUnitMaxCount;
 #define SPD_INDEX_FROM_BTL(Btl)         SPD_IOCTL_BTL_T(Btl)
