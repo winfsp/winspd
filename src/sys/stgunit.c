@@ -197,4 +197,26 @@ VOID SpdStorageUnitDereference(
     }
 }
 
+#if 0
+static VOID SpdStorageUnitCollect(ULONG ProcessId)
+{
+}
+
+static VOID SpdStorageUnitNotifyRoutine(HANDLE ParentId, HANDLE ProcessId, BOOLEAN Create)
+{
+    if (!Create)
+        SpdStorageUnitCollect((ULONG)(UINT_PTR)ProcessId);
+}
+
+NTSTATUS SpdStorageUnitInitialize(VOID)
+{
+    return PsSetCreateProcessNotifyRoutine(SpdStorageUnitNotifyRoutine, FALSE);
+}
+
+VOID SpdStorageUnitFinalize(VOID)
+{
+    PsSetCreateProcessNotifyRoutine(SpdStorageUnitNotifyRoutine, TRUE);
+}
+#endif
+
 UCHAR SpdStorageUnitMaxCount = SPD_IOCTL_STORAGE_UNIT_MAX_COUNT;
