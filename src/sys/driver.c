@@ -71,5 +71,3 @@ NTSTATUS DriverEntry(
         &DriverObject->DriverName, RegistryPath, Result);
     return Result;
 }
-
-UCHAR SpdStorageUnitMaxCount = SPD_IOCTL_STORAGE_UNIT_MAX_COUNT;

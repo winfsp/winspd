@@ -308,7 +308,7 @@ typedef struct _SPD_SRB_EXTENSION
 } SPD_SRB_EXTENSION;
 #define SpdSrbExtension(Srb)            ((SPD_SRB_EXTENSION *)SrbGetMiniportContext(Srb))
 
-/* device extension */
+/* storage units */
 typedef struct _SPD_STORAGE_UNIT SPD_STORAGE_UNIT;
 typedef struct _SPD_DEVICE_EXTENSION
 {
@@ -318,11 +318,38 @@ typedef struct _SPD_DEVICE_EXTENSION
 } SPD_DEVICE_EXTENSION;
 typedef struct _SPD_STORAGE_UNIT
 {
+    ULONG RefCount;                     /* protected by SPD_DEVICE_EXTENSION::SpinLock */
+    /* fields below are read-only after construction */
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
     CHAR SerialNumber[36 + 1];
     ULONG ProcessId;
     SPD_IOQ *Ioq;
+    UINT32 Btl;
 } SPD_STORAGE_UNIT;
+NTSTATUS SpdStorageUnitProvision(
+    SPD_DEVICE_EXTENSION *DeviceExtension,
+    SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams,
+    ULONG ProcessId,
+    PUINT32 PBtl);
+NTSTATUS SpdStorageUnitUnprovision(
+    SPD_DEVICE_EXTENSION *DeviceExtension,
+    PGUID Guid,
+    ULONG ProcessId);
+SPD_STORAGE_UNIT *SpdStorageUnitReferenceByBtl(
+    SPD_DEVICE_EXTENSION *DeviceExtension,
+    UCHAR PathId, UCHAR TargetId, UCHAR Lun);
+VOID SpdStorageUnitDereference(
+    SPD_DEVICE_EXTENSION *DeviceExtension,
+    SPD_STORAGE_UNIT *StorageUnit);
+static inline
+SPD_STORAGE_UNIT *SpdStorageUnitReference(PVOID DeviceExtension,
+    PVOID Srb)
+{
+    UCHAR PathId, TargetId, Lun;
+
+    SrbGetPathTargetLun(Srb, &PathId, &TargetId, &Lun);
+    return SpdStorageUnitReferenceByBtl(DeviceExtension, PathId, TargetId, Lun);
+}
 static inline
 SPD_STORAGE_UNIT *SpdGetStorageUnitByBtl(PVOID DeviceExtension0,
     UCHAR PathId, UCHAR TargetId, UCHAR Lun)
@@ -351,11 +378,9 @@ SPD_STORAGE_UNIT *SpdGetStorageUnit(PVOID DeviceExtension, PVOID Srb)
     SrbGetPathTargetLun(Srb, &PathId, &TargetId, &Lun);
     return SpdGetStorageUnitByBtl(DeviceExtension, PathId, TargetId, Lun);
 }
+extern UCHAR SpdStorageUnitMaxCount;
 #define SPD_INDEX_FROM_BTL(Btl)         SPD_IOCTL_BTL_T(Btl)
 #define SPD_BTL_FROM_INDEX(Idx)         SPD_IOCTL_BTL(0, Idx, 0)
-
-/* extern */
-extern UCHAR SpdStorageUnitMaxCount;
 
 /*
  * Fixes

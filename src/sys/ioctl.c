@@ -25,14 +25,8 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
     ULONG Length, SPD_IOCTL_PROVISION_PARAMS *Params,
     PIRP Irp)
 {
-    ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
-
     static GUID NullGuid = { 0 };
-    SPD_IOQ *Ioq = 0;
-    SPD_STORAGE_UNIT *StorageUnit = 0;
-    SPD_STORAGE_UNIT *DuplicateUnit;
     UINT32 Btl;
-    KIRQL Irql;
 
     if (sizeof *Params > Length)
     {
@@ -50,64 +44,17 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
         goto exit;
     }
 
-    Irp->IoStatus.Status = SpdIoqCreate(DeviceExtension, &Ioq);
+    Irp->IoStatus.Status = SpdStorageUnitProvision(
+        DeviceExtension,
+        &Params->Dir.Par.StorageUnitParams,
+        IoGetRequestorProcessId(Irp),
+        &Btl);
     if (!NT_SUCCESS(Irp->IoStatus.Status))
         goto exit;
 
-    StorageUnit = SpdAllocNonPaged(sizeof *StorageUnit, SpdTagStorageUnit);
-    if (0 == StorageUnit)
-    {
-        Irp->IoStatus.Status = STATUS_INSUFFICIENT_RESOURCES;
-        goto exit;
-    }
-
-    RtlZeroMemory(StorageUnit, sizeof *StorageUnit);
-    RtlCopyMemory(&StorageUnit->StorageUnitParams, &Params->Dir.Par.StorageUnitParams,
-        sizeof Params->Dir.Par.StorageUnitParams);
-#define Guid                            Params->Dir.Par.StorageUnitParams.Guid
-    RtlStringCbPrintfA(StorageUnit->SerialNumber, sizeof StorageUnit->SerialNumber,
-        "%08lx-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-        Guid.Data1, Guid.Data2, Guid.Data3,
-        Guid.Data4[0], Guid.Data4[1], Guid.Data4[2], Guid.Data4[3],
-        Guid.Data4[4], Guid.Data4[5], Guid.Data4[6], Guid.Data4[7]);
-#undef Guid
-    StorageUnit->ProcessId = IoGetRequestorProcessId(Irp);
-    StorageUnit->Ioq = Ioq;
-
-    KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
-    DuplicateUnit = 0;
-    Btl = (ULONG)-1;
-    for (ULONG I = 0; DeviceExtension->StorageUnitMaxCount > I; I++)
-    {
-        SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
-        if (0 == Unit)
-            Btl = SPD_BTL_FROM_INDEX(I);
-        else
-        if (RtlEqualMemory(&Params->Dir.Par.StorageUnitParams.Guid, &Unit->StorageUnitParams.Guid,
-            sizeof Unit->StorageUnitParams.Guid))
-        {
-            DuplicateUnit = Unit;
-            break;
-        }
-    }
-    if (0 == DuplicateUnit && -1 != Btl)
-        DeviceExtension->StorageUnits[SPD_INDEX_FROM_BTL(Btl)] = StorageUnit;
-    KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
-
-    if (0 != DuplicateUnit)
-    {
-        Irp->IoStatus.Status = STATUS_OBJECT_NAME_COLLISION;
-        goto exit;
-    }
-    if (-1 == Btl)
-    {
-        Irp->IoStatus.Status = STATUS_CANNOT_MAKE;
-        goto exit;
-    }
-
     RtlZeroMemory(Params, sizeof *Params);
     Params->Base.Size = sizeof *Params;
-    Params->Base.Code = SPD_IOCTL_TRANSACT;
+    Params->Base.Code = SPD_IOCTL_PROVISION;
     Params->Dir.Ret.Btl = Btl;
 
     Irp->IoStatus.Status = STATUS_SUCCESS;
@@ -115,66 +62,25 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
 
     StorPortNotification(BusChangeDetected, DeviceExtension, (UCHAR)0);
 
-exit:
-    if (!NT_SUCCESS(Irp->IoStatus.Status))
-    {
-        if (0 != StorageUnit)
-            SpdFree(StorageUnit, SpdTagStorageUnit);
-
-        if (0 != Ioq)
-            SpdIoqDelete(Ioq);
-    }
+exit:;
 }
 
 static VOID SpdIoctlUnprovision(SPD_DEVICE_EXTENSION *DeviceExtension,
     ULONG Length, SPD_IOCTL_UNPROVISION_PARAMS *Params,
     PIRP Irp)
 {
-    ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
-
-    SPD_STORAGE_UNIT *StorageUnit;
-    ULONG ProcessId;
-    KIRQL Irql;
-
     if (sizeof *Params > Length)
     {
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         goto exit;
     }
 
-    ProcessId = IoGetRequestorProcessId(Irp);
-
-    KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
-    StorageUnit = 0;
-    for (ULONG I = 0; DeviceExtension->StorageUnitMaxCount > I; I++)
-    {
-        SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
-        if (0 == Unit)
-            ;
-        else
-        if (RtlEqualMemory(&Params->Dir.Par.Guid, &Unit->StorageUnitParams.Guid,
-            sizeof Unit->StorageUnitParams.Guid))
-        {
-            StorageUnit = Unit;
-            break;
-        }
-    }
-    KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
-
-    if (0 == StorageUnit)
-    {
-        Irp->IoStatus.Status = STATUS_OBJECT_NAME_NOT_FOUND;
+    Irp->IoStatus.Status = SpdStorageUnitUnprovision(
+        DeviceExtension,
+        &Params->Dir.Par.Guid,
+        IoGetRequestorProcessId(Irp));
+    if (!NT_SUCCESS(Irp->IoStatus.Status))
         goto exit;
-    }
-    if (ProcessId != StorageUnit->ProcessId)
-    {
-        Irp->IoStatus.Status = STATUS_ACCESS_DENIED;
-        goto exit;
-    }
-
-    SpdIoqDelete(StorageUnit->Ioq);
-
-    SpdFree(StorageUnit, SpdTagStorageUnit);
 
     Irp->IoStatus.Status = STATUS_SUCCESS;
     Irp->IoStatus.Information = sizeof *Params;
@@ -188,8 +94,6 @@ static VOID SpdIoctlList(SPD_DEVICE_EXTENSION *DeviceExtension,
     ULONG Length, SPD_IOCTL_LIST_PARAMS *Params,
     PIRP Irp)
 {
-    ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
-
     if (sizeof *Params > Length)
     {
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
@@ -205,8 +109,6 @@ static VOID SpdIoctlTransact(SPD_DEVICE_EXTENSION *DeviceExtension,
     ULONG Length, SPD_IOCTL_TRANSACT_PARAMS *Params,
     PIRP Irp)
 {
-    ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
-
     if (sizeof *Params > Length)
     {
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
