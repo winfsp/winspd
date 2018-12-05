@@ -313,7 +313,7 @@ typedef struct _SPD_STORAGE_UNIT SPD_STORAGE_UNIT;
 typedef struct _SPD_DEVICE_EXTENSION
 {
     KSPIN_LOCK SpinLock;
-    ULONG StorageUnitMaxCount;
+    ULONG StorageUnitCapacity;
     SPD_STORAGE_UNIT *StorageUnits[];
 } SPD_DEVICE_EXTENSION;
 typedef struct _SPD_STORAGE_UNIT
@@ -349,7 +349,7 @@ SPD_STORAGE_UNIT *SpdStorageUnitReference(PVOID DeviceExtension, PVOID Srb)
     SrbGetPathTargetLun(Srb, &PathId, &TargetId, &Lun);
     return SpdStorageUnitReferenceByBtl(DeviceExtension, PathId, TargetId, Lun);
 }
-extern UCHAR SpdStorageUnitMaxCount;
+extern UCHAR SpdStorageUnitCapacity;
 #define SPD_INDEX_FROM_BTL(Btl)         SPD_IOCTL_BTL_T(Btl)
 #define SPD_BTL_FROM_INDEX(Idx)         SPD_IOCTL_BTL(0, Idx, 0)
 

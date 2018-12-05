@@ -62,7 +62,7 @@ NTSTATUS SpdStorageUnitProvision(
     KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
     DuplicateUnit = 0;
     Btl = (ULONG)-1;
-    for (ULONG I = 0; DeviceExtension->StorageUnitMaxCount > I; I++)
+    for (ULONG I = 0; DeviceExtension->StorageUnitCapacity > I; I++)
     {
         SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
         if (0 == Unit)
@@ -119,7 +119,7 @@ NTSTATUS SpdStorageUnitUnprovision(
 
     KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
     StorageUnit = 0;
-    for (ULONG I = 0; DeviceExtension->StorageUnitMaxCount > I; I++)
+    for (ULONG I = 0; DeviceExtension->StorageUnitCapacity > I; I++)
     {
         SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
         if (0 == Unit)
@@ -164,7 +164,7 @@ SPD_STORAGE_UNIT *SpdStorageUnitReferenceByBtl(
         return 0;
 
     KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
-    StorageUnit = DeviceExtension->StorageUnitMaxCount > TargetId ?
+    StorageUnit = DeviceExtension->StorageUnitCapacity > TargetId ?
         DeviceExtension->StorageUnits[TargetId] : 0;
     if (0 != StorageUnit)
         StorageUnit->RefCount++;
@@ -219,4 +219,4 @@ VOID SpdStorageUnitFinalize(VOID)
 }
 #endif
 
-UCHAR SpdStorageUnitMaxCount = SPD_IOCTL_STORAGE_UNIT_MAX_COUNT;
+UCHAR SpdStorageUnitCapacity = SPD_IOCTL_STORAGE_UNIT_CAPACITY;

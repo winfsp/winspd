@@ -47,7 +47,7 @@ NTSTATUS DriverEntry(
     Data.HwDmaStarted = 0;
     Data.HwAdapterState = 0;
     Data.DeviceExtensionSize = sizeof(SPD_DEVICE_EXTENSION) +
-        sizeof(SPD_STORAGE_UNIT *) * SpdStorageUnitMaxCount;
+        sizeof(SPD_STORAGE_UNIT *) * SpdStorageUnitCapacity;
     Data.SpecificLuExtensionSize = 0;
     Data.SrbExtensionSize = sizeof(SPD_SRB_EXTENSION);
     Data.MapBuffers = STOR_MAP_NON_READ_WRITE_BUFFERS;
