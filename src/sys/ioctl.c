@@ -94,13 +94,34 @@ static VOID SpdIoctlList(SPD_DEVICE_EXTENSION *DeviceExtension,
     ULONG Length, SPD_IOCTL_LIST_PARAMS *Params,
     PIRP Irp)
 {
+    PIO_STACK_LOCATION IrpSp = IoGetCurrentIrpStackLocation(Irp);
+    ULONG OutputBufferLength = IrpSp->Parameters.DeviceIoControl.OutputBufferLength;
+    PUINT32 BtlP = Irp->AssociatedIrp.SystemBuffer;
+    PUINT32 BtlEndP = (PVOID)((PUINT8)BtlP + OutputBufferLength);
+    UINT8 Bitmap[32];
+
     if (sizeof *Params > Length)
     {
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         goto exit;
     }
 
-    Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+    SpdStorageUnitGetUseBitmap(DeviceExtension, Bitmap);
+
+    for (ULONG I = 0; sizeof Bitmap * 8 > I; I++)
+        if (FlagOn(Bitmap[I >> 3], 1 << (I & 7)))
+        {
+            if (BtlP + 1 > BtlEndP)
+            {
+                Irp->IoStatus.Status = STATUS_BUFFER_TOO_SMALL;
+                goto exit;
+            }
+
+            *BtlP++ = SPD_BTL_FROM_INDEX(I);
+        }
+
+    Irp->IoStatus.Status = STATUS_SUCCESS;
+    Irp->IoStatus.Information = (PUINT8)BtlEndP - (PUINT8)BtlP;
 
 exit:;
 }

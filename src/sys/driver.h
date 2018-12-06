@@ -341,6 +341,9 @@ SPD_STORAGE_UNIT *SpdStorageUnitReferenceByBtl(
 VOID SpdStorageUnitDereference(
     SPD_DEVICE_EXTENSION *DeviceExtension,
     SPD_STORAGE_UNIT *StorageUnit);
+VOID SpdStorageUnitGetUseBitmap(
+    SPD_DEVICE_EXTENSION *DeviceExtension,
+    UINT8 Bitmap[32]);
 static inline
 SPD_STORAGE_UNIT *SpdStorageUnitReference(PVOID DeviceExtension, PVOID Srb)
 {

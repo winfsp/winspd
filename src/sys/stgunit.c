@@ -197,6 +197,23 @@ VOID SpdStorageUnitDereference(
     }
 }
 
+VOID SpdStorageUnitGetUseBitmap(
+    SPD_DEVICE_EXTENSION *DeviceExtension,
+    UINT8 Bitmap[32])
+{
+    KIRQL Irql;
+
+    RtlZeroMemory(Bitmap, 32);
+
+    KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
+    for (ULONG I = 0; DeviceExtension->StorageUnitCapacity > I; I++)
+    {
+        SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
+        Bitmap[I >> 3] |= 0 != Unit ? (1 << (I & 7)) : 0;
+    }
+    KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
+}
+
 #if 0
 static VOID SpdStorageUnitCollect(ULONG ProcessId)
 {
