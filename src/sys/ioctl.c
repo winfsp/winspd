@@ -91,7 +91,7 @@ static VOID SpdIoctlUnprovision(SPD_DEVICE_EXTENSION *DeviceExtension,
 exit:;
 }
 
-static VOID SpdIoctlList(SPD_DEVICE_EXTENSION *DeviceExtension,
+static VOID SpdIoctlGetList(SPD_DEVICE_EXTENSION *DeviceExtension,
     ULONG Length, SPD_IOCTL_LIST_PARAMS *Params,
     PIRP Irp)
 {
@@ -127,19 +127,124 @@ static VOID SpdIoctlList(SPD_DEVICE_EXTENSION *DeviceExtension,
 exit:;
 }
 
+static VOID SpdIoctlTransactPrepare(PVOID Context, PVOID DataBuffer, PVOID Srb)
+{
+}
+
+static VOID SpdIoctlTransactComplete(PVOID Context, PVOID DataBuffer, PVOID Srb)
+{
+}
+
 static VOID SpdIoctlTransact(SPD_DEVICE_EXTENSION *DeviceExtension,
     ULONG Length, SPD_IOCTL_TRANSACT_PARAMS *Params,
     PIRP Irp)
 {
+    SPD_STORAGE_UNIT *StorageUnit = 0;
+    PMDL Mdl = 0;
+    PVOID DataBuffer;
+
     if (sizeof *Params > Length)
     {
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         goto exit;
     }
 
-    Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+    DataBuffer = (PVOID)(UINT_PTR)Params->DataBuffer;
+
+    if ((!Params->ReqValid && !Params->RspValid) ||
+        (Params->ReqValid && 0 == DataBuffer))
+    {
+        Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+        goto exit;
+    }
+
+    StorageUnit = SpdStorageUnitReferenceByBtl(DeviceExtension, Params->Btl);
+    if (0 == StorageUnit)
+    {
+        Irp->IoStatus.Status = STATUS_OBJECT_NAME_NOT_FOUND;
+        goto exit;
+    }
+
+    if (0 != DataBuffer && UserMode == Irp->RequestorMode)
+    {
+        try
+        {
+            ProbeForWrite(DataBuffer, StorageUnit->StorageUnitParams.MaxTransferLength, 1);
+
+            Mdl = IoAllocateMdl(
+                DataBuffer,
+                StorageUnit->StorageUnitParams.MaxTransferLength,
+                0 != Irp->MdlAddress,
+                FALSE,
+                Irp);
+            if (0 == Mdl)
+            {
+                Irp->IoStatus.Status = STATUS_INSUFFICIENT_RESOURCES;
+                leave;
+            }
+
+            MmProbeAndLockPages(Mdl, UserMode, IoWriteAccess);
+
+            DataBuffer = MmGetSystemAddressForMdlSafe(Mdl, NormalPagePriority);
+            if (0 == DataBuffer)
+            {
+                Irp->IoStatus.Status = STATUS_INSUFFICIENT_RESOURCES;
+                leave;
+            }
+        }
+        except (EXCEPTION_EXECUTE_HANDLER)
+        {
+            Irp->IoStatus.Status = GetExceptionCode();
+            goto exit;
+        }
+
+        if (!NT_SUCCESS(Irp->IoStatus.Status))
+            goto exit;
+    }
+
+    if (Params->RspValid)
+        SpdIoqEndProcessingSrb(StorageUnit->Ioq,
+            Params->Dir.Rsp.Hint, SpdIoctlTransactComplete, &Params, DataBuffer);
+
+    if (Params->ReqValid)
+    {
+        Params->ReqValid = 0;
+        Params->RspValid = 0;
+        RtlZeroMemory(&Params->Dir.Req, sizeof Params->Dir.Req);
+
+        /* wait for an SRB to arrive */
+        while (STATUS_UNSUCCESSFUL == (Irp->IoStatus.Status =
+            SpdIoqStartProcessingSrb(StorageUnit->Ioq,
+                0, Irp, SpdIoctlTransactPrepare, &Params, DataBuffer)))
+        {
+            if (SpdIoqStopped(StorageUnit->Ioq))
+            {
+                Irp->IoStatus.Status = STATUS_CANCELLED;
+                goto exit;
+            }
+        }
+
+        if (!NT_SUCCESS(Irp->IoStatus.Status))
+            goto exit;
+        else if (STATUS_TIMEOUT == Irp->IoStatus.Status)
+        {
+            Irp->IoStatus.Status = STATUS_SUCCESS;
+            Irp->IoStatus.Information = 0;
+            goto exit;
+        }
+
+        Params->ReqValid = 1;
+    }
+
+    Irp->IoStatus.Status = STATUS_SUCCESS;
+    Irp->IoStatus.Information = Params->ReqValid ? sizeof *Params : 0;
 
 exit:;
+    if (0 != Mdl)
+        IoFreeMdl(Mdl);
+
+    if (0 != StorageUnit)
+        SpdStorageUnitDereference(DeviceExtension, StorageUnit);
 }
 
 VOID SpdHwProcessServiceRequest(PVOID DeviceExtension, PVOID Irp0)
@@ -169,7 +274,7 @@ VOID SpdHwProcessServiceRequest(PVOID DeviceExtension, PVOID Irp0)
         SpdIoctlUnprovision(DeviceExtension, Length, Params, Irp);
         break;
     case SPD_IOCTL_LIST:
-        SpdIoctlList(DeviceExtension, Length, Params, Irp);
+        SpdIoctlGetList(DeviceExtension, Length, Params, Irp);
         break;
     case SPD_IOCTL_TRANSACT:
         SpdIoctlTransact(DeviceExtension, Length, Params, Irp);

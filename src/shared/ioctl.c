@@ -380,7 +380,7 @@ DWORD SpdIoctlTransact(HANDLE DeviceHandle,
     }
 
     if (0 != Req)
-        if (Params.ReqValid)
+        if (sizeof Params == BytesTransferred && Params.ReqValid)
             memcpy(Req, &Params.Dir.Req, sizeof *Req);
         else
             memset(Req, 0, sizeof *Req);

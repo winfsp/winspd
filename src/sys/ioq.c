@@ -175,7 +175,8 @@ NTSTATUS SpdIoqPostSrb(SPD_IOQ *Ioq, PVOID Srb)
 }
 
 NTSTATUS SpdIoqStartProcessingSrb(SPD_IOQ *Ioq, PLARGE_INTEGER Timeout, PIRP CancellableIrp,
-    VOID (*Prepare)(PVOID Context, PVOID Srb), PVOID Context)
+    VOID (*Prepare)(PVOID Context, PVOID DataBuffer, PVOID Srb),
+    PVOID Context, PVOID DataBuffer)
 {
     NTSTATUS Result;
     KIRQL Irql;
@@ -203,7 +204,7 @@ NTSTATUS SpdIoqStartProcessingSrb(SPD_IOQ *Ioq, PLARGE_INTEGER Timeout, PIRP Can
 
             Wake = !RemoveEntryList(&SrbExtension->ListEntry);
 
-            Prepare(Context, SrbExtension->Srb);
+            Prepare(Context, DataBuffer, SrbExtension->Srb);
 
             InsertTailList(&Ioq->ProcessList, &SrbExtension->ListEntry);
             Index = SpdHashMixPointer(SrbExtension) % Ioq->ProcessBucketCount;
@@ -238,7 +239,8 @@ NTSTATUS SpdIoqStartProcessingSrb(SPD_IOQ *Ioq, PLARGE_INTEGER Timeout, PIRP Can
 }
 
 VOID SpdIoqEndProcessingSrb(SPD_IOQ *Ioq, UINT_PTR Hint,
-    VOID (*Complete)(PVOID Context, PVOID Srb), PVOID Context)
+    VOID (*Complete)(PVOID Context, PVOID DataBuffer, PVOID Srb),
+    PVOID Context, PVOID DataBuffer)
 {
     KIRQL Irql;
 
@@ -262,7 +264,7 @@ VOID SpdIoqEndProcessingSrb(SPD_IOQ *Ioq, UINT_PTR Hint,
                 PVOID Srb = SrbExtension->Srb;
                 SrbExtension->Srb = 0;
 
-                Complete(Context, Srb);
+                Complete(Context, DataBuffer, Srb);
                 StorPortNotification(RequestComplete, Ioq->DeviceExtension, Srb);
 
                 break;

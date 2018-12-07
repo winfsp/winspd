@@ -297,9 +297,11 @@ BOOLEAN SpdIoqStopped(SPD_IOQ *Ioq);
 NTSTATUS SpdIoqCancelSrb(SPD_IOQ *Ioq, PVOID Srb);
 NTSTATUS SpdIoqPostSrb(SPD_IOQ *Ioq, PVOID Srb);
 NTSTATUS SpdIoqStartProcessingSrb(SPD_IOQ *Ioq, PLARGE_INTEGER Timeout, PIRP CancellableIrp,
-    VOID (*Prepare)(PVOID Context, PVOID Srb), PVOID Context);
+    VOID (*Prepare)(PVOID Context, PVOID DataBuffer, PVOID Srb),
+    PVOID Context, PVOID DataBuffer);
 VOID SpdIoqEndProcessingSrb(SPD_IOQ *Ioq, UINT_PTR Hint,
-    VOID (*Complete)(PVOID Context, PVOID Srb), PVOID Context);
+    VOID (*Complete)(PVOID Context, PVOID DataBuffer, PVOID Srb),
+    PVOID Context, PVOID DataBuffer);
 typedef struct _SPD_SRB_EXTENSION
 {
     LIST_ENTRY ListEntry;
