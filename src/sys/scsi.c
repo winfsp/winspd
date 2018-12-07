@@ -24,14 +24,12 @@
 static UCHAR SpdScsiInquiry(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiModeSense(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiReadCapacity(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
-static UCHAR SpdScsiRead(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
-static UCHAR SpdScsiWrite(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
-static UCHAR SpdScsiSynchronizeCache(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
-static UCHAR SpdScsiUnmap(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
+static UCHAR SpdScsiPostRangeSrb(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
+static UCHAR SpdScsiPostUnmapSrb(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiReportLuns(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
 
 static UCHAR SpdScsiError(PVOID Srb, UCHAR SenseKey, UCHAR AdditionalSenseCode);
-static BOOLEAN SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength);
+static VOID SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength);
 
 UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
 {
@@ -73,23 +71,17 @@ UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
     case SCSIOP_READ:
     case SCSIOP_READ12:
     case SCSIOP_READ16:
-        SrbStatus = SpdScsiRead(StorageUnit, Srb, Cdb);
-        break;
-
     case SCSIOP_WRITE6:
     case SCSIOP_WRITE:
     case SCSIOP_WRITE12:
     case SCSIOP_WRITE16:
-        SrbStatus = SpdScsiWrite(StorageUnit, Srb, Cdb);
-        break;
-
     case SCSIOP_SYNCHRONIZE_CACHE:
     case SCSIOP_SYNCHRONIZE_CACHE16:
-        SrbStatus = SpdScsiSynchronizeCache(StorageUnit, Srb, Cdb);
+        SrbStatus = SpdScsiPostRangeSrb(StorageUnit, Srb, Cdb);
         break;
 
     case SCSIOP_UNMAP:
-        SrbStatus = SpdScsiUnmap(StorageUnit, Srb, Cdb);
+        SrbStatus = SpdScsiPostUnmapSrb(StorageUnit, Srb, Cdb);
         break;
 
     case SCSIOP_REPORT_LUNS:
@@ -242,24 +234,77 @@ UCHAR SpdScsiReadCapacity(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb)
     return SRB_STATUS_INVALID_REQUEST;
 }
 
-UCHAR SpdScsiRead(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb)
+UCHAR SpdScsiPostRangeSrb(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb)
 {
-    return SRB_STATUS_INVALID_REQUEST;
+    UINT64 Offset, EndOffset;
+    UINT32 Length;
+    NTSTATUS Result;
+
+    SpdCdbGetRange(Cdb, &Offset, &Length);
+
+    if (0 == Length)
+        return SRB_STATUS_SUCCESS;
+
+    EndOffset = Offset + Length;
+    if (EndOffset < Offset ||
+        EndOffset > StorageUnit->StorageUnitParams.BlockCount)
+        return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_ILLEGAL_BLOCK);
+
+    Result = SpdIoqPostSrb(StorageUnit->Ioq, Srb);
+
+    return NT_SUCCESS(Result) ? SRB_STATUS_PENDING : SRB_STATUS_ABORTED;
 }
 
-UCHAR SpdScsiWrite(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb)
+static UCHAR SpdScsiPostUnmapSrb(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb)
 {
-    return SRB_STATUS_INVALID_REQUEST;
-}
+    PUNMAP_LIST_HEADER DataBuffer = SrbGetDataBuffer(Srb);
+    ULONG Length = ((UINT32)Cdb->CDB10.TransferBlocksMsb << 8) | (UINT32)Cdb->CDB10.TransferBlocksLsb;
+    NTSTATUS Result;
 
-UCHAR SpdScsiSynchronizeCache(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb)
-{
-    return SRB_STATUS_INVALID_REQUEST;
-}
+    if (0 == Length)
+        return SRB_STATUS_SUCCESS;
 
-UCHAR SpdScsiUnmap(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb)
-{
-    return SRB_STATUS_INVALID_REQUEST;
+    if (Length < 8 ||
+        Length != 2 +
+            ((UINT32)(DataBuffer->DataLength[0] << 8) |
+            (UINT32)DataBuffer->DataLength[1]) ||
+        Length != 8 +
+            ((UINT32)(DataBuffer->BlockDescrDataLength[0] << 8) |
+            (UINT32)DataBuffer->BlockDescrDataLength[1]))
+        return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_CDB);
+
+    Length -= 8;
+    Length /= 16;
+    if (0 == Length)
+        return SRB_STATUS_SUCCESS;
+
+    for (ULONG I = 0; Length > I; I++)
+    {
+        PUNMAP_BLOCK_DESCRIPTOR Descr = &DataBuffer->Descriptors[I];
+        UINT64 BlockAddress =
+            ((UINT64)Descr->StartingLba[0] << 56) |
+            ((UINT64)Descr->StartingLba[1] << 48) |
+            ((UINT64)Descr->StartingLba[2] << 40) |
+            ((UINT64)Descr->StartingLba[3] << 32) |
+            ((UINT64)Descr->StartingLba[4] << 24) |
+            ((UINT64)Descr->StartingLba[5] << 16) |
+            ((UINT64)Descr->StartingLba[6] << 8) |
+            ((UINT64)Descr->StartingLba[7]);
+        UINT32 BlockCount =
+            ((UINT32)Descr->LbaCount[0] << 24) |
+            ((UINT32)Descr->LbaCount[1] << 16) |
+            ((UINT32)Descr->LbaCount[2] << 8) |
+            ((UINT32)Descr->LbaCount[3]);
+        UINT64 EndBlockAddress = BlockAddress + BlockCount;
+
+        if (EndBlockAddress < BlockAddress ||
+            EndBlockAddress > StorageUnit->StorageUnitParams.BlockCount)
+            return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_ILLEGAL_BLOCK);
+    }
+
+    Result = SpdIoqPostSrb(StorageUnit->Ioq, Srb);
+
+    return NT_SUCCESS(Result) ? SRB_STATUS_PENDING : SRB_STATUS_ABORTED;
 }
 
 UCHAR SpdScsiReportLuns(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb)
@@ -314,7 +359,7 @@ UCHAR SpdScsiError(PVOID Srb, UCHAR SenseKey, UCHAR AdditionalSenseCode)
     return SrbStatus;
 }
 
-BOOLEAN SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength)
+VOID SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength)
 {
     ASSERT(
         SCSIOP_READ6 == Cdb->AsByte[0] ||
@@ -326,8 +371,7 @@ BOOLEAN SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength)
         SCSIOP_WRITE12 == Cdb->AsByte[0] ||
         SCSIOP_WRITE16 == Cdb->AsByte[0] ||
         SCSIOP_SYNCHRONIZE_CACHE == Cdb->AsByte[0] ||
-        SCSIOP_SYNCHRONIZE_CACHE16 == Cdb->AsByte[0] ||
-        SCSIOP_UNMAP == Cdb->AsByte[0]);
+        SCSIOP_SYNCHRONIZE_CACHE16 == Cdb->AsByte[0]);
 
     switch (Cdb->AsByte[0] & 0xE0)
     {
@@ -337,9 +381,10 @@ BOOLEAN SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength)
             ((UINT64)Cdb->CDB6READWRITE.LogicalBlockMsb1 << 16) |
             ((UINT64)Cdb->CDB6READWRITE.LogicalBlockMsb0 << 8) |
             ((UINT64)Cdb->CDB6READWRITE.LogicalBlockLsb);
-        *PLength =
-            ((UINT32)Cdb->CDB6READWRITE.TransferBlocks);
-        return TRUE;
+        *PLength = 0 != Cdb->CDB6READWRITE.TransferBlocks ?
+            ((UINT32)Cdb->CDB6READWRITE.TransferBlocks) :
+            256;
+        break;
 
     case 1 << 5:
     case 2 << 5:
@@ -352,7 +397,7 @@ BOOLEAN SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength)
         *PLength =
             ((UINT32)Cdb->CDB10.TransferBlocksMsb << 8) |
             ((UINT32)Cdb->CDB10.TransferBlocksLsb);
-        return TRUE;
+        break;
 
     case 4 << 5:
         /* CDB16 */
@@ -370,7 +415,7 @@ BOOLEAN SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength)
             ((UINT32)Cdb->CDB16.TransferLength[1] << 16) |
             ((UINT32)Cdb->CDB16.TransferLength[2] << 8) |
             ((UINT32)Cdb->CDB16.TransferLength[3]);
-        return TRUE;
+        break;
 
     case 5 << 5:
         /* CDB12 */
@@ -384,9 +429,6 @@ BOOLEAN SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength)
             ((UINT32)Cdb->CDB12.TransferLength[1] << 16) |
             ((UINT32)Cdb->CDB12.TransferLength[2] << 8) |
             ((UINT32)Cdb->CDB12.TransferLength[3]);
-        return TRUE;
-
-    default:
-        return FALSE;
+        break;
     }
 }
