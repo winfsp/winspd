@@ -125,7 +125,7 @@ UCHAR SpdSrbResetDevice(PVOID DeviceExtension, PVOID Srb)
 
     SrbGetPathTargetLun(Srb, &PathId, &TargetId, &Lun);
     StorageUnit = SpdStorageUnitReferenceByBtl(DeviceExtension,
-        PathId, TargetId, 0/*Lun: !valid*/);
+        SPD_IOCTL_BTL(PathId, TargetId, 0/* Lun is invalid! */));
     if (0 == StorageUnit)
         return SRB_STATUS_NO_DEVICE;
 

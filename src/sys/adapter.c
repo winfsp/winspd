@@ -97,7 +97,7 @@ BOOLEAN SpdHwResetBus(PVOID DeviceExtension0, ULONG PathId)
 
         for (ULONG I = 0; DeviceExtension->StorageUnitCapacity > I; I++)
         {
-            StorageUnit = SpdStorageUnitReferenceByBtl(DeviceExtension, 0, (UCHAR)I, 0);
+            StorageUnit = SpdStorageUnitReferenceByBtl(DeviceExtension, SPD_IOCTL_BTL(0, I, 0));
             if (0 == StorageUnit)
                 continue;
 

@@ -155,17 +155,21 @@ exit:
 
 SPD_STORAGE_UNIT *SpdStorageUnitReferenceByBtl(
     SPD_DEVICE_EXTENSION *DeviceExtension,
-    UCHAR PathId, UCHAR TargetId, UCHAR Lun)
+    UINT32 Btl)
 {
     SPD_STORAGE_UNIT *StorageUnit;
+    UINT8 B, T, L;
     KIRQL Irql;
 
-    if (0 != PathId || 0 != Lun)
+    B = SPD_IOCTL_BTL_B(Btl);
+    T = SPD_IOCTL_BTL_T(Btl);
+    L = SPD_IOCTL_BTL_L(Btl);
+
+    if (0 != B || 0 != L)
         return 0;
 
     KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
-    StorageUnit = DeviceExtension->StorageUnitCapacity > TargetId ?
-        DeviceExtension->StorageUnits[TargetId] : 0;
+    StorageUnit = DeviceExtension->StorageUnitCapacity > T ? DeviceExtension->StorageUnits[T] : 0;
     if (0 != StorageUnit)
         StorageUnit->RefCount++;
     KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);

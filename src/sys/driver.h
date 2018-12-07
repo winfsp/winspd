@@ -337,7 +337,7 @@ NTSTATUS SpdStorageUnitUnprovision(
     ULONG ProcessId);
 SPD_STORAGE_UNIT *SpdStorageUnitReferenceByBtl(
     SPD_DEVICE_EXTENSION *DeviceExtension,
-    UCHAR PathId, UCHAR TargetId, UCHAR Lun);
+    UINT32 Btl);
 VOID SpdStorageUnitDereference(
     SPD_DEVICE_EXTENSION *DeviceExtension,
     SPD_STORAGE_UNIT *StorageUnit);
@@ -350,7 +350,7 @@ SPD_STORAGE_UNIT *SpdStorageUnitReference(PVOID DeviceExtension, PVOID Srb)
     UCHAR PathId, TargetId, Lun;
 
     SrbGetPathTargetLun(Srb, &PathId, &TargetId, &Lun);
-    return SpdStorageUnitReferenceByBtl(DeviceExtension, PathId, TargetId, Lun);
+    return SpdStorageUnitReferenceByBtl(DeviceExtension, SPD_IOCTL_BTL(PathId, TargetId, Lun));
 }
 extern UCHAR SpdStorageUnitCapacity;
 #define SPD_INDEX_FROM_BTL(Btl)         SPD_IOCTL_BTL_T(Btl)
