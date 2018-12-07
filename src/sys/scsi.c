@@ -26,7 +26,6 @@ static UCHAR SpdScsiModeSense(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb
 static UCHAR SpdScsiReadCapacity(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiRead(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiWrite(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
-static UCHAR SpdScsiVerify(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiSynchronizeCache(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiStartStopUnit(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiReportLuns(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb);
@@ -82,13 +81,6 @@ UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
     case SCSIOP_WRITE12:
     case SCSIOP_WRITE16:
         SrbStatus = SpdScsiWrite(StorageUnit, Srb, Cdb);
-        break;
-
-    //case SCSIOP_VERIFY6: /* no support! */
-    case SCSIOP_VERIFY:
-    case SCSIOP_VERIFY12:
-    case SCSIOP_VERIFY16:
-        SrbStatus = SpdScsiVerify(StorageUnit, Srb, Cdb);
         break;
 
     case SCSIOP_SYNCHRONIZE_CACHE:
@@ -255,11 +247,6 @@ UCHAR SpdScsiRead(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb)
 }
 
 UCHAR SpdScsiWrite(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb)
-{
-    return SRB_STATUS_INVALID_REQUEST;
-}
-
-UCHAR SpdScsiVerify(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb)
 {
     return SRB_STATUS_INVALID_REQUEST;
 }
