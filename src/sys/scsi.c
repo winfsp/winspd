@@ -84,6 +84,7 @@ UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
         break;
 
     case SCSIOP_SYNCHRONIZE_CACHE:
+    case SCSIOP_SYNCHRONIZE_CACHE16:
         SrbStatus = SpdScsiSynchronizeCache(StorageUnit, Srb, Cdb);
         break;
 
@@ -316,8 +317,6 @@ UCHAR SpdScsiError(PVOID Srb, UCHAR SenseKey, UCHAR AdditionalSenseCode)
 BOOLEAN SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength)
 {
     ASSERT(
-        SCSIOP_READ_CAPACITY == Cdb->AsByte[0] ||
-        SCSIOP_READ_CAPACITY16 == Cdb->AsByte[0] ||
         SCSIOP_READ6 == Cdb->AsByte[0] ||
         SCSIOP_READ == Cdb->AsByte[0] ||
         SCSIOP_READ12 == Cdb->AsByte[0] ||
@@ -326,9 +325,9 @@ BOOLEAN SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength)
         SCSIOP_WRITE == Cdb->AsByte[0] ||
         SCSIOP_WRITE12 == Cdb->AsByte[0] ||
         SCSIOP_WRITE16 == Cdb->AsByte[0] ||
-        SCSIOP_VERIFY == Cdb->AsByte[0] ||
-        SCSIOP_VERIFY12 == Cdb->AsByte[0] ||
-        SCSIOP_VERIFY16 == Cdb->AsByte[0]);
+        SCSIOP_SYNCHRONIZE_CACHE == Cdb->AsByte[0] ||
+        SCSIOP_SYNCHRONIZE_CACHE16 == Cdb->AsByte[0] ||
+        SCSIOP_UNMAP == Cdb->AsByte[0]);
 
     switch (Cdb->AsByte[0] & 0xE0)
     {
