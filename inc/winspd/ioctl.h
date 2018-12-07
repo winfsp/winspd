@@ -34,7 +34,6 @@ extern "C" {
 #define SPD_IOCTL_BTL_B(Btl)            (((Btl) >> 16) & 0xff)
 #define SPD_IOCTL_BTL_T(Btl)            (((Btl) >> 8) & 0xff)
 #define SPD_IOCTL_BTL_L(Btl)            ((Btl) & 0xff)
-#define SPD_IOCTL_UNMAP_DESCR_MAX_COUNT 16
 #define SPD_IOCTL_STORAGE_UNIT_CAPACITY 64
 #define SPD_IOCTL_STORAGE_UNIT_MAX_CAPACITY 64
 
@@ -71,7 +70,8 @@ typedef struct
     UCHAR ProductRevisionLevel[4];
     UINT8 DeviceType;                   /* must be 0: direct access block device */
     UINT32 RemovableMedia:1;            /* must be 0: no removable media */
-    UINT64 Reserved[9];
+    UINT32 MaxTransferLength;
+    UINT64 Reserved[8];
 } SPD_IOCTL_STORAGE_UNIT_PARAMS;
 #if defined(WINSPD_SYS_INTERNAL)
 static_assert(128 == sizeof(SPD_IOCTL_STORAGE_UNIT_PARAMS),
@@ -91,13 +91,17 @@ typedef struct
 } SPD_IOCTL_STORAGE_UNIT_STATUS;
 typedef struct
 {
+    UINT64 BlockAddress;
+    UINT32 BlockCount;
+} SPD_IOCTL_UNMAP_DESCRIPTOR;
+typedef struct
+{
     UINT64 Hint;
     UINT8 Kind;
     union
     {
         struct
         {
-            UINT64 Address;
             UINT64 BlockAddress;
             UINT32 BlockCount;
             UINT32 ForceUnitAccess:1;
@@ -105,7 +109,6 @@ typedef struct
         } Read;
         struct
         {
-            UINT64 Address;
             UINT64 BlockAddress;
             UINT32 BlockCount;
             UINT32 ForceUnitAccess:1;
@@ -119,8 +122,6 @@ typedef struct
         struct
         {
             UINT16 Count;
-            UINT64 BlockAddresses[SPD_IOCTL_UNMAP_DESCR_MAX_COUNT];
-            UINT32 BlockCounts[SPD_IOCTL_UNMAP_DESCR_MAX_COUNT];
         } Unmap;
     } Op;
 } SPD_IOCTL_TRANSACT_REQ;
@@ -171,6 +172,7 @@ typedef struct
     UINT32 Btl;
     UINT32 ReqValid:1;
     UINT32 RspValid:1;
+    UINT64 DataBuffer;
     union
     {
         SPD_IOCTL_TRANSACT_REQ Req;
@@ -193,7 +195,10 @@ DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,
 DWORD SpdIoctlGetList(HANDLE DeviceHandle,
     PUINT32 ListBuf, PUINT32 PListSize);
 DWORD SpdIoctlTransact(HANDLE DeviceHandle,
-    UINT32 Btl, SPD_IOCTL_TRANSACT_RSP *Rsp, SPD_IOCTL_TRANSACT_REQ *Req);
+    UINT32 Btl,
+    SPD_IOCTL_TRANSACT_RSP *Rsp,
+    SPD_IOCTL_TRANSACT_REQ *Req,
+    PVOID DataBuffer);
 DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP);
 VOID SpdIoctlMemAlignFree(PVOID P);
 #endif

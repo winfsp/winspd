@@ -38,6 +38,7 @@ extern "C" {
 
 typedef SPD_IOCTL_STORAGE_UNIT_PARAMS SPD_STORAGE_UNIT_PARAMS;
 typedef SPD_IOCTL_STORAGE_UNIT_STATUS SPD_STORAGE_UNIT_STATUS;
+typedef SPD_IOCTL_UNMAP_DESCRIPTOR SPD_UNMAP_DESCRIPTOR;
 
 /**
  * @class SPD_STORAGE_UNIT_INTERFACE
@@ -56,7 +57,7 @@ typedef struct _SPD_STORAGE_UNIT_INTERFACE
         UINT64 BlockAddress, UINT32 BlockCount,
         SPD_STORAGE_UNIT_STATUS *Status);
     BOOLEAN (*Unmap)(SPD_STORAGE_UNIT *StorageUnit,
-        UINT64 BlockAddresses[], UINT32 BlockCounts[], UINT32 Count,
+        SPD_UNMAP_DESCRIPTOR Descriptors[], UINT32 Count,
         SPD_STORAGE_UNIT_STATUS *Status);
 
     /*
@@ -70,6 +71,7 @@ typedef struct _SPD_STORAGE_UNIT
     UINT16 Version;
     PVOID UserContext;
     GUID Guid;
+    UINT32 MaxTransferLength;
     HANDLE DeviceHandle;
     UINT32 Btl;
     const SPD_STORAGE_UNIT_INTERFACE *Interface;
@@ -82,6 +84,7 @@ typedef struct _SPD_STORAGE_UNIT_OPERATION_CONTEXT
 {
     SPD_IOCTL_TRANSACT_REQ *Request;
     SPD_IOCTL_TRANSACT_RSP *Response;
+    PVOID DataBuffer;
 } SPD_STORAGE_UNIT_OPERATION_CONTEXT;
 /**
  * Create a storage unit object.
@@ -133,9 +136,11 @@ VOID SpdStorageUnitStopDispatcher(SPD_STORAGE_UNIT *StorageUnit);
  *     The storage unit object.
  * @param Response
  *     The response buffer.
+ * @param DataBuffer
+ *     The response data buffer.
  */
 VOID SpdStorageUnitSendResponse(SPD_STORAGE_UNIT *StorageUnit,
-    SPD_IOCTL_TRANSACT_RSP *Response);
+    SPD_IOCTL_TRANSACT_RSP *Response, PVOID DataBuffer);
 /**
  * Get the current operation context.
  *

@@ -79,6 +79,7 @@ DWORD SpdStorageUnitCreate(
         goto exit;
 
     memcpy(&StorageUnit->Guid, &StorageUnitParams->Guid, sizeof StorageUnitParams->Guid);
+    StorageUnit->MaxTransferLength = StorageUnitParams->MaxTransferLength;
     StorageUnit->DeviceHandle = DeviceHandle;
     StorageUnit->Btl = Btl;
     StorageUnit->Interface = Interface;
@@ -112,9 +113,17 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
     SPD_IOCTL_TRANSACT_REQ RequestBuf, *Request = &RequestBuf;
     SPD_IOCTL_TRANSACT_RSP ResponseBuf, *Response;
     SPD_STORAGE_UNIT_OPERATION_CONTEXT OperationContext;
+    PVOID DataBuffer = 0;
     HANDLE DispatcherThread = 0;
     BOOLEAN Complete;
     DWORD Error;
+
+    DataBuffer = MemAlloc(StorageUnit->MaxTransferLength);
+    if (0 == DataBuffer)
+    {
+        Error = ERROR_NO_SYSTEM_RESOURCES;
+        goto exit;
+    }
 
     if (1 < StorageUnit->DispatcherThreadCount)
     {
@@ -129,13 +138,15 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
 
     OperationContext.Request = &RequestBuf;
     OperationContext.Response = &ResponseBuf;
+    OperationContext.DataBuffer = DataBuffer;
     TlsSetValue(SpdStorageUnitTlsKey, &OperationContext);
 
     Response = 0;
     for (;;)
     {
         memset(Request, 0, sizeof *Request);
-        Error = SpdIoctlTransact(StorageUnit->DeviceHandle, StorageUnit->Btl, Response, Request);
+        Error = SpdIoctlTransact(StorageUnit->DeviceHandle,
+            StorageUnit->Btl, Response, Request, DataBuffer);
         if (ERROR_SUCCESS != Error)
             goto exit;
 
@@ -160,7 +171,7 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
                 goto invalid;
             Complete = StorageUnit->Interface->Read(
                 StorageUnit,
-                (PVOID)(UINT_PTR)Request->Op.Read.Address,
+                DataBuffer,
                 Request->Op.Read.BlockAddress,
                 Request->Op.Read.BlockCount,
                 Request->Op.Read.ForceUnitAccess,
@@ -171,7 +182,7 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
                 goto invalid;
             Complete = StorageUnit->Interface->Write(
                 StorageUnit,
-                (PVOID)(UINT_PTR)Request->Op.Write.Address,
+                DataBuffer,
                 Request->Op.Write.BlockAddress,
                 Request->Op.Write.BlockCount,
                 Request->Op.Write.ForceUnitAccess,
@@ -191,8 +202,7 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
                 goto invalid;
             Complete = StorageUnit->Interface->Unmap(
                 StorageUnit,
-                Request->Op.Unmap.BlockAddresses,
-                Request->Op.Unmap.BlockCounts,
+                DataBuffer,
                 Request->Op.Unmap.Count,
                 &Response->Status);
             break;
@@ -217,6 +227,8 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
 
 exit:
     TlsSetValue(SpdStorageUnitTlsKey, 0);
+
+    MemFree(DataBuffer);
 
     SpdStorageUnitSetDispatcherError(StorageUnit, Error);
 
@@ -269,7 +281,7 @@ VOID SpdStorageUnitStopDispatcher(SPD_STORAGE_UNIT *StorageUnit)
 }
 
 VOID SpdStorageUnitSendResponse(SPD_STORAGE_UNIT *StorageUnit,
-    SPD_IOCTL_TRANSACT_RSP *Response)
+    SPD_IOCTL_TRANSACT_RSP *Response, PVOID DataBuffer)
 {
     DWORD Error;
 
@@ -280,7 +292,8 @@ VOID SpdStorageUnitSendResponse(SPD_STORAGE_UNIT *StorageUnit,
             SpdDebugLogResponse(Response);
     }
 
-    Error = SpdIoctlTransact(StorageUnit->DeviceHandle, StorageUnit->Btl, Response, 0);
+    Error = SpdIoctlTransact(StorageUnit->DeviceHandle,
+        StorageUnit->Btl, Response, 0, DataBuffer);
     if (ERROR_SUCCESS != Error)
     {
         SpdStorageUnitSetDispatcherError(StorageUnit, Error);

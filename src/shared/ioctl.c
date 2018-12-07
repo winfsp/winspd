@@ -350,7 +350,10 @@ exit:
 }
 
 DWORD SpdIoctlTransact(HANDLE DeviceHandle,
-    UINT32 Btl, SPD_IOCTL_TRANSACT_RSP *Rsp, SPD_IOCTL_TRANSACT_REQ *Req)
+    UINT32 Btl,
+    SPD_IOCTL_TRANSACT_RSP *Rsp,
+    SPD_IOCTL_TRANSACT_REQ *Req,
+    PVOID DataBuffer)
 {
     SPD_IOCTL_TRANSACT_PARAMS Params;
     DWORD BytesTransferred;
@@ -362,6 +365,7 @@ DWORD SpdIoctlTransact(HANDLE DeviceHandle,
     Params.Btl = Btl;
     Params.ReqValid = 0 != Req;
     Params.RspValid = 0 != Rsp;
+    Params.DataBuffer = (UINT64)(UINT_PTR)DataBuffer;
 
     if (Params.RspValid)
         memcpy(&Params.Dir.Rsp, Rsp, sizeof *Rsp);
