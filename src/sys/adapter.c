@@ -36,12 +36,11 @@ ULONG SpdHwFindAdapter(
 
     ConfigInfo->MaximumTransferLength = SP_UNINITIALIZED_VALUE;
     ConfigInfo->NumberOfPhysicalBreaks = SP_UNINITIALIZED_VALUE;
-    ConfigInfo->AlignmentMask = 0;
+    ConfigInfo->AlignmentMask = FILE_BYTE_ALIGNMENT;
     ConfigInfo->NumberOfBuses = 1;
     ConfigInfo->ScatterGather = TRUE;
     ConfigInfo->Master = TRUE;
     ConfigInfo->CachesData = TRUE;
-    ConfigInfo->AdapterScansDown = FALSE;
     ConfigInfo->MaximumNumberOfTargets = SpdStorageUnitCapacity;
     ConfigInfo->MaximumNumberOfLogicalUnits = 1;
     ConfigInfo->WmiDataProvider = FALSE;
