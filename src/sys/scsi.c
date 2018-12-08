@@ -25,8 +25,6 @@ static UCHAR SpdScsiReportLuns(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageU
     PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
     PVOID Srb, PCDB Cdb);
-static UCHAR SpdScsiModeSense(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
-    PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiReadCapacity(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
     PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiPostRangeSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
@@ -76,11 +74,6 @@ UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
 
     case SCSIOP_INQUIRY:
         SrbStatus = SpdScsiInquiry(DeviceExtension, StorageUnit, Srb, Cdb);
-        break;
-
-    case SCSIOP_MODE_SENSE:
-    case SCSIOP_MODE_SENSE10:
-        SrbStatus = SpdScsiModeSense(DeviceExtension, StorageUnit, Srb, Cdb);
         break;
 
     case SCSIOP_READ_CAPACITY:
@@ -396,12 +389,6 @@ UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
             return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_CDB);
         }
     }
-}
-
-UCHAR SpdScsiModeSense(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
-    PVOID Srb, PCDB Cdb)
-{
-    return SRB_STATUS_INVALID_REQUEST;
 }
 
 UCHAR SpdScsiReadCapacity(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
