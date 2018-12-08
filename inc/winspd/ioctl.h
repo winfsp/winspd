@@ -121,7 +121,7 @@ typedef struct
         } Flush;
         struct
         {
-            UINT16 Count;
+            UINT32 Count;
         } Unmap;
     } Op;
 } SPD_IOCTL_TRANSACT_REQ;

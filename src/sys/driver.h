@@ -308,6 +308,8 @@ typedef struct _SPD_SRB_EXTENSION
     LIST_ENTRY ListEntry;
     PVOID HashNext;
     PVOID Srb;
+    PVOID SystemDataBuffer;
+    ULONG SystemDataLength;
 } SPD_SRB_EXTENSION;
 #define SpdSrbExtension(Srb)            ((SPD_SRB_EXTENSION *)SrbGetMiniportContext(Srb))
 
