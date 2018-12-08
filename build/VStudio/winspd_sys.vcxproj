@@ -71,28 +71,28 @@
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(ProjectName).build\$(Configuration)\$(PlatformTarget)\</IntDir>
-    <TargetName>$(SolutionName)-$(PlatformTarget)</TargetName>
+    <TargetName>$(MyBaseName)-$(PlatformTarget)</TargetName>
     <EnableInf2cat>false</EnableInf2cat>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(ProjectName).build\$(Configuration)\$(PlatformTarget)\</IntDir>
-    <TargetName>$(SolutionName)-$(PlatformTarget)</TargetName>
+    <TargetName>$(MyBaseName)-$(PlatformTarget)</TargetName>
     <EnableInf2cat>false</EnableInf2cat>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(ProjectName).build\$(Configuration)\$(PlatformTarget)\</IntDir>
-    <TargetName>$(SolutionName)-$(PlatformTarget)</TargetName>
+    <TargetName>$(MyBaseName)-$(PlatformTarget)</TargetName>
     <EnableInf2cat>false</EnableInf2cat>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(ProjectName).build\$(Configuration)\$(PlatformTarget)\</IntDir>
-    <TargetName>$(SolutionName)-$(PlatformTarget)</TargetName>
+    <TargetName>$(MyBaseName)-$(PlatformTarget)</TargetName>
     <EnableInf2cat>false</EnableInf2cat>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -182,8 +182,7 @@ set MyDescription="$(MyDescription)"
 set MyCompanyName="$(MyCompanyName)"
 set MyCopyright="$(MyCopyright)"
 set MyVersion=$(MyVersion)
-set BaseName=$(SolutionName)
-set HardwareId="root\%DriverName%"
+set BaseName=$(MyBaseName)
 
 setlocal EnableDelayedExpansion
 if exist $(OutDir)$(TargetName).inf del $(OutDir)$(TargetName).inf
@@ -202,8 +201,7 @@ set MyDescription="$(MyDescription)"
 set MyCompanyName="$(MyCompanyName)"
 set MyCopyright="$(MyCopyright)"
 set MyVersion=$(MyVersion)
-set BaseName=$(SolutionName)
-set HardwareId="root\%DriverName%"
+set BaseName=$(MyBaseName)
 
 setlocal EnableDelayedExpansion
 if exist $(OutDir)$(TargetName).inf del $(OutDir)$(TargetName).inf
@@ -222,7 +220,7 @@ set MyDescription="$(MyDescription)"
 set MyCompanyName="$(MyCompanyName)"
 set MyCopyright="$(MyCopyright)"
 set MyVersion=$(MyVersion)
-set BaseName=$(SolutionName)
+set BaseName=$(MyBaseName)
 
 setlocal EnableDelayedExpansion
 if exist $(OutDir)$(TargetName).inf del $(OutDir)$(TargetName).inf
@@ -241,8 +239,7 @@ set MyDescription="$(MyDescription)"
 set MyCompanyName="$(MyCompanyName)"
 set MyCopyright="$(MyCopyright)"
 set MyVersion=$(MyVersion)
-set BaseName=$(SolutionName)
-set HardwareId="root\%DriverName%"
+set BaseName=$(MyBaseName)
 
 setlocal EnableDelayedExpansion
 if exist $(OutDir)$(TargetName).inf del $(OutDir)$(TargetName).inf
