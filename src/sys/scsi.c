@@ -100,6 +100,74 @@ exit:
     return SrbStatus;
 }
 
+VOID SpdSrbExecuteScsiPrepare(PVOID DeviceExtension, PVOID Srb, PVOID Context, PVOID DataBuffer)
+{
+    ASSERT(DISPATCH_LEVEL == KeGetCurrentIrql());
+
+    SPD_IOCTL_TRANSACT_REQ *Req = Context;
+    PCDB Cdb;
+    PVOID SrbDataBuffer;
+    ULONG StorResult;
+
+    Req->Hint = (UINT64)(UINT_PTR)Srb;
+
+    Cdb = SrbGetCdb(Srb);
+    switch (Cdb->AsByte[0])
+    {
+    case SCSIOP_READ6:
+        Req->Kind = SpdIoctlTransactReadKind;
+        SpdCdbGetRange(Cdb, &Req->Op.Read.BlockAddress, &Req->Op.Read.BlockCount);
+        break;
+    case SCSIOP_READ:
+        Req->Kind = SpdIoctlTransactReadKind;
+        SpdCdbGetRange(Cdb, &Req->Op.Read.BlockAddress, &Req->Op.Read.BlockCount);
+        Req->Op.Read.ForceUnitAccess = Cdb->CDB10.ForceUnitAccess;
+        break;
+    case SCSIOP_READ12:
+        Req->Kind = SpdIoctlTransactReadKind;
+        SpdCdbGetRange(Cdb, &Req->Op.Read.BlockAddress, &Req->Op.Read.BlockCount);
+        Req->Op.Read.ForceUnitAccess = Cdb->CDB12.ForceUnitAccess;
+        break;
+    case SCSIOP_READ16:
+        Req->Kind = SpdIoctlTransactReadKind;
+        SpdCdbGetRange(Cdb, &Req->Op.Read.BlockAddress, &Req->Op.Read.BlockCount);
+        Req->Op.Read.ForceUnitAccess = Cdb->CDB16.ForceUnitAccess;
+        break;
+
+    case SCSIOP_WRITE6:
+    case SCSIOP_WRITE:
+    case SCSIOP_WRITE12:
+    case SCSIOP_WRITE16:
+        break;
+
+    case SCSIOP_SYNCHRONIZE_CACHE:
+    case SCSIOP_SYNCHRONIZE_CACHE16:
+        Req->Kind = SpdIoctlTransactFlushKind;
+        SpdCdbGetRange(Cdb, &Req->Op.Flush.BlockAddress, &Req->Op.Flush.BlockCount);
+        break;
+
+    case SCSIOP_UNMAP:
+        break;
+    }
+}
+
+VOID SpdSrbExecuteScsiComplete(PVOID DeviceExtension, PVOID Srb, PVOID Context, PVOID DataBuffer)
+{
+    ASSERT(DISPATCH_LEVEL == KeGetCurrentIrql());
+
+    PCDB Cdb;
+
+    Cdb = SrbGetCdb(Srb);
+    switch (Cdb->AsByte[0])
+    {
+    case SCSIOP_READ6:
+    case SCSIOP_READ:
+    case SCSIOP_READ12:
+    case SCSIOP_READ16:
+        break;
+    }
+}
+
 UCHAR SpdScsiInquiry(SPD_STORAGE_UNIT *StorageUnit, PVOID Srb, PCDB Cdb)
 {
     PVOID DataBuffer = SrbGetDataBuffer(Srb);

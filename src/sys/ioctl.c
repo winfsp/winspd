@@ -127,14 +127,6 @@ static VOID SpdIoctlGetList(SPD_DEVICE_EXTENSION *DeviceExtension,
 exit:;
 }
 
-static VOID SpdIoctlTransactPrepare(PVOID Context, PVOID DataBuffer, PVOID Srb)
-{
-}
-
-static VOID SpdIoctlTransactComplete(PVOID Context, PVOID DataBuffer, PVOID Srb)
-{
-}
-
 static VOID SpdIoctlTransact(SPD_DEVICE_EXTENSION *DeviceExtension,
     ULONG Length, SPD_IOCTL_TRANSACT_PARAMS *Params,
     PIRP Irp)
@@ -204,7 +196,7 @@ static VOID SpdIoctlTransact(SPD_DEVICE_EXTENSION *DeviceExtension,
 
     if (Params->RspValid)
         SpdIoqEndProcessingSrb(StorageUnit->Ioq,
-            Params->Dir.Rsp.Hint, SpdIoctlTransactComplete, &Params, DataBuffer);
+            Params->Dir.Rsp.Hint, SpdSrbExecuteScsiComplete, &Params->Dir.Rsp, DataBuffer);
 
     if (Params->ReqValid)
     {
@@ -215,7 +207,7 @@ static VOID SpdIoctlTransact(SPD_DEVICE_EXTENSION *DeviceExtension,
         /* wait for an SRB to arrive */
         while (STATUS_UNSUCCESSFUL == (Irp->IoStatus.Status =
             SpdIoqStartProcessingSrb(StorageUnit->Ioq,
-                0, Irp, SpdIoctlTransactPrepare, &Params, DataBuffer)))
+                0, Irp, SpdSrbExecuteScsiPrepare, &Params->Dir.Req, DataBuffer)))
         {
             if (SpdIoqStopped(StorageUnit->Ioq))
             {
