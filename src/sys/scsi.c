@@ -21,6 +21,8 @@
 
 #include <sys/driver.h>
 
+static UCHAR SpdScsiReportLuns(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
+    PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
     PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiModeSense(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
@@ -30,8 +32,6 @@ static UCHAR SpdScsiReadCapacity(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
 static UCHAR SpdScsiPostRangeSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
     PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiPostUnmapSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
-    PVOID Srb, PCDB Cdb);
-static UCHAR SpdScsiReportLuns(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
     PVOID Srb, PCDB Cdb);
 
 static UCHAR SpdScsiErrorEx(PVOID Srb,
@@ -48,20 +48,28 @@ UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
 {
     ASSERT(DISPATCH_LEVEL >= KeGetCurrentIrql());
 
-    SPD_STORAGE_UNIT *StorageUnit = 0;
     PCDB Cdb;
+    SPD_STORAGE_UNIT *StorageUnit = 0;
     UCHAR SrbStatus = SRB_STATUS_PENDING;
+
+    Cdb = SrbGetCdb(Srb);
 
     StorageUnit = SpdStorageUnitReference(DeviceExtension, Srb);
     if (0 == StorageUnit)
     {
-        SrbStatus = SRB_STATUS_NO_DEVICE;
+        if (SCSIOP_REPORT_LUNS == Cdb->AsByte[0])
+            SrbStatus = SpdScsiReportLuns(DeviceExtension, 0, Srb, Cdb);
+        else
+            SrbStatus = SRB_STATUS_NO_DEVICE;
         goto exit;
     }
 
-    Cdb = SrbGetCdb(Srb);
     switch (Cdb->AsByte[0])
     {
+    case SCSIOP_REPORT_LUNS:
+        SrbStatus = SpdScsiReportLuns(DeviceExtension, StorageUnit, Srb, Cdb);
+        break;
+
     case SCSIOP_TEST_UNIT_READY:
         SrbStatus = SRB_STATUS_SUCCESS;
         break;
@@ -95,10 +103,6 @@ UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
 
     case SCSIOP_UNMAP:
         SrbStatus = SpdScsiPostUnmapSrb(DeviceExtension, StorageUnit, Srb, Cdb);
-        break;
-
-    case SCSIOP_REPORT_LUNS:
-        SrbStatus = SpdScsiReportLuns(DeviceExtension, StorageUnit, Srb, Cdb);
         break;
 
     default:
@@ -227,6 +231,46 @@ VOID SpdSrbExecuteScsiComplete(PVOID Srb, PVOID Context, PVOID DataBuffer)
             RtlZeroMemory(SrbExtension->SystemDataBuffer, SrbExtension->SystemDataLength);
         break;
     }
+}
+
+UCHAR SpdScsiReportLuns(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit0,
+    PVOID Srb, PCDB Cdb)
+{
+    PVOID DataBuffer = SrbGetDataBuffer(Srb);
+    ULONG DataTransferLength = SrbGetDataTransferLength(Srb);
+    UINT8 Bitmap[32];
+    PLUN_LIST LunList;
+    ULONG Length;
+
+    if (0 == DataBuffer)
+        return SRB_STATUS_INTERNAL_ERROR;
+
+    RtlZeroMemory(DataBuffer, DataTransferLength);
+
+    if (sizeof(LUN_LIST) > DataTransferLength)
+        return SRB_STATUS_DATA_OVERRUN;
+
+    SpdStorageUnitGetUseBitmap(DeviceExtension, Bitmap);
+
+    LunList = DataBuffer;
+    Length = 0;
+    for (ULONG I = 0; sizeof Bitmap * 8 > I; I++)
+        if (FlagOn(Bitmap[I >> 3], 1 << (I & 7)))
+        {
+            if (sizeof(LUN_LIST) + Length + RTL_FIELD_SIZE(LUN_LIST, Lun[0]) > DataTransferLength)
+                return SRB_STATUS_DATA_OVERRUN;
+            LunList->Lun[Length / RTL_FIELD_SIZE(LUN_LIST, Lun[0])][0] = (UCHAR)I;
+            Length += RTL_FIELD_SIZE(LUN_LIST, Lun[0]);
+        }
+
+    LunList->LunListLength[0] = (Length >> 24) & 0xff;
+    LunList->LunListLength[1] = (Length >> 16) & 0xff;
+    LunList->LunListLength[2] = (Length >> 8) & 0xff;
+    LunList->LunListLength[3] = Length & 0xff;
+
+    SrbSetDataTransferLength(Srb, sizeof(LUN_LIST) + Length);
+
+    return SRB_STATUS_SUCCESS;
 }
 
 UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
@@ -458,33 +502,6 @@ static UCHAR SpdScsiPostUnmapSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
     }
 
     return SpdScsiPostSrb(DeviceExtension, StorageUnit, Srb, Length * 16);
-}
-
-UCHAR SpdScsiReportLuns(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
-    PVOID Srb, PCDB Cdb)
-{
-    PVOID DataBuffer = SrbGetDataBuffer(Srb);
-    ULONG DataTransferLength = SrbGetDataTransferLength(Srb);
-
-    if (0 == DataBuffer)
-        return SRB_STATUS_INTERNAL_ERROR;
-
-    RtlZeroMemory(DataBuffer, DataTransferLength);
-
-    ULONG LunCount = 1;
-    UINT32 LunListLength = LunCount * RTL_FIELD_SIZE(LUN_LIST, Lun[0]);
-    if (sizeof(LUN_LIST) + LunListLength > DataTransferLength)
-        return SRB_STATUS_DATA_OVERRUN;
-
-    PLUN_LIST LunList = DataBuffer;
-    LunList->LunListLength[0] = (LunListLength >> 24) & 0xff;
-    LunList->LunListLength[1] = (LunListLength >> 16) & 0xff;
-    LunList->LunListLength[2] = (LunListLength >> 8) & 0xff;
-    LunList->LunListLength[3] = LunListLength & 0xff;
-    LunList->Lun[0][1] = 0;
-    SrbSetDataTransferLength(Srb, sizeof(LUN_LIST) + LunListLength);
-
-    return SRB_STATUS_SUCCESS;
 }
 
 UCHAR SpdScsiErrorEx(PVOID Srb,
