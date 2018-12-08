@@ -111,12 +111,11 @@ exit:
     return SrbStatus;
 }
 
-static UCHAR SpdScsiReportLuns(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit0,
+static UCHAR SpdScsiReportLuns(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
     PVOID Srb, PCDB Cdb)
 {
     PVOID DataBuffer = SrbGetDataBuffer(Srb);
     ULONG DataTransferLength = SrbGetDataTransferLength(Srb);
-    UINT8 Bitmap[32];
     PLUN_LIST LunList;
     ULONG Length;
 
@@ -125,21 +124,31 @@ static UCHAR SpdScsiReportLuns(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageU
 
     RtlZeroMemory(DataBuffer, DataTransferLength);
 
-    if (sizeof(LUN_LIST) > DataTransferLength)
-        return SRB_STATUS_DATA_OVERRUN;
-
-    SpdStorageUnitGetUseBitmap(DeviceExtension, Bitmap);
-
     LunList = DataBuffer;
-    Length = 0;
-    for (ULONG I = 0; sizeof Bitmap * 8 > I; I++)
-        if (FlagOn(Bitmap[I >> 3], 1 << (I & 7)))
-        {
-            if (sizeof(LUN_LIST) + Length + RTL_FIELD_SIZE(LUN_LIST, Lun[0]) > DataTransferLength)
-                return SRB_STATUS_DATA_OVERRUN;
-            LunList->Lun[Length / RTL_FIELD_SIZE(LUN_LIST, Lun[0])][0] = (UCHAR)I;
-            Length += RTL_FIELD_SIZE(LUN_LIST, Lun[0]);
-        }
+    if (0 != StorageUnit)
+    {
+        Length = RTL_FIELD_SIZE(LUN_LIST, Lun[0]);
+
+        if (sizeof(LUN_LIST) + Length > DataTransferLength)
+            return SRB_STATUS_DATA_OVERRUN;
+
+        // Our Lun is always 0. See RtlZeroMemory above.
+        // LunList->Lun[0][0] = 0;
+        // LunList->Lun[0][1] = 0;
+        // LunList->Lun[0][2] = 0;
+        // LunList->Lun[0][3] = 0;
+        // LunList->Lun[0][4] = 0;
+        // LunList->Lun[0][5] = 0;
+        // LunList->Lun[0][6] = 0;
+        // LunList->Lun[0][7] = 0;
+    }
+    else
+    {
+        Length = 0;
+
+        if (sizeof(LUN_LIST) + Length > DataTransferLength)
+            return SRB_STATUS_DATA_OVERRUN;
+    }
 
     LunList->LunListLength[0] = (Length >> 24) & 0xff;
     LunList->LunListLength[1] = (Length >> 16) & 0xff;
