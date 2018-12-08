@@ -300,7 +300,7 @@ NTSTATUS SpdIoqPostSrb(SPD_IOQ *Ioq, PVOID Srb);
 NTSTATUS SpdIoqStartProcessingSrb(SPD_IOQ *Ioq, PLARGE_INTEGER Timeout, PIRP CancellableIrp,
     VOID (*Prepare)(PVOID Srb, PVOID Context, PVOID DataBuffer),
     PVOID Context, PVOID DataBuffer);
-VOID SpdIoqEndProcessingSrb(SPD_IOQ *Ioq, UINT_PTR Hint,
+VOID SpdIoqEndProcessingSrb(SPD_IOQ *Ioq, UINT64 Hint,
     VOID (*Complete)(PVOID Srb, PVOID Context, PVOID DataBuffer),
     PVOID Context, PVOID DataBuffer);
 typedef struct _SPD_SRB_EXTENSION

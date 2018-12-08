@@ -238,7 +238,7 @@ NTSTATUS SpdIoqStartProcessingSrb(SPD_IOQ *Ioq, PLARGE_INTEGER Timeout, PIRP Can
     return Result;
 }
 
-VOID SpdIoqEndProcessingSrb(SPD_IOQ *Ioq, UINT_PTR Hint,
+VOID SpdIoqEndProcessingSrb(SPD_IOQ *Ioq, UINT64 Hint,
     VOID (*Complete)(PVOID Srb, PVOID Context, PVOID DataBuffer),
     PVOID Context, PVOID DataBuffer)
 {
@@ -248,7 +248,7 @@ VOID SpdIoqEndProcessingSrb(SPD_IOQ *Ioq, UINT_PTR Hint,
 
     if (!Ioq->Stopped)
     {
-        SPD_SRB_EXTENSION *SrbExtension = (PVOID)Hint;
+        SPD_SRB_EXTENSION *SrbExtension = (PVOID)(UINT_PTR)Hint;
         ULONG Index;
 
         Index = SpdHashMixPointer(SrbExtension) % Ioq->ProcessBucketCount;

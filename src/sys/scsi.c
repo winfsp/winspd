@@ -221,7 +221,10 @@ VOID SpdSrbExecuteScsiComplete(PVOID Srb, PVOID Context, PVOID DataBuffer)
     case SCSIOP_READ12:
     case SCSIOP_READ16:
         SrbExtension = SpdSrbExtension(Srb);
-        RtlCopyMemory(SrbExtension->SystemDataBuffer, DataBuffer, SrbExtension->SystemDataLength);
+        if (0 != DataBuffer)
+            RtlCopyMemory(SrbExtension->SystemDataBuffer, DataBuffer, SrbExtension->SystemDataLength);
+        else
+            RtlZeroMemory(SrbExtension->SystemDataBuffer, SrbExtension->SystemDataLength);
         break;
     }
 }
