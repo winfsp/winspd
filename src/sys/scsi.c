@@ -313,17 +313,17 @@ static UCHAR SpdScsiPostUnmapSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
     if (0 == Length)
         return SRB_STATUS_SUCCESS;
 
-    if (Length < 8 ||
+    if (Length < sizeof(UNMAP_LIST_HEADER) ||
         Length != 2 +
             ((UINT32)(DataBuffer->DataLength[0] << 8) |
             (UINT32)DataBuffer->DataLength[1]) ||
-        Length != 8 +
+        Length != sizeof(UNMAP_LIST_HEADER) +
             ((UINT32)(DataBuffer->BlockDescrDataLength[0] << 8) |
             (UINT32)DataBuffer->BlockDescrDataLength[1]))
         return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_CDB);
 
-    Length -= 8;
-    Length /= 16;
+    Length -= sizeof(UNMAP_LIST_HEADER);
+    Length /= sizeof(UNMAP_BLOCK_DESCRIPTOR);
     if (0 == Length)
         return SRB_STATUS_SUCCESS;
 
@@ -351,7 +351,7 @@ static UCHAR SpdScsiPostUnmapSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
             return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_ILLEGAL_BLOCK);
     }
 
-    return SpdScsiPostSrb(DeviceExtension, StorageUnit, Srb, Length * 16);
+    return SpdScsiPostSrb(DeviceExtension, StorageUnit, Srb, Length * sizeof(UNMAP_BLOCK_DESCRIPTOR));
 }
 
 static UCHAR SpdScsiPostSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
@@ -405,14 +405,14 @@ VOID SpdSrbExecuteScsiPrepare(PVOID Srb, PVOID Context, PVOID DataBuffer)
     case SCSIOP_WRITE:
     case SCSIOP_WRITE12:
     case SCSIOP_WRITE16:
-        SrbExtension = SpdSrbExtension(Srb);
         Req->Hint = (UINT64)(UINT_PTR)Srb;
-        Req->Kind = SpdIoctlTransactReadKind;
+        Req->Kind = SpdIoctlTransactWriteKind;
         SpdCdbGetRange(Cdb,
             &Req->Op.Write.BlockAddress,
             &Req->Op.Write.BlockCount,
             &ForceUnitAccess);
         Req->Op.Write.ForceUnitAccess = ForceUnitAccess;
+        SrbExtension = SpdSrbExtension(Srb);
         RtlCopyMemory(DataBuffer, SrbExtension->SystemDataBuffer, SrbExtension->SystemDataLength);
         break;
 
@@ -427,9 +427,9 @@ VOID SpdSrbExecuteScsiPrepare(PVOID Srb, PVOID Context, PVOID DataBuffer)
         break;
 
     case SCSIOP_UNMAP:
-        SrbExtension = SpdSrbExtension(Srb);
         Req->Hint = (UINT64)(UINT_PTR)Srb;
         Req->Kind = SpdIoctlTransactUnmapKind;
+        SrbExtension = SpdSrbExtension(Srb);
         Req->Op.Unmap.Count = SrbExtension->SystemDataLength / 16;
         for (ULONG I = 0, N = Req->Op.Unmap.Count; N > I; I++)
         {
@@ -449,6 +449,7 @@ VOID SpdSrbExecuteScsiPrepare(PVOID Srb, PVOID Context, PVOID DataBuffer)
                 ((UINT32)Src->LbaCount[1] << 16) |
                 ((UINT32)Src->LbaCount[2] << 8) |
                 ((UINT32)Src->LbaCount[3]);
+            Dst->Reserved = 0;
         }
         break;
 
@@ -489,6 +490,10 @@ VOID SpdSrbExecuteScsiComplete(PVOID Srb, PVOID Context, PVOID DataBuffer)
         else
             RtlZeroMemory(SrbExtension->SystemDataBuffer, SrbExtension->SystemDataLength);
         break;
+
+    default:
+        ASSERT(FALSE);
+        break;
     }
 }
 
@@ -508,7 +513,6 @@ static UCHAR SpdScsiErrorEx(PVOID Srb,
     {
         RtlZeroMemory(SenseInfoBuffer, SenseInfoBufferLength);
         SenseInfoBuffer->ErrorCode = SCSI_SENSE_ERRORCODE_FIXED_CURRENT;
-        SenseInfoBuffer->Valid = 1;
         SenseInfoBuffer->SenseKey = SenseKey;
         SenseInfoBuffer->AdditionalSenseCode = AdditionalSenseCode;
         SenseInfoBuffer->AdditionalSenseCodeQualifier = AdditionalSenseCodeQualifier;

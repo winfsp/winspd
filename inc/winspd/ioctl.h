@@ -93,7 +93,12 @@ typedef struct
 {
     UINT64 BlockAddress;
     UINT32 BlockCount;
+    UINT32 Reserved;
 } SPD_IOCTL_UNMAP_DESCRIPTOR;
+#if defined(WINSPD_SYS_INTERNAL)
+static_assert(16 == sizeof(SPD_IOCTL_UNMAP_DESCRIPTOR),
+    "16 == sizeof(SPD_IOCTL_UNMAP_DESCRIPTOR)");
+#endif
 typedef struct
 {
     UINT64 Hint;
