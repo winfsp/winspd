@@ -34,8 +34,15 @@ static UCHAR SpdScsiPostUnmapSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
 static UCHAR SpdScsiReportLuns(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
     PVOID Srb, PCDB Cdb);
 
-static UCHAR SpdScsiError(PVOID Srb, UCHAR SenseKey, UCHAR AdditionalSenseCode);
-VOID SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength, PUINT32 PForceUnitAccess);
+static UCHAR SpdScsiErrorEx(PVOID Srb,
+    UCHAR SenseKey,
+    UCHAR AdditionalSenseCode,
+    UCHAR AdditionalSenseCodeQualifier,
+    PUINT64 PInformation);
+static VOID SpdCdbGetRange(PCDB Cdb,
+    PUINT64 POffset, PUINT32 PLength, PUINT32 PForceUnitAccess);
+
+#define SpdScsiError(S,K,A)             SpdScsiErrorEx(S,K,A,0,0)
 
 UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
 {
@@ -106,8 +113,7 @@ exit:
     return SrbStatus;
 }
 
-VOID SpdSrbExecuteScsiPrepare(PVOID DeviceExtension,
-    PVOID Srb, PVOID Context, PVOID DataBuffer)
+VOID SpdSrbExecuteScsiPrepare(PVOID Srb, PVOID Context, PVOID DataBuffer)
 {
     ASSERT(DISPATCH_LEVEL == KeGetCurrentIrql());
 
@@ -182,15 +188,30 @@ VOID SpdSrbExecuteScsiPrepare(PVOID DeviceExtension,
                 ((UINT32)Src->LbaCount[3]);
         }
         break;
+
+    default:
+        ASSERT(FALSE);
+        break;
     }
 }
 
-VOID SpdSrbExecuteScsiComplete(PVOID DeviceExtension,
-    PVOID Srb, PVOID Context, PVOID DataBuffer)
+VOID SpdSrbExecuteScsiComplete(PVOID Srb, PVOID Context, PVOID DataBuffer)
 {
     ASSERT(DISPATCH_LEVEL == KeGetCurrentIrql());
 
+    SPD_IOCTL_TRANSACT_RSP *Rsp = Context;
     PCDB Cdb;
+    SPD_SRB_EXTENSION *SrbExtension;
+
+    if (SCSISTAT_GOOD != Rsp->Status.ScsiStatus)
+    {
+        SpdScsiErrorEx(Srb,
+            Rsp->Status.SenseKey,
+            Rsp->Status.ASC,
+            Rsp->Status.ASCQ,
+            Rsp->Status.InformationValid ? &Rsp->Status.Information : 0);
+        return;
+    }
 
     Cdb = SrbGetCdb(Srb);
     switch (Cdb->AsByte[0])
@@ -199,6 +220,8 @@ VOID SpdSrbExecuteScsiComplete(PVOID DeviceExtension,
     case SCSIOP_READ:
     case SCSIOP_READ12:
     case SCSIOP_READ16:
+        SrbExtension = SpdSrbExtension(Srb);
+        RtlCopyMemory(SrbExtension->SystemDataBuffer, DataBuffer, SrbExtension->SystemDataLength);
         break;
     }
 }
@@ -461,7 +484,11 @@ UCHAR SpdScsiReportLuns(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
     return SRB_STATUS_SUCCESS;
 }
 
-UCHAR SpdScsiError(PVOID Srb, UCHAR SenseKey, UCHAR AdditionalSenseCode)
+UCHAR SpdScsiErrorEx(PVOID Srb,
+    UCHAR SenseKey,
+    UCHAR AdditionalSenseCode,
+    UCHAR AdditionalSenseCodeQualifier,
+    PUINT64 PInformation)
 {
     UCHAR SenseInfoBufferLength = SrbGetSenseInfoBufferLength(Srb);
     PSENSE_DATA SenseInfoBuffer = SrbGetSenseInfoBuffer(Srb);
@@ -476,8 +503,17 @@ UCHAR SpdScsiError(PVOID Srb, UCHAR SenseKey, UCHAR AdditionalSenseCode)
         SenseInfoBuffer->Valid = 1;
         SenseInfoBuffer->SenseKey = SenseKey;
         SenseInfoBuffer->AdditionalSenseCode = AdditionalSenseCode;
+        SenseInfoBuffer->AdditionalSenseCodeQualifier = AdditionalSenseCodeQualifier;
         SenseInfoBuffer->AdditionalSenseLength = sizeof(SENSE_DATA) -
             RTL_SIZEOF_THROUGH_FIELD(SENSE_DATA, AdditionalSenseLength);
+        if (0 != PInformation)
+        {
+            SenseInfoBuffer->Information[0] = (*PInformation >> 24) & 0xff;
+            SenseInfoBuffer->Information[1] = (*PInformation >> 16) & 0xff;
+            SenseInfoBuffer->Information[2] = (*PInformation >> 8) & 0xff;
+            SenseInfoBuffer->Information[3] = *PInformation & 0xff;
+            SenseInfoBuffer->Valid = 1;
+        }
 
         SrbSetScsiStatus(Srb, SCSISTAT_CHECK_CONDITION);
 
@@ -487,7 +523,8 @@ UCHAR SpdScsiError(PVOID Srb, UCHAR SenseKey, UCHAR AdditionalSenseCode)
     return SrbStatus;
 }
 
-VOID SpdCdbGetRange(PCDB Cdb, PUINT64 POffset, PUINT32 PLength, PUINT32 PForceUnitAccess)
+VOID SpdCdbGetRange(PCDB Cdb,
+    PUINT64 POffset, PUINT32 PLength, PUINT32 PForceUnitAccess)
 {
     ASSERT(
         SCSIOP_READ6 == Cdb->AsByte[0] ||

@@ -189,8 +189,8 @@ FORCEINLINE VOID SpdSrbComplete(PVOID DeviceExtension, PVOID Srb, UCHAR SrbStatu
     StorPortNotification(RequestComplete, DeviceExtension, Srb);
 }
 UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb);
-VOID SpdSrbExecuteScsiPrepare(PVOID DeviceExtension, PVOID Srb, PVOID Context, PVOID DataBuffer);
-VOID SpdSrbExecuteScsiComplete(PVOID DeviceExtension, PVOID Srb, PVOID Context, PVOID DataBuffer);
+VOID SpdSrbExecuteScsiPrepare(PVOID Srb, PVOID Context, PVOID DataBuffer);
+VOID SpdSrbExecuteScsiComplete(PVOID Srb, PVOID Context, PVOID DataBuffer);
 UCHAR SpdSrbAbortCommand(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbResetBus(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbResetDevice(PVOID DeviceExtension, PVOID Srb);
@@ -298,10 +298,10 @@ BOOLEAN SpdIoqStopped(SPD_IOQ *Ioq);
 NTSTATUS SpdIoqCancelSrb(SPD_IOQ *Ioq, PVOID Srb);
 NTSTATUS SpdIoqPostSrb(SPD_IOQ *Ioq, PVOID Srb);
 NTSTATUS SpdIoqStartProcessingSrb(SPD_IOQ *Ioq, PLARGE_INTEGER Timeout, PIRP CancellableIrp,
-    VOID (*Prepare)(PVOID DeviceExtension, PVOID Srb, PVOID Context, PVOID DataBuffer),
+    VOID (*Prepare)(PVOID Srb, PVOID Context, PVOID DataBuffer),
     PVOID Context, PVOID DataBuffer);
 VOID SpdIoqEndProcessingSrb(SPD_IOQ *Ioq, UINT_PTR Hint,
-    VOID (*Complete)(PVOID DeviceExtension, PVOID Srb, PVOID Context, PVOID DataBuffer),
+    VOID (*Complete)(PVOID Srb, PVOID Context, PVOID DataBuffer),
     PVOID Context, PVOID DataBuffer);
 typedef struct _SPD_SRB_EXTENSION
 {
