@@ -429,6 +429,7 @@ static UCHAR SpdScsiPostRangeSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
 {
     UINT64 BlockAddress, EndBlockAddress;
     UINT32 BlockCount;
+    BOOLEAN HasDataBuffer;
 
     SpdCdbGetRange(Cdb, &BlockAddress, &BlockCount, 0);
 
@@ -440,8 +441,12 @@ static UCHAR SpdScsiPostRangeSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
         EndBlockAddress > StorageUnit->StorageUnitParams.BlockCount)
         return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_ILLEGAL_BLOCK);
 
+    HasDataBuffer = !(
+        SCSIOP_SYNCHRONIZE_CACHE == Cdb->AsByte[0] ||
+        SCSIOP_SYNCHRONIZE_CACHE16 == Cdb->AsByte[0]);
+
     return SpdScsiPostSrb(DeviceExtension, StorageUnit, Srb,
-        BlockCount * StorageUnit->StorageUnitParams.BlockLength);
+        HasDataBuffer ? BlockCount * StorageUnit->StorageUnitParams.BlockLength : 0);
 }
 
 static UCHAR SpdScsiPostUnmapSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
@@ -499,16 +504,22 @@ static UCHAR SpdScsiPostSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
     ULONG StorResult;
     NTSTATUS Result;
 
-    SrbExtension = SpdSrbExtension(Srb);
-    StorResult = StorPortGetSystemAddress(DeviceExtension, Srb, &SrbExtension->SystemDataBuffer);
-    if (STOR_STATUS_SUCCESS != StorResult)
+    if (0 != DataLength)
     {
-        ASSERT(STOR_STATUS_INSUFFICIENT_RESOURCES == StorResult);
-        SrbSetSystemStatus(Srb, (ULONG)STATUS_INSUFFICIENT_RESOURCES);
-        return SRB_STATUS_INTERNAL_ERROR;
+        if (0 == SrbGetDataBuffer(Srb))
+            return SRB_STATUS_INTERNAL_ERROR;
+
+        SrbExtension = SpdSrbExtension(Srb);
+        StorResult = StorPortGetSystemAddress(DeviceExtension, Srb, &SrbExtension->SystemDataBuffer);
+        if (STOR_STATUS_SUCCESS != StorResult)
+        {
+            ASSERT(STOR_STATUS_INSUFFICIENT_RESOURCES == StorResult);
+            SrbSetSystemStatus(Srb, (ULONG)STATUS_INSUFFICIENT_RESOURCES);
+            return SRB_STATUS_INTERNAL_ERROR;
+        }
+        SrbExtension->SystemDataLength = DataLength;
+        ASSERT(SrbExtension->SystemDataLength <= StorageUnit->StorageUnitParams.MaxTransferLength);
     }
-    SrbExtension->SystemDataLength = DataLength;
-    ASSERT(SrbExtension->SystemDataLength <= StorageUnit->StorageUnitParams.MaxTransferLength);
 
     Result = SpdIoqPostSrb(StorageUnit->Ioq, Srb);
     return NT_SUCCESS(Result) ? SRB_STATUS_PENDING : SRB_STATUS_ABORTED;
