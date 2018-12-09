@@ -78,7 +78,6 @@ UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
         break;
 
     case SCSIOP_READ_CAPACITY:
-    case SCSIOP_READ_CAPACITY16:
         SrbStatus = SpdScsiReadCapacity(DeviceExtension, StorageUnit, Srb, Cdb);
         break;
 
@@ -98,6 +97,14 @@ UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
     case SCSIOP_UNMAP:
         SrbStatus = SpdScsiPostUnmapSrb(DeviceExtension, StorageUnit, Srb, Cdb);
         break;
+
+    case SCSIOP_SERVICE_ACTION_IN16:
+        if (SERVICE_ACTION_READ_CAPACITY16 == Cdb->READ_CAPACITY16.ServiceAction)
+        {
+            SrbStatus = SpdScsiReadCapacity(DeviceExtension, StorageUnit, Srb, Cdb);
+            break;
+        }
+        /* fall through */
 
     default:
         SrbStatus = SRB_STATUS_INVALID_REQUEST;
@@ -354,7 +361,67 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
 static UCHAR SpdScsiReadCapacity(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
     PVOID Srb, PCDB Cdb)
 {
-    return SRB_STATUS_INVALID_REQUEST;
+    PVOID DataBuffer = SrbGetDataBuffer(Srb);
+    ULONG DataTransferLength = SrbGetDataTransferLength(Srb);
+
+    if (0 == DataBuffer)
+        return SRB_STATUS_INTERNAL_ERROR;
+
+    RtlZeroMemory(DataBuffer, DataTransferLength);
+
+    if (SCSIOP_READ_CAPACITY == Cdb->AsByte[0])
+    {
+        /* READ CAPACITY (10) */
+        if (sizeof(READ_CAPACITY_DATA) > DataTransferLength)
+            return SRB_STATUS_DATA_OVERRUN;
+
+        PREAD_CAPACITY_DATA ReadCapacityData = DataBuffer;
+        UINT32 U32;
+        U32 = 0xffffffffULL >= StorageUnit->StorageUnitParams.BlockCount ?
+            (UINT32)StorageUnit->StorageUnitParams.BlockCount : 0xffffffff;
+        ((PUINT8)&ReadCapacityData->LogicalBlockAddress)[0] = (U32 >> 24) & 0xff;
+        ((PUINT8)&ReadCapacityData->LogicalBlockAddress)[1] = (U32 >> 16) & 0xff;
+        ((PUINT8)&ReadCapacityData->LogicalBlockAddress)[2] = (U32 >> 8) & 0xff;
+        ((PUINT8)&ReadCapacityData->LogicalBlockAddress)[3] = U32 & 0xff;
+        U32 = StorageUnit->StorageUnitParams.BlockLength;
+        ((PUINT8)&ReadCapacityData->BytesPerBlock)[0] = (U32 >> 24) & 0xff;
+        ((PUINT8)&ReadCapacityData->BytesPerBlock)[1] = (U32 >> 16) & 0xff;
+        ((PUINT8)&ReadCapacityData->BytesPerBlock)[2] = (U32 >> 8) & 0xff;
+        ((PUINT8)&ReadCapacityData->BytesPerBlock)[3] = U32 & 0xff;
+
+        SrbSetDataTransferLength(Srb, sizeof(READ_CAPACITY_DATA));
+
+        return SRB_STATUS_SUCCESS;
+    }
+    else
+    {
+        /* READ CAPACITY (16) */
+        if (sizeof(READ_CAPACITY16_DATA) > DataTransferLength)
+            return SRB_STATUS_DATA_OVERRUN;
+
+        PREAD_CAPACITY16_DATA ReadCapacityData = DataBuffer;
+        UINT64 U64;
+        UINT32 U32;
+        U64 = StorageUnit->StorageUnitParams.BlockCount;
+        ((PUINT8)&ReadCapacityData->LogicalBlockAddress)[0] = (U64 >> 56) & 0xff;
+        ((PUINT8)&ReadCapacityData->LogicalBlockAddress)[1] = (U64 >> 48) & 0xff;
+        ((PUINT8)&ReadCapacityData->LogicalBlockAddress)[2] = (U64 >> 40) & 0xff;
+        ((PUINT8)&ReadCapacityData->LogicalBlockAddress)[3] = (U64 >> 32) & 0xff;
+        ((PUINT8)&ReadCapacityData->LogicalBlockAddress)[4] = (U64 >> 24) & 0xff;
+        ((PUINT8)&ReadCapacityData->LogicalBlockAddress)[5] = (U64 >> 16) & 0xff;
+        ((PUINT8)&ReadCapacityData->LogicalBlockAddress)[6] = (U64 >> 8) & 0xff;
+        ((PUINT8)&ReadCapacityData->LogicalBlockAddress)[7] = U64 & 0xff;
+        U32 = StorageUnit->StorageUnitParams.BlockLength;
+        ((PUINT8)&ReadCapacityData->BytesPerBlock)[0] = (U32 >> 24) & 0xff;
+        ((PUINT8)&ReadCapacityData->BytesPerBlock)[1] = (U32 >> 16) & 0xff;
+        ((PUINT8)&ReadCapacityData->BytesPerBlock)[2] = (U32 >> 8) & 0xff;
+        ((PUINT8)&ReadCapacityData->BytesPerBlock)[3] = U32 & 0xff;
+        ReadCapacityData->LBPME = 1;
+
+        SrbSetDataTransferLength(Srb, sizeof(READ_CAPACITY16_DATA));
+
+        return SRB_STATUS_SUCCESS;
+    }
 }
 
 static UCHAR SpdScsiPostRangeSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
