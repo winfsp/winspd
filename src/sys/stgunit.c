@@ -28,6 +28,7 @@ NTSTATUS SpdStorageUnitProvision(
     PUINT32 PBtl)
 {
     NTSTATUS Result;
+    CHAR SerialNumber[RTL_FIELD_SIZE(SPD_STORAGE_UNIT, SerialNumber) + 1];
     SPD_STORAGE_UNIT *StorageUnit = 0;
     SPD_STORAGE_UNIT *DuplicateUnit;
     UINT32 Btl;
@@ -47,12 +48,13 @@ NTSTATUS SpdStorageUnitProvision(
     RtlCopyMemory(&StorageUnit->StorageUnitParams, StorageUnitParams,
         sizeof *StorageUnitParams);
 #define Guid                            StorageUnit->StorageUnitParams.Guid
-    RtlStringCbPrintfA(StorageUnit->SerialNumber, sizeof StorageUnit->SerialNumber,
+    RtlStringCbPrintfA(SerialNumber, sizeof SerialNumber,
         "%08lx-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
         Guid.Data1, Guid.Data2, Guid.Data3,
         Guid.Data4[0], Guid.Data4[1], Guid.Data4[2], Guid.Data4[3],
         Guid.Data4[4], Guid.Data4[5], Guid.Data4[6], Guid.Data4[7]);
 #undef Guid
+    RtlCopyMemory(StorageUnit->SerialNumber, SerialNumber, sizeof StorageUnit->SerialNumber);
     StorageUnit->ProcessId = ProcessId;
 
     Result = SpdIoqCreate(DeviceExtension, &StorageUnit->Ioq);

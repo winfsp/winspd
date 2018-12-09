@@ -175,6 +175,7 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
     {
         if (INQUIRYDATABUFFERSIZE > DataTransferLength)
             return SRB_STATUS_DATA_OVERRUN;
+
         PINQUIRYDATA InquiryData = DataBuffer;
         InquiryData->DeviceType = StorageUnit->StorageUnitParams.DeviceType;
         InquiryData->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
@@ -190,7 +191,9 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
             sizeof StorageUnit->StorageUnitParams.ProductId);
         RtlCopyMemory(InquiryData->ProductRevisionLevel, StorageUnit->StorageUnitParams.ProductRevisionLevel,
             sizeof StorageUnit->StorageUnitParams.ProductRevisionLevel);
+
         SrbSetDataTransferLength(Srb, INQUIRYDATABUFFERSIZE);
+
         return SRB_STATUS_SUCCESS;
     }
     else
@@ -198,9 +201,12 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
         PVPD_SUPPORTED_PAGES_PAGE SupportedPages;
         PVPD_SERIAL_NUMBER_PAGE SerialNumber;
         PVPD_IDENTIFICATION_PAGE Identification;
+        PVPD_BLOCK_LIMITS_PAGE BlockLimits;
+        PVPD_LOGICAL_BLOCK_PROVISIONING_PAGE LogicalBlockProvisioning;
+        UINT32 U32;
         enum
         {
-            PageCount = 3,
+            PageCount = 5,
             IdentifierLength =
                 sizeof SPD_IOCTL_VENDOR_ID - 1 +
                 sizeof StorageUnit->StorageUnitParams.ProductId +
@@ -213,6 +219,7 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
         case VPD_SUPPORTED_PAGES:
             if (sizeof(VPD_SUPPORTED_PAGES_PAGE) + PageCount > DataTransferLength)
                 return SRB_STATUS_DATA_OVERRUN;
+
             SupportedPages = DataBuffer;
             SupportedPages->DeviceType = StorageUnit->StorageUnitParams.DeviceType;
             SupportedPages->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
@@ -221,13 +228,18 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
             SupportedPages->SupportedPageList[0] = VPD_SUPPORTED_PAGES;
             SupportedPages->SupportedPageList[1] = VPD_SERIAL_NUMBER;
             SupportedPages->SupportedPageList[2] = VPD_DEVICE_IDENTIFIERS;
+            SupportedPages->SupportedPageList[3] = VPD_BLOCK_LIMITS;
+            SupportedPages->SupportedPageList[4] = VPD_LOGICAL_BLOCK_PROVISIONING;
+
             SrbSetDataTransferLength(Srb, sizeof(VPD_SUPPORTED_PAGES_PAGE) + PageCount);
+
             return SRB_STATUS_SUCCESS;
 
         case VPD_SERIAL_NUMBER:
             if (sizeof(VPD_SERIAL_NUMBER_PAGE) +
                 sizeof StorageUnit->SerialNumber > DataTransferLength)
                 return SRB_STATUS_DATA_OVERRUN;
+
             SerialNumber = DataBuffer;
             SerialNumber->DeviceType = StorageUnit->StorageUnitParams.DeviceType;
             SerialNumber->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
@@ -235,14 +247,17 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
             SerialNumber->PageLength = sizeof StorageUnit->SerialNumber;
             RtlCopyMemory(SerialNumber->SerialNumber, &StorageUnit->SerialNumber,
                 sizeof StorageUnit->SerialNumber);
+
             SrbSetDataTransferLength(Srb, sizeof(VPD_SERIAL_NUMBER_PAGE) +
                 sizeof StorageUnit->SerialNumber);
+
             return SRB_STATUS_SUCCESS;
 
         case VPD_DEVICE_IDENTIFIERS:
             if (sizeof(VPD_IDENTIFICATION_PAGE) +
                 sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + IdentifierLength > DataTransferLength)
                 return SRB_STATUS_DATA_OVERRUN;
+
             Identification = DataBuffer;
             Identification->DeviceType = StorageUnit->StorageUnitParams.DeviceType;
             Identification->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
@@ -275,8 +290,59 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
                     sizeof StorageUnit->StorageUnitParams.ProductRevisionLevel,
                 &StorageUnit->SerialNumber,
                 sizeof StorageUnit->SerialNumber);
+
             SrbSetDataTransferLength(Srb, sizeof(VPD_IDENTIFICATION_PAGE) +
                 sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + IdentifierLength);
+
+            return SRB_STATUS_SUCCESS;
+
+        case VPD_BLOCK_LIMITS:
+            if (sizeof(VPD_BLOCK_LIMITS_PAGE) > DataTransferLength)
+                return SRB_STATUS_DATA_OVERRUN;
+
+            BlockLimits = DataBuffer;
+            BlockLimits->DeviceType = StorageUnit->StorageUnitParams.DeviceType;
+            BlockLimits->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
+            BlockLimits->PageCode = VPD_BLOCK_LIMITS;
+            BlockLimits->PageLength[1] = sizeof(VPD_BLOCK_LIMITS_PAGE) -
+                RTL_SIZEOF_THROUGH_FIELD(VPD_BLOCK_LIMITS_PAGE, PageLength);
+            U32 = StorageUnit->StorageUnitParams.MaxTransferLength /
+                StorageUnit->StorageUnitParams.BlockLength;
+            BlockLimits->MaximumTransferLength[0] = (U32 >> 24) & 0xff;
+            BlockLimits->MaximumTransferLength[1] = (U32 >> 16) & 0xff;
+            BlockLimits->MaximumTransferLength[2] = (U32 >> 8) & 0xff;
+            BlockLimits->MaximumTransferLength[3] = U32 & 0xff;
+            BlockLimits->MaximumUnmapLBACount[0] = 0xff;
+            BlockLimits->MaximumUnmapLBACount[1] = 0xff;
+            BlockLimits->MaximumUnmapLBACount[2] = 0xff;
+            BlockLimits->MaximumUnmapLBACount[3] = 0xff;
+            U32 = StorageUnit->StorageUnitParams.MaxTransferLength /
+                sizeof(UNMAP_BLOCK_DESCRIPTOR);
+            BlockLimits->MaximumUnmapBlockDescriptorCount[0] = (U32 >> 24) & 0xff;
+            BlockLimits->MaximumUnmapBlockDescriptorCount[1] = (U32 >> 16) & 0xff;
+            BlockLimits->MaximumUnmapBlockDescriptorCount[2] = (U32 >> 8) & 0xff;
+            BlockLimits->MaximumUnmapBlockDescriptorCount[3] = U32 & 0xff;
+
+            SrbSetDataTransferLength(Srb, sizeof(VPD_BLOCK_LIMITS_PAGE));
+
+            return SRB_STATUS_SUCCESS;
+
+        case VPD_LOGICAL_BLOCK_PROVISIONING:
+            if (sizeof(VPD_LOGICAL_BLOCK_PROVISIONING_PAGE) > DataTransferLength)
+                return SRB_STATUS_DATA_OVERRUN;
+
+            LogicalBlockProvisioning = DataBuffer;
+            LogicalBlockProvisioning->DeviceType = StorageUnit->StorageUnitParams.DeviceType;
+            LogicalBlockProvisioning->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
+            LogicalBlockProvisioning->PageCode = VPD_LOGICAL_BLOCK_PROVISIONING;
+            LogicalBlockProvisioning->PageLength[1] = sizeof(VPD_LOGICAL_BLOCK_PROVISIONING_PAGE) -
+                RTL_SIZEOF_THROUGH_FIELD(VPD_LOGICAL_BLOCK_PROVISIONING_PAGE, PageLength);
+            LogicalBlockProvisioning->ANC_SUP = 0;
+            LogicalBlockProvisioning->LBPU = 1;
+            LogicalBlockProvisioning->ProvisioningType = PROVISIONING_TYPE_THIN;
+
+            SrbSetDataTransferLength(Srb, sizeof(VPD_LOGICAL_BLOCK_PROVISIONING_PAGE));
+
             return SRB_STATUS_SUCCESS;
 
         default:
@@ -316,6 +382,9 @@ static UCHAR SpdScsiPostUnmapSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
 {
     PUNMAP_LIST_HEADER DataBuffer = SrbGetDataBuffer(Srb);
     UINT32 Length;
+
+    if (Cdb->UNMAP.Anchor)
+        return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_CDB);
 
     SpdCdbGetRange(Cdb, 0, &Length, 0);
 

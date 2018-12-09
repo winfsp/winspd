@@ -326,7 +326,7 @@ typedef struct _SPD_STORAGE_UNIT
     ULONG RefCount;                     /* protected by SPD_DEVICE_EXTENSION::SpinLock */
     /* fields below are read-only after construction */
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
-    CHAR SerialNumber[36 + 1];
+    CHAR SerialNumber[36];
     ULONG ProcessId;
     SPD_IOQ *Ioq;
     UINT32 Btl;
