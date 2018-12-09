@@ -472,21 +472,21 @@ static UCHAR SpdScsiPostUnmapSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
 
     for (ULONG I = 0, N = Length / sizeof(UNMAP_BLOCK_DESCRIPTOR); N > I; I++)
     {
-        PUNMAP_BLOCK_DESCRIPTOR Descr = &DataBuffer->Descriptors[I];
+        PUNMAP_BLOCK_DESCRIPTOR Src = &DataBuffer->Descriptors[I];
         UINT64 BlockAddress =
-            ((UINT64)Descr->StartingLba[0] << 56) |
-            ((UINT64)Descr->StartingLba[1] << 48) |
-            ((UINT64)Descr->StartingLba[2] << 40) |
-            ((UINT64)Descr->StartingLba[3] << 32) |
-            ((UINT64)Descr->StartingLba[4] << 24) |
-            ((UINT64)Descr->StartingLba[5] << 16) |
-            ((UINT64)Descr->StartingLba[6] << 8) |
-            ((UINT64)Descr->StartingLba[7]);
+            ((UINT64)Src->StartingLba[0] << 56) |
+            ((UINT64)Src->StartingLba[1] << 48) |
+            ((UINT64)Src->StartingLba[2] << 40) |
+            ((UINT64)Src->StartingLba[3] << 32) |
+            ((UINT64)Src->StartingLba[4] << 24) |
+            ((UINT64)Src->StartingLba[5] << 16) |
+            ((UINT64)Src->StartingLba[6] << 8) |
+            ((UINT64)Src->StartingLba[7]);
         UINT32 BlockCount =
-            ((UINT32)Descr->LbaCount[0] << 24) |
-            ((UINT32)Descr->LbaCount[1] << 16) |
-            ((UINT32)Descr->LbaCount[2] << 8) |
-            ((UINT32)Descr->LbaCount[3]);
+            ((UINT32)Src->LbaCount[0] << 24) |
+            ((UINT32)Src->LbaCount[1] << 16) |
+            ((UINT32)Src->LbaCount[2] << 8) |
+            ((UINT32)Src->LbaCount[3]);
         UINT64 EndBlockAddress = BlockAddress + BlockCount;
 
         if (EndBlockAddress < BlockAddress ||
