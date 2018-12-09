@@ -159,6 +159,12 @@ static VOID SpdIoctlTransact(SPD_DEVICE_EXTENSION *DeviceExtension,
         goto exit;
     }
 
+    if (IoGetRequestorProcessId(Irp) != StorageUnit->ProcessId)
+    {
+        Irp->IoStatus.Status = STATUS_ACCESS_DENIED;
+        goto exit;
+    }
+
     if (0 != DataBuffer && UserMode == Irp->RequestorMode)
     {
         try
