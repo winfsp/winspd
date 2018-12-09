@@ -147,6 +147,9 @@ NTSTATUS SpdStorageUnitUnprovision(
         goto exit;
     }
 
+    /* stop the ioq */
+    SpdIoqReset(StorageUnit->Ioq, TRUE);
+
     SpdStorageUnitDereference(DeviceExtension, StorageUnit);
 
     Result = STATUS_SUCCESS;
