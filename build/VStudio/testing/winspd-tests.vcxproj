@@ -182,6 +182,11 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\ext\tlib\testsuite.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\winspd_dll.vcxproj">
+      <Project>{b8066540-44fd-41db-8431-12abff9233d2}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -25,6 +25,23 @@
 
 static void provision_test(void)
 {
+    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
+    HANDLE DeviceHandle;
+    UINT32 Btl;
+    DWORD Error;
+    BOOL Success;
+
+    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Success = CloseHandle(DeviceHandle);
+    ASSERT(Success);
 }
 
 void provision_tests(void)
