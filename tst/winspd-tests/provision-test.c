@@ -1,5 +1,5 @@
 /**
- * @file scsitool/scsitool.h
+ * @file provision-test.c
  *
  * @copyright 2018 Bill Zissimopoulos
  */
@@ -19,17 +19,15 @@
  * associated repository.
  */
 
-#ifndef WINSPD_SCSITOOL_SCSITOOL_H_INCLUDED
-#define WINSPD_SCSITOOL_SCSITOOL_H_INCLUDED
-
 #include <winspd/winspd.h>
-#include <shared/minimal.h>
+#include <tlib/testsuite.h>
+#include "rawdisk.h"
 
-#define PROGNAME                        "scsitool"
+static void provision_test(void)
+{
+}
 
-long long strtoint(const char *p, int base, int is_signed, const char **endp);
-long long wcstoint(const wchar_t *p, int base, int is_signed, const wchar_t **endp);
-
-void ScsiLineText(HANDLE h, const char *format, void *buf, size_t len);
-
-#endif
+void provision_tests(void)
+{
+    TEST(provision_test);
+}

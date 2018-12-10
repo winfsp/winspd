@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source\tlib">
+      <UniqueIdentifier>{5ca4b408-67a4-43be-9459-38bb911d6525}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\tst\winspd-tests\winspd-tests.c">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\ext\tlib\testsuite.c">
+      <Filter>Source\tlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tst\winspd-tests\provision-test.c">
+      <Filter>Source</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\ext\tlib\testsuite.h">
+      <Filter>Source\tlib</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

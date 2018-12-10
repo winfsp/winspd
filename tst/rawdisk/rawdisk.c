@@ -175,6 +175,7 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
     UuidCreate(&StorageUnitParams.Guid);
     StorageUnitParams.BlockCount = BlockCount;
     StorageUnitParams.BlockLength = BlockLength;
+    StorageUnitParams.MaxTransferLength = 16 * BlockLength;
     if (0 == WideCharToMultiByte(CP_UTF8, 0,
         ProductId, lstrlenW(ProductId),
         StorageUnitParams.ProductId, sizeof StorageUnitParams.ProductId,
@@ -191,7 +192,6 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
         Error = ERROR_INVALID_PARAMETER;
         goto exit;
     }
-
 
     RawDisk = MemAlloc(sizeof *RawDisk);
     if (0 == RawDisk)

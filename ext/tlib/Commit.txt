@@ -1,0 +1,5 @@
+Taken from github.com/billziss-gh/ext/tlib codebase:
+    commit 1d701a356064d001c1f785ac1158eac9b5db3564
+
+Originally from secfs.core/src/tlib codebase:
+    commit 16296d2ac64a7d532b1c486dd3c44af5865d4851

@@ -1,5 +1,5 @@
 /**
- * @file scsitool/scsitool.h
+ * @file winspd-tests.c
  *
  * @copyright 2018 Bill Zissimopoulos
  */
@@ -19,17 +19,39 @@
  * associated repository.
  */
 
-#ifndef WINSPD_SCSITOOL_SCSITOOL_H_INCLUDED
-#define WINSPD_SCSITOOL_SCSITOOL_H_INCLUDED
+#include <windows.h>
+#include <signal.h>
+#include <tlib/testsuite.h>
 
-#include <winspd/winspd.h>
-#include <shared/minimal.h>
+static void exiting(void);
 
-#define PROGNAME                        "scsitool"
+static void abort_handler(int sig)
+{
+    DWORD Error = GetLastError();
+    exiting();
+    SetLastError(Error);
+}
 
-long long strtoint(const char *p, int base, int is_signed, const char **endp);
-long long wcstoint(const wchar_t *p, int base, int is_signed, const wchar_t **endp);
+LONG WINAPI UnhandledExceptionHandler(struct _EXCEPTION_POINTERS *ExceptionInfo)
+{
+    exiting();
+    return EXCEPTION_EXECUTE_HANDLER;
+}
 
-void ScsiLineText(HANDLE h, const char *format, void *buf, size_t len);
+int main(int argc, char *argv[])
+{
+    TESTSUITE(provision_tests);
 
-#endif
+    atexit(exiting);
+    signal(SIGABRT, abort_handler);
+    SetUnhandledExceptionFilter(UnhandledExceptionHandler);
+
+    tlib_run_tests(argc, argv);
+
+    return 0;
+}
+
+static void exiting(void)
+{
+    OutputDebugStringA("winspd-tests: exiting\n");
+}
