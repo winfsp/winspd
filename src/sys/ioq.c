@@ -60,7 +60,7 @@ VOID SpdIoqReset(SPD_IOQ *Ioq, BOOLEAN Stop)
 
     if (!Ioq->Stopped)
     {
-        PLIST_ENTRY PendingEntry, ProcessEntry;
+        PLIST_ENTRY PendingEntry, ProcessEntry, Flink;
 
         PendingEntry = Ioq->PendingList.Flink;
         ProcessEntry = Ioq->ProcessList.Flink;
@@ -70,16 +70,24 @@ VOID SpdIoqReset(SPD_IOQ *Ioq, BOOLEAN Stop)
         RtlZeroMemory(Ioq->ProcessBuckets,
             Ioq->ProcessBucketCount * sizeof Ioq->ProcessBuckets[0]);
 
-        for (; PendingEntry != &Ioq->PendingList; PendingEntry = PendingEntry->Flink)
+        for (; PendingEntry != &Ioq->PendingList; PendingEntry = Flink)
+        {
+            /* store Flink now, because *PendingEntry becomes invalid after SpdSrbComplete */
+            Flink = PendingEntry->Flink;
             SpdSrbComplete(
                 Ioq->DeviceExtension,
                 CONTAINING_RECORD(PendingEntry, SPD_SRB_EXTENSION, ListEntry)->Srb,
                 SRB_STATUS_ABORTED);
-        for (; ProcessEntry != &Ioq->ProcessList; ProcessEntry = ProcessEntry->Flink)
+        }
+        for (; ProcessEntry != &Ioq->ProcessList; ProcessEntry = Flink)
+        {
+            /* store Flink now, because *ProcessEntry becomes invalid after SpdSrbComplete */
+            Flink = ProcessEntry->Flink;
             SpdSrbComplete(
                 Ioq->DeviceExtension,
                 CONTAINING_RECORD(ProcessEntry, SPD_SRB_EXTENSION, ListEntry)->Srb,
                 SRB_STATUS_ABORTED);
+        }
 
         if (Stop)
         {
