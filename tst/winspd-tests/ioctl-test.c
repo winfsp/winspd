@@ -21,6 +21,7 @@
 
 #include <winspd/winspd.h>
 #include <tlib/testsuite.h>
+#include <process.h>
 #include "rawdisk.h"
 
 static const GUID TestGuid = 
@@ -239,6 +240,121 @@ static void ioctl_list_test(void)
     ASSERT(Success);
 }
 
+static unsigned __stdcall ioctl_transact_test_thread(void *Data)
+{
+    UINT32 Btl = (UINT32)(UINT_PTR)Data;
+    HANDLE DeviceHandle;
+    DWORD Error;
+    CDB Cdb;
+    PUINT8 DataBuffer[5 * 512];
+    UINT32 DataLength;
+    UCHAR ScsiStatus;
+    union
+    {
+        SENSE_DATA Data;
+        UCHAR Buffer[32];
+    } Sense;
+
+    SpdDebugLog(__FUNCTION__ "%x\n", (unsigned)Btl);
+
+    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
+    if (ERROR_SUCCESS != Error)
+        return Error;
+
+    memset(&Cdb, 0, sizeof Cdb);
+    Cdb.READ16.OperationCode = SCSIOP_READ16;
+    Cdb.READ16.LogicalBlock[7] = 7;
+    Cdb.READ16.TransferLength[3] = 5;
+
+    DataLength = sizeof DataBuffer;
+    Error = SpdIoctlScsiExecute(DeviceHandle, Btl, &Cdb, +1, DataBuffer, &DataLength,
+        &ScsiStatus, Sense.Buffer);
+
+    CloseHandle(DeviceHandle);
+
+    if (ERROR_SUCCESS != Error)
+        return Error;
+
+    if (ScsiStatus != SCSISTAT_CHECK_CONDITION ||
+        Sense.Data.SenseKey != SCSI_SENSE_MEDIUM_ERROR ||
+        Sense.Data.AdditionalSenseCode != SCSI_ADSENSE_SEEK_ERROR ||
+        Sense.Data.AdditionalSenseCodeQualifier != SCSI_SENSEQ_POSITIONING_ERROR_DETECTED_BY_READ_OF_MEDIUM ||
+        Sense.Data.Information[3] != 11 ||
+        Sense.Data.Valid != 1)
+        return -'ASRT';
+
+    return ERROR_SUCCESS;
+}
+
+static void ioctl_transact_test(void)
+{
+    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
+    SPD_IOCTL_TRANSACT_REQ Req;
+    SPD_IOCTL_TRANSACT_RSP Rsp;
+    PVOID DataBuffer = 0;
+    HANDLE DeviceHandle;
+    UINT32 Btl;
+    DWORD Error;
+    BOOL Success;
+    HANDLE Thread;
+    DWORD ExitCode;
+
+    DataBuffer = malloc(5 * 512);
+    ASSERT(0 != DataBuffer);
+
+    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    memset(&StorageUnitParams, 0, sizeof StorageUnitParams);
+    memcpy(&StorageUnitParams.Guid, &TestGuid, sizeof TestGuid);
+    StorageUnitParams.BlockCount = 16;
+    StorageUnitParams.BlockLength = 512;
+    StorageUnitParams.MaxTransferLength = 5 * 512;
+    Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
+    ASSERT(ERROR_SUCCESS == Error);
+    ASSERT(0 == Btl);
+
+    Thread = (HANDLE)_beginthreadex(0, 0, ioctl_transact_test_thread, (PVOID)(UINT_PTR)Btl, 0, 0);
+    ASSERT(0 != Thread);
+
+    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    ASSERT(0 != Req.Hint);
+    ASSERT(SpdIoctlTransactReadKind == Req.Kind);
+    ASSERT(7 == Req.Op.Read.BlockAddress);
+    ASSERT(5 == Req.Op.Read.BlockCount);
+    ASSERT(0 == Req.Op.Read.ForceUnitAccess);
+    ASSERT(0 == Req.Op.Read.Reserved);
+
+    memset(&Rsp, 0, sizeof Rsp);
+    Rsp.Hint = Req.Hint;
+    Rsp.Kind = Req.Kind;
+    Rsp.Status.ScsiStatus = SCSISTAT_CHECK_CONDITION;
+    Rsp.Status.SenseKey = SCSI_SENSE_MEDIUM_ERROR;
+    Rsp.Status.ASC = SCSI_ADSENSE_SEEK_ERROR;
+    Rsp.Status.ASCQ = SCSI_SENSEQ_POSITIONING_ERROR_DETECTED_BY_READ_OF_MEDIUM;
+    Rsp.Status.Information = 11;
+    Rsp.Status.InformationValid = 1;
+
+    Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Success = CloseHandle(DeviceHandle);
+    ASSERT(Success);
+
+    free(DataBuffer);
+
+    WaitForSingleObject(Thread, INFINITE);
+    GetExitCodeThread(Thread, &ExitCode);
+    CloseHandle(Thread);
+
+    ASSERT(ERROR_SUCCESS == ExitCode);
+}
+
 void ioctl_tests(void)
 {
     TEST(ioctl_provision_test);
@@ -246,4 +362,5 @@ void ioctl_tests(void)
     TEST(ioctl_provision_multi_test);
     TEST(ioctl_provision_toomany_test);
     TEST(ioctl_list_test);
+    TEST(ioctl_transact_test);
 }

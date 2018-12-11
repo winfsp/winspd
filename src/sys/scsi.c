@@ -506,32 +506,34 @@ static UCHAR SpdScsiPostSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
 
     if (0 != DataLength)
     {
-        if (0 == SrbGetDataBuffer(Srb))
+        if (0 == SrbGetDataBuffer(Srb) ||
+            DataLength > StorageUnit->StorageUnitParams.MaxTransferLength)
             return SRB_STATUS_INTERNAL_ERROR;
 
         SrbExtension = SpdSrbExtension(Srb);
+        RtlZeroMemory(SrbExtension, sizeof(SPD_SRB_EXTENSION));
+
         StorResult = StorPortGetSystemAddress(DeviceExtension, Srb, &SrbExtension->SystemDataBuffer);
         if (STOR_STATUS_SUCCESS != StorResult)
         {
-            ASSERT(STOR_STATUS_INSUFFICIENT_RESOURCES == StorResult);
-            SrbSetSystemStatus(Srb, (ULONG)STATUS_INSUFFICIENT_RESOURCES);
+            SrbSetSystemStatus(Srb, SpdNtStatusFromStorStatus(StorResult));
             return SRB_STATUS_INTERNAL_ERROR;
         }
         SrbExtension->SystemDataLength = DataLength;
-        ASSERT(SrbExtension->SystemDataLength <= StorageUnit->StorageUnitParams.MaxTransferLength);
     }
 
     Result = SpdIoqPostSrb(StorageUnit->Ioq, Srb);
     return NT_SUCCESS(Result) ? SRB_STATUS_PENDING : SRB_STATUS_ABORTED;
 }
 
-VOID SpdSrbExecuteScsiPrepare(PVOID Srb, PVOID Context, PVOID DataBuffer)
+VOID SpdSrbExecuteScsiPrepare(PVOID SrbExtension0, PVOID Context, PVOID DataBuffer)
 {
     ASSERT(DISPATCH_LEVEL == KeGetCurrentIrql());
 
+    SPD_SRB_EXTENSION *SrbExtension = SrbExtension0;
     SPD_IOCTL_TRANSACT_REQ *Req = Context;
+    PVOID Srb = SrbExtension->Srb;
     PCDB Cdb;
-    SPD_SRB_EXTENSION *SrbExtension;
     UINT32 ForceUnitAccess;
 
     Cdb = SrbGetCdb(Srb);
@@ -541,7 +543,7 @@ VOID SpdSrbExecuteScsiPrepare(PVOID Srb, PVOID Context, PVOID DataBuffer)
     case SCSIOP_READ:
     case SCSIOP_READ12:
     case SCSIOP_READ16:
-        Req->Hint = (UINT64)(UINT_PTR)Srb;
+        Req->Hint = (UINT64)(UINT_PTR)SrbExtension;
         Req->Kind = SpdIoctlTransactReadKind;
         SpdCdbGetRange(Cdb,
             &Req->Op.Read.BlockAddress,
@@ -554,20 +556,19 @@ VOID SpdSrbExecuteScsiPrepare(PVOID Srb, PVOID Context, PVOID DataBuffer)
     case SCSIOP_WRITE:
     case SCSIOP_WRITE12:
     case SCSIOP_WRITE16:
-        Req->Hint = (UINT64)(UINT_PTR)Srb;
+        Req->Hint = (UINT64)(UINT_PTR)SrbExtension;
         Req->Kind = SpdIoctlTransactWriteKind;
         SpdCdbGetRange(Cdb,
             &Req->Op.Write.BlockAddress,
             &Req->Op.Write.BlockCount,
             &ForceUnitAccess);
         Req->Op.Write.ForceUnitAccess = ForceUnitAccess;
-        SrbExtension = SpdSrbExtension(Srb);
         RtlCopyMemory(DataBuffer, SrbExtension->SystemDataBuffer, SrbExtension->SystemDataLength);
         break;
 
     case SCSIOP_SYNCHRONIZE_CACHE:
     case SCSIOP_SYNCHRONIZE_CACHE16:
-        Req->Hint = (UINT64)(UINT_PTR)Srb;
+        Req->Hint = (UINT64)(UINT_PTR)SrbExtension;
         Req->Kind = SpdIoctlTransactFlushKind;
         SpdCdbGetRange(Cdb,
             &Req->Op.Flush.BlockAddress,
@@ -576,9 +577,8 @@ VOID SpdSrbExecuteScsiPrepare(PVOID Srb, PVOID Context, PVOID DataBuffer)
         break;
 
     case SCSIOP_UNMAP:
-        Req->Hint = (UINT64)(UINT_PTR)Srb;
+        Req->Hint = (UINT64)(UINT_PTR)SrbExtension;
         Req->Kind = SpdIoctlTransactUnmapKind;
-        SrbExtension = SpdSrbExtension(Srb);
         Req->Op.Unmap.Count = SrbExtension->SystemDataLength / sizeof(UNMAP_BLOCK_DESCRIPTOR);
         for (ULONG I = 0, N = Req->Op.Unmap.Count; N > I; I++)
         {
@@ -608,23 +608,21 @@ VOID SpdSrbExecuteScsiPrepare(PVOID Srb, PVOID Context, PVOID DataBuffer)
     }
 }
 
-VOID SpdSrbExecuteScsiComplete(PVOID Srb, PVOID Context, PVOID DataBuffer)
+UCHAR SpdSrbExecuteScsiComplete(PVOID SrbExtension0, PVOID Context, PVOID DataBuffer)
 {
     ASSERT(DISPATCH_LEVEL == KeGetCurrentIrql());
 
+    SPD_SRB_EXTENSION *SrbExtension = SrbExtension0;
     SPD_IOCTL_TRANSACT_RSP *Rsp = Context;
+    PVOID Srb = SrbExtension->Srb;
     PCDB Cdb;
-    SPD_SRB_EXTENSION *SrbExtension;
 
     if (SCSISTAT_GOOD != Rsp->Status.ScsiStatus)
-    {
-        SpdScsiErrorEx(Srb,
+        return SpdScsiErrorEx(Srb,
             Rsp->Status.SenseKey,
             Rsp->Status.ASC,
             Rsp->Status.ASCQ,
             Rsp->Status.InformationValid ? &Rsp->Status.Information : 0);
-        return;
-    }
 
     Cdb = SrbGetCdb(Srb);
     switch (Cdb->AsByte[0])
@@ -633,16 +631,15 @@ VOID SpdSrbExecuteScsiComplete(PVOID Srb, PVOID Context, PVOID DataBuffer)
     case SCSIOP_READ:
     case SCSIOP_READ12:
     case SCSIOP_READ16:
-        SrbExtension = SpdSrbExtension(Srb);
         if (0 != DataBuffer)
             RtlCopyMemory(SrbExtension->SystemDataBuffer, DataBuffer, SrbExtension->SystemDataLength);
         else
             RtlZeroMemory(SrbExtension->SystemDataBuffer, SrbExtension->SystemDataLength);
-        break;
+        return SRB_STATUS_SUCCESS;
 
     default:
         ASSERT(FALSE);
-        break;
+        return SRB_STATUS_ABORTED;
     }
 }
 

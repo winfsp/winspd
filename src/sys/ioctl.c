@@ -239,9 +239,6 @@ static VOID SpdIoctlTransact(SPD_DEVICE_EXTENSION *DeviceExtension,
     Irp->IoStatus.Information = Params->ReqValid ? sizeof *Params : 0;
 
 exit:;
-    if (0 != Mdl)
-        IoFreeMdl(Mdl);
-
     if (0 != StorageUnit)
         SpdStorageUnitDereference(DeviceExtension, StorageUnit);
 }
