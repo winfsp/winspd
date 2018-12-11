@@ -141,6 +141,52 @@ static void ioctl_provision_multi_test(void)
     ASSERT(Success);
 }
 
+static void ioctl_provision_toomany_test(void)
+{
+    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
+    HANDLE DeviceHandle;
+    UINT32 Btl;
+    DWORD Error;
+    BOOL Success;
+
+    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    for (ULONG I = 0; SPD_IOCTL_STORAGE_UNIT_MAX_CAPACITY > I; I++)
+    {
+        memset(&StorageUnitParams, 0, sizeof StorageUnitParams);
+        StorageUnitParams.Guid.Data1 = I;
+        StorageUnitParams.Guid.Data2 = 42;
+        StorageUnitParams.BlockCount = 16;
+        StorageUnitParams.BlockLength = 512;
+        StorageUnitParams.MaxTransferLength = 512;
+        Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
+        ASSERT(ERROR_SUCCESS == Error);
+        ASSERT(SPD_IOCTL_BTL(0, I, 0) == Btl);
+    }
+
+    memset(&StorageUnitParams, 0, sizeof StorageUnitParams);
+    memcpy(&StorageUnitParams.Guid, &TestGuid, sizeof TestGuid);
+    StorageUnitParams.BlockCount = 16;
+    StorageUnitParams.BlockLength = 512;
+    StorageUnitParams.MaxTransferLength = 512;
+    Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
+    ASSERT(ERROR_CANNOT_MAKE == Error);
+    ASSERT(-1 == Btl);
+
+    for (ULONG I = 0; SPD_IOCTL_STORAGE_UNIT_MAX_CAPACITY > I; I++)
+    {
+        memset(&StorageUnitParams, 0, sizeof StorageUnitParams);
+        StorageUnitParams.Guid.Data1 = I;
+        StorageUnitParams.Guid.Data2 = 42;
+        Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
+        ASSERT(ERROR_SUCCESS == Error);
+    }
+
+    Success = CloseHandle(DeviceHandle);
+    ASSERT(Success);
+}
+
 static void ioctl_list_test(void)
 {
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
@@ -198,5 +244,6 @@ void ioctl_tests(void)
     TEST(ioctl_provision_test);
     TEST(ioctl_provision_invalid_test);
     TEST(ioctl_provision_multi_test);
+    TEST(ioctl_provision_toomany_test);
     TEST(ioctl_list_test);
 }
