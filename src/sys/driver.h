@@ -119,6 +119,8 @@ const char *SrbStringize(PVOID Srb, char Buffer[], size_t Size);
     }
 #define SPD_ENTER(category, ...)        \
     SPD_ENTER_(category, __VA_ARGS__)
+#define SPD_LEAVE_NOLOG(category)\
+    SPD_LEAVE_()
 #define SPD_LEAVE(category, fmt, rfmt, ...)\
     SPD_LEAVE_(SPD_DEBUGLOG_(category, fmt, rfmt, __VA_ARGS__))
 #define SPD_RETURN(...)                 \
@@ -186,7 +188,7 @@ FORCEINLINE VOID SpdSrbComplete(PVOID DeviceExtension, PVOID Srb)
 #if DBG
     {
         char buf[1024];
-        DEBUGLOG_EX(srb, "Srb=%p {%s}", Srb, SrbStringize(Srb, buf, sizeof buf));
+        DEBUGLOG_EX(srb, "%p, Srb=%p {%s}", DeviceExtension, Srb, SrbStringize(Srb, buf, sizeof buf));
     }
 #endif
     StorPortNotification(RequestComplete, DeviceExtension, Srb);

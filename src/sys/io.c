@@ -75,7 +75,7 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
 #if DBG
         {
             char buf[1024];
-            DEBUGLOG_EX(srb, "Srb=%p {%s}", Srb, SrbStringize(Srb, buf, sizeof buf));
+            DEBUGLOG_EX(srb, "%p, Srb=%p {%s}", DeviceExtension, Srb, SrbStringize(Srb, buf, sizeof buf));
         }
 #endif
         break;
@@ -88,9 +88,7 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
         break;
     }
 
-    SPD_LEAVE(io,
-        "%p, Srb=%p", " = %d",
-        DeviceExtension, Srb0, TRUE);
+    SPD_LEAVE_NOLOG(io);
 
     return TRUE;
 }
