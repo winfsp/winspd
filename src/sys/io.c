@@ -84,7 +84,7 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
             SrbSetSystemStatus(Srb, (ULONG)STATUS_INVALID_PARAMETER);
         /* fall through */
     default:
-        SpdSrbCompleteEx(DeviceExtension, Srb, SrbStatus);
+        SpdSrbComplete(DeviceExtension, Srb, SrbStatus);
         break;
     }
 

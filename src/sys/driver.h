@@ -183,8 +183,10 @@ HW_COMPLETE_SERVICE_IRP SpdHwCompleteServiceIrp;
 HW_STARTIO SpdHwStartIo;
 
 /* I/O */
-FORCEINLINE VOID SpdSrbComplete(PVOID DeviceExtension, PVOID Srb)
+FORCEINLINE VOID SpdSrbComplete(PVOID DeviceExtension, PVOID Srb, UCHAR SrbStatus)
 {
+    ASSERT(SRB_STATUS_PENDING != SrbStatus);
+    SrbSetSrbStatus(Srb, SrbStatus);
 #if DBG
     {
         char buf[1024];
@@ -192,12 +194,6 @@ FORCEINLINE VOID SpdSrbComplete(PVOID DeviceExtension, PVOID Srb)
     }
 #endif
     StorPortNotification(RequestComplete, DeviceExtension, Srb);
-}
-FORCEINLINE VOID SpdSrbCompleteEx(PVOID DeviceExtension, PVOID Srb, UCHAR SrbStatus)
-{
-    ASSERT(SRB_STATUS_PENDING != SrbStatus);
-    SrbSetSrbStatus(Srb, SrbStatus);
-    SpdSrbComplete(DeviceExtension, Srb);
 }
 UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb);
 VOID SpdSrbExecuteScsiPrepare(PVOID SrbExtension, PVOID Context, PVOID DataBuffer);
