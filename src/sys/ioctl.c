@@ -97,8 +97,9 @@ static VOID SpdIoctlGetList(SPD_DEVICE_EXTENSION *DeviceExtension,
     ULONG InputBufferLength, ULONG OutputBufferLength, SPD_IOCTL_LIST_PARAMS *Params,
     PIRP Irp)
 {
-    PUINT32 BtlP = Irp->AssociatedIrp.SystemBuffer;
-    PUINT32 BtlEndP = (PVOID)((PUINT8)BtlP + OutputBufferLength);
+    PUINT32 BtlBgnP = Irp->AssociatedIrp.SystemBuffer;
+    PUINT32 BtlEndP = (PVOID)((PUINT8)BtlBgnP + OutputBufferLength);
+    PUINT32 BtlP = BtlBgnP;
     UINT8 Bitmap[32];
 
     if (sizeof *Params > InputBufferLength)
@@ -122,7 +123,7 @@ static VOID SpdIoctlGetList(SPD_DEVICE_EXTENSION *DeviceExtension,
         }
 
     Irp->IoStatus.Status = STATUS_SUCCESS;
-    Irp->IoStatus.Information = (PUINT8)BtlEndP - (PUINT8)BtlP;
+    Irp->IoStatus.Information = (PUINT8)BtlP - (PUINT8)BtlBgnP;
 
 exit:;
 }
