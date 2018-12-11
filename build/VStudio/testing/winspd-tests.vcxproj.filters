@@ -16,7 +16,7 @@
     <ClCompile Include="..\..\..\ext\tlib\testsuite.c">
       <Filter>Source\tlib</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\tst\winspd-tests\provision-test.c">
+    <ClCompile Include="..\..\..\tst\winspd-tests\ioctl-test.c">
       <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>
