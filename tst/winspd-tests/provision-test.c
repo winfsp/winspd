@@ -43,7 +43,7 @@ static void provision_test(void)
     memcpy(&StorageUnitParams.Guid, &TestGuid, sizeof TestGuid);
     StorageUnitParams.BlockCount = 16;
     StorageUnitParams.BlockLength = 512;
-    UINT32 MaxTransferLength = 512;
+    StorageUnitParams.MaxTransferLength = 512;
 
     Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
     ASSERT(ERROR_SUCCESS == Error);
