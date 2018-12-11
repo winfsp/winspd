@@ -255,7 +255,7 @@ static unsigned __stdcall ioctl_transact_test_thread(void *Data)
         UCHAR Buffer[32];
     } Sense;
 
-    SpdDebugLog(__FUNCTION__ "%x\n", (unsigned)Btl);
+    SpdDebugLog(__FUNCTION__ " %x\n", (unsigned)Btl);
 
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
     if (ERROR_SUCCESS != Error)
