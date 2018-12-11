@@ -155,7 +155,7 @@ static VOID SpdIoctlTransact(SPD_DEVICE_EXTENSION *DeviceExtension,
     StorageUnit = SpdStorageUnitReferenceByBtl(DeviceExtension, Params->Btl);
     if (0 == StorageUnit)
     {
-        Irp->IoStatus.Status = STATUS_OBJECT_NAME_NOT_FOUND;
+        Irp->IoStatus.Status = STATUS_CANCELLED;
         goto exit;
     }
 

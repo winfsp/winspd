@@ -273,6 +273,8 @@ DWORD SpdIoctlProvision(HANDLE DeviceHandle,
     DWORD BytesTransferred;
     DWORD Error;
 
+    *PBtl = (UINT32)-1;
+
     memset(&Params, 0, sizeof Params);
     Params.Base.Size = sizeof Params;
     Params.Base.Code = SPD_IOCTL_PROVISION;
@@ -281,7 +283,7 @@ DWORD SpdIoctlProvision(HANDLE DeviceHandle,
 
     if (!DeviceIoControl(DeviceHandle, IOCTL_MINIPORT_PROCESS_SERVICE_IRP,
         &Params, sizeof Params,
-        0, 0,
+        &Params, sizeof Params,
         &BytesTransferred, 0))
     {
         Error = GetLastError();
@@ -372,7 +374,7 @@ DWORD SpdIoctlTransact(HANDLE DeviceHandle,
 
     if (!DeviceIoControl(DeviceHandle, IOCTL_MINIPORT_PROCESS_SERVICE_IRP,
         &Params, sizeof Params,
-        0, 0,
+        &Params, sizeof Params,
         &BytesTransferred, 0))
     {
         Error = GetLastError();

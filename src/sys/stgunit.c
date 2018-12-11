@@ -34,7 +34,7 @@ NTSTATUS SpdStorageUnitProvision(
     UINT32 Btl;
     KIRQL Irql;
 
-    *PBtl = (ULONG)-1;
+    *PBtl = (UINT32)-1;
 
     StorageUnit = SpdAllocNonPaged(sizeof *StorageUnit, SpdTagStorageUnit);
     if (0 == StorageUnit)
@@ -63,13 +63,13 @@ NTSTATUS SpdStorageUnitProvision(
 
     KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
     DuplicateUnit = 0;
-    Btl = (ULONG)-1;
+    Btl = (UINT32)-1;
     for (ULONG I = 0; DeviceExtension->StorageUnitCapacity > I; I++)
     {
         SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
         if (0 == Unit)
         {
-            if ((ULONG)-1 == Btl)
+            if ((UINT32)-1 == Btl)
                 Btl = SPD_BTL_FROM_INDEX(I);
             continue;
         }

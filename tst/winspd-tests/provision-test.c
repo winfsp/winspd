@@ -47,6 +47,47 @@ static void provision_test(void)
 
     Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
     ASSERT(ERROR_SUCCESS == Error);
+    ASSERT(0 == Btl);
+
+    Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Success = CloseHandle(DeviceHandle);
+    ASSERT(Success);
+}
+
+static void provision_invalid_test(void)
+{
+    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
+    HANDLE DeviceHandle;
+    UINT32 Btl;
+    DWORD Error;
+    BOOL Success;
+
+    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    memset(&StorageUnitParams, 0, sizeof StorageUnitParams);
+    Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
+    ASSERT(ERROR_INVALID_PARAMETER == Error);
+    ASSERT((UINT32)-1 == Btl);
+
+    memcpy(&StorageUnitParams.Guid, &TestGuid, sizeof TestGuid);
+    Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
+    ASSERT(ERROR_INVALID_PARAMETER == Error);
+    ASSERT((UINT32)-1 == Btl);
+
+    StorageUnitParams.BlockCount = 16;
+    StorageUnitParams.BlockLength = 512;
+    StorageUnitParams.MaxTransferLength = 512 + 1;
+    Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
+    ASSERT(ERROR_INVALID_PARAMETER == Error);
+    ASSERT((UINT32)-1 == Btl);
+
+    StorageUnitParams.MaxTransferLength = 512;
+    Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
+    ASSERT(ERROR_SUCCESS == Error);
+    ASSERT(0 == Btl);
 
     Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
     ASSERT(ERROR_SUCCESS == Error);
@@ -58,4 +99,5 @@ static void provision_test(void)
 void provision_tests(void)
 {
     TEST(provision_test);
+    TEST(provision_invalid_test);
 }
