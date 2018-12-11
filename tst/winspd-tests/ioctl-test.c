@@ -22,7 +22,6 @@
 #include <winspd/winspd.h>
 #include <tlib/testsuite.h>
 #include <process.h>
-#include "rawdisk.h"
 
 static const GUID TestGuid = 
     { 0x4112a9a1, 0xf079, 0x4f3d, { 0xba, 0x53, 0x2d, 0x5d, 0xf2, 0x7d, 0x28, 0xb5 } };
