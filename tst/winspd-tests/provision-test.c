@@ -23,6 +23,11 @@
 #include <tlib/testsuite.h>
 #include "rawdisk.h"
 
+static const GUID TestGuid = 
+    { 0x4112a9a1, 0xf079, 0x4f3d, { 0xba, 0x53, 0x2d, 0x5d, 0xf2, 0x7d, 0x28, 0xb5 } };
+static const GUID TestGuid2 = 
+    { 0xd7f5a95d, 0xb9f0, 0x4e47, { 0x87, 0x3b, 0xa, 0xb0, 0xa, 0x89, 0xf9, 0x5a } };
+
 static void provision_test(void)
 {
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
@@ -33,6 +38,12 @@ static void provision_test(void)
 
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
     ASSERT(ERROR_SUCCESS == Error);
+
+    memset(&StorageUnitParams, 0, sizeof StorageUnitParams);
+    memcpy(&StorageUnitParams.Guid, &TestGuid, sizeof TestGuid);
+    StorageUnitParams.BlockCount = 16;
+    StorageUnitParams.BlockLength = 512;
+    UINT32 MaxTransferLength = 512;
 
     Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
     ASSERT(ERROR_SUCCESS == Error);
