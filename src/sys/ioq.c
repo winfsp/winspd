@@ -71,12 +71,12 @@ VOID SpdIoqReset(SPD_IOQ *Ioq, BOOLEAN Stop)
             Ioq->ProcessBucketCount * sizeof Ioq->ProcessBuckets[0]);
 
         for (; PendingEntry != &Ioq->PendingList; PendingEntry = PendingEntry->Flink)
-            SpdSrbComplete(
+            SpdSrbCompleteEx(
                 Ioq->DeviceExtension,
                 CONTAINING_RECORD(PendingEntry, SPD_SRB_EXTENSION, ListEntry)->Srb,
                 SRB_STATUS_ABORTED);
         for (; ProcessEntry != &Ioq->ProcessList; ProcessEntry = ProcessEntry->Flink)
-            SpdSrbComplete(
+            SpdSrbCompleteEx(
                 Ioq->DeviceExtension,
                 CONTAINING_RECORD(ProcessEntry, SPD_SRB_EXTENSION, ListEntry)->Srb,
                 SRB_STATUS_ABORTED);
@@ -136,7 +136,7 @@ NTSTATUS SpdIoqCancelSrb(SPD_IOQ *Ioq, PVOID Srb)
 
         SrbExtension->Srb = 0;
 
-        SpdSrbComplete(Ioq->DeviceExtension, Srb, SRB_STATUS_ABORTED);
+        SpdSrbCompleteEx(Ioq->DeviceExtension, Srb, SRB_STATUS_ABORTED);
 
         Result = STATUS_SUCCESS;
     }
@@ -265,7 +265,7 @@ VOID SpdIoqEndProcessingSrb(SPD_IOQ *Ioq, UINT64 Hint,
                 SrbExtension->Srb = 0;
 
                 Complete(Srb, Context, DataBuffer);
-                StorPortNotification(RequestComplete, Ioq->DeviceExtension, Srb);
+                SpdSrbComplete(Ioq->DeviceExtension, Srb);
 
                 break;
             }

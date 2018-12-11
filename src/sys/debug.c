@@ -330,7 +330,7 @@ const char *CdbOperationCodeSym(ULONG OperationCode)
     }
 }
 
-const char *SpdStringizeSrb(PVOID Srb, char Buffer[], size_t Size)
+const char *SrbStringize(PVOID Srb, char Buffer[], size_t Size)
 {
     ULONG Function = SrbGetSrbFunction(Srb);
     UCHAR Status = SrbGetSrbStatus(Srb);

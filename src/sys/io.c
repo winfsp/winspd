@@ -23,10 +23,10 @@
 
 BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
 {
-    PVOID Srb = Srb0;
     SPD_ENTER(io,
         ASSERT(DISPATCH_LEVEL >= KeGetCurrentIrql()));
 
+    PVOID Srb = Srb0;
     UCHAR SrbStatus;
     switch (SrbGetSrbFunction(Srb))
     {
@@ -72,19 +72,25 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
     {
     case SRB_STATUS_PENDING:
         /* no completion */
+#if DBG
+        {
+            char buf[1024];
+            DEBUGLOG_EX(srb, "Srb=%p {%s}", Srb, SrbStringize(Srb, buf, sizeof buf));
+        }
+#endif
         break;
     case SRB_STATUS_INTERNAL_ERROR:
         if (STATUS_SUCCESS == SrbGetSystemStatus(Srb))
             SrbSetSystemStatus(Srb, (ULONG)STATUS_INVALID_PARAMETER);
         /* fall through */
     default:
-        SpdSrbComplete(DeviceExtension, Srb, SrbStatus);
+        SpdSrbCompleteEx(DeviceExtension, Srb, SrbStatus);
         break;
     }
 
     SPD_LEAVE(io,
-        "%p, %s", "",
-        DeviceExtension, SpdStringizeSrb(Srb, SpdDebugLogBuf, sizeof SpdDebugLogBuf));
+        "%p, Srb=%p", " = %d",
+        DeviceExtension, Srb0, TRUE);
 
     return TRUE;
 }
