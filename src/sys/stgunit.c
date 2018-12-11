@@ -68,8 +68,12 @@ NTSTATUS SpdStorageUnitProvision(
     {
         SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
         if (0 == Unit)
-            Btl = SPD_BTL_FROM_INDEX(I);
-        else
+        {
+            if ((ULONG)-1 == Btl)
+                Btl = SPD_BTL_FROM_INDEX(I);
+            continue;
+        }
+
         if (RtlEqualMemory(&StorageUnit->StorageUnitParams.Guid, &Unit->StorageUnitParams.Guid,
             sizeof Unit->StorageUnitParams.Guid))
         {
@@ -125,8 +129,8 @@ NTSTATUS SpdStorageUnitUnprovision(
     {
         SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
         if (0 == Unit)
-            ;
-        else
+            continue;
+
         if (RtlEqualMemory(Guid, &Unit->StorageUnitParams.Guid,
             sizeof Unit->StorageUnitParams.Guid))
         {
