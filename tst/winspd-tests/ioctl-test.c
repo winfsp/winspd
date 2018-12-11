@@ -91,6 +91,9 @@ static void ioctl_provision_invalid_test(void)
     Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
     ASSERT(ERROR_SUCCESS == Error);
 
+    Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
+    ASSERT(ERROR_FILE_NOT_FOUND == Error);
+
     Success = CloseHandle(DeviceHandle);
     ASSERT(Success);
 }
