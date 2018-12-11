@@ -22,13 +22,13 @@
 #include <sys/driver.h>
 
 static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
-    ULONG Length, SPD_IOCTL_PROVISION_PARAMS *Params,
+    ULONG InputBufferLength, ULONG OutputBufferLength, SPD_IOCTL_PROVISION_PARAMS *Params,
     PIRP Irp)
 {
     static GUID NullGuid = { 0 };
     UINT32 Btl;
 
-    if (sizeof *Params > Length)
+    if (sizeof *Params > InputBufferLength || sizeof *Params > OutputBufferLength)
     {
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         goto exit;
@@ -69,10 +69,10 @@ exit:;
 }
 
 static VOID SpdIoctlUnprovision(SPD_DEVICE_EXTENSION *DeviceExtension,
-    ULONG Length, SPD_IOCTL_UNPROVISION_PARAMS *Params,
+    ULONG InputBufferLength, ULONG OutputBufferLength, SPD_IOCTL_UNPROVISION_PARAMS *Params,
     PIRP Irp)
 {
-    if (sizeof *Params > Length)
+    if (sizeof *Params > InputBufferLength)
     {
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         goto exit;
@@ -94,16 +94,14 @@ exit:;
 }
 
 static VOID SpdIoctlGetList(SPD_DEVICE_EXTENSION *DeviceExtension,
-    ULONG Length, SPD_IOCTL_LIST_PARAMS *Params,
+    ULONG InputBufferLength, ULONG OutputBufferLength, SPD_IOCTL_LIST_PARAMS *Params,
     PIRP Irp)
 {
-    PIO_STACK_LOCATION IrpSp = IoGetCurrentIrpStackLocation(Irp);
-    ULONG OutputBufferLength = IrpSp->Parameters.DeviceIoControl.OutputBufferLength;
     PUINT32 BtlP = Irp->AssociatedIrp.SystemBuffer;
     PUINT32 BtlEndP = (PVOID)((PUINT8)BtlP + OutputBufferLength);
     UINT8 Bitmap[32];
 
-    if (sizeof *Params > Length)
+    if (sizeof *Params > InputBufferLength)
     {
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         goto exit;
@@ -130,14 +128,14 @@ exit:;
 }
 
 static VOID SpdIoctlTransact(SPD_DEVICE_EXTENSION *DeviceExtension,
-    ULONG Length, SPD_IOCTL_TRANSACT_PARAMS *Params,
+    ULONG InputBufferLength, ULONG OutputBufferLength, SPD_IOCTL_TRANSACT_PARAMS *Params,
     PIRP Irp)
 {
     SPD_STORAGE_UNIT *StorageUnit = 0;
     PMDL Mdl = 0;
     PVOID DataBuffer;
 
-    if (sizeof *Params > Length)
+    if (sizeof *Params > InputBufferLength || sizeof *Params > OutputBufferLength)
     {
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         goto exit;
@@ -254,12 +252,13 @@ VOID SpdHwProcessServiceRequest(PVOID DeviceExtension, PVOID Irp0)
 
     PIRP Irp = Irp0;
     PIO_STACK_LOCATION IrpSp = IoGetCurrentIrpStackLocation(Irp);
-    ULONG Length = IrpSp->Parameters.DeviceIoControl.InputBufferLength;
+    ULONG InputBufferLength = IrpSp->Parameters.DeviceIoControl.InputBufferLength;
+    ULONG OutputBufferLength = IrpSp->Parameters.DeviceIoControl.OutputBufferLength;
     PVOID Params = Irp->AssociatedIrp.SystemBuffer;
 
     if (0 == Params ||
-        sizeof(SPD_IOCTL_BASE_PARAMS) > Length ||
-        ((SPD_IOCTL_BASE_PARAMS *)Params)->Size > Length)
+        sizeof(SPD_IOCTL_BASE_PARAMS) > InputBufferLength ||
+        ((SPD_IOCTL_BASE_PARAMS *)Params)->Size > InputBufferLength)
     {
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         goto exit;
@@ -268,16 +267,16 @@ VOID SpdHwProcessServiceRequest(PVOID DeviceExtension, PVOID Irp0)
     switch (((SPD_IOCTL_BASE_PARAMS *)Params)->Code)
     {
     case SPD_IOCTL_PROVISION:
-        SpdIoctlProvision(DeviceExtension, Length, Params, Irp);
+        SpdIoctlProvision(DeviceExtension, InputBufferLength, OutputBufferLength, Params, Irp);
         break;
     case SPD_IOCTL_UNPROVISION:
-        SpdIoctlUnprovision(DeviceExtension, Length, Params, Irp);
+        SpdIoctlUnprovision(DeviceExtension, InputBufferLength, OutputBufferLength, Params, Irp);
         break;
     case SPD_IOCTL_LIST:
-        SpdIoctlGetList(DeviceExtension, Length, Params, Irp);
+        SpdIoctlGetList(DeviceExtension, InputBufferLength, OutputBufferLength, Params, Irp);
         break;
     case SPD_IOCTL_TRANSACT:
-        SpdIoctlTransact(DeviceExtension, Length, Params, Irp);
+        SpdIoctlTransact(DeviceExtension, InputBufferLength, OutputBufferLength, Params, Irp);
         break;
     default:
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
@@ -299,6 +298,9 @@ VOID SpdHwCompleteServiceIrp(PVOID DeviceExtension)
 {
     SPD_ENTER(ioctl,
         ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
+
+    // !!!: ???
+    // SpdIoqReset(DeviceExtension->Ioq, TRUE);
 
     SPD_LEAVE(ioctl,
         "%p", "",
