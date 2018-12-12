@@ -203,7 +203,105 @@ static void scsi_inquiry_test(void)
     ASSERT(Success);
 }
 
+static void scsi_read_capacity_test(void)
+{
+    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
+    HANDLE DeviceHandle;
+    UINT32 Btl;
+    DWORD Error;
+    BOOL Success;
+
+    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    memset(&StorageUnitParams, 0, sizeof StorageUnitParams);
+    memcpy(&StorageUnitParams.Guid, &TestGuid, sizeof TestGuid);
+    /* NOTE:
+     * Comment the following 2 lines out. If we do not do this, then the partmgr(?)
+     * sends us a READ_CAPACITY and a READ command for block 0 (MBR). This causes 2 problems:
+     *
+     * - Because we do not execute SpdIoctlTransact we never complete the READ SRB.
+     * - For some reason our SCSI ioctls fail with ERROR_INVALID_FUNCTION.
+     */
+    //memcpy(StorageUnitParams.ProductId, "TestDisk        ", 16);
+    //memcpy(StorageUnitParams.ProductRevisionLevel, "0.1 ", 4);
+    StorageUnitParams.BlockCount = 16;
+    StorageUnitParams.BlockLength = 512;
+    StorageUnitParams.MaxTransferLength = 512;
+    Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
+    ASSERT(ERROR_SUCCESS == Error);
+    ASSERT(0 == Btl);
+
+    CDB Cdb;
+    UINT8 DataBuffer[255];
+    UINT32 DataLength;
+    UCHAR ScsiStatus;
+    union
+    {
+        SENSE_DATA Data;
+        UCHAR Buffer[32];
+    } Sense;
+
+    {
+        memset(&Cdb, 0, sizeof Cdb);
+        Cdb.CDB10.OperationCode = SCSIOP_READ_CAPACITY;
+
+        DataLength = sizeof DataBuffer;
+        Error = SpdIoctlScsiExecute(DeviceHandle, Btl, &Cdb, +1, DataBuffer, &DataLength,
+            &ScsiStatus, Sense.Buffer);
+        ASSERT(ERROR_SUCCESS == Error);
+
+        PREAD_CAPACITY_DATA ReadCapacityData = (PVOID)DataBuffer;
+        ASSERT(StorageUnitParams.BlockCount - 1 == (
+            (((PUINT8)&ReadCapacityData->LogicalBlockAddress)[0] << 24) |
+            (((PUINT8)&ReadCapacityData->LogicalBlockAddress)[1] << 16) |
+            (((PUINT8)&ReadCapacityData->LogicalBlockAddress)[2] << 8) |
+            (((PUINT8)&ReadCapacityData->LogicalBlockAddress)[3])));
+        ASSERT(StorageUnitParams.BlockLength == (
+            (((PUINT8)&ReadCapacityData->BytesPerBlock)[0] << 24) |
+            (((PUINT8)&ReadCapacityData->BytesPerBlock)[1] << 16) |
+            (((PUINT8)&ReadCapacityData->BytesPerBlock)[2] << 8) |
+            (((PUINT8)&ReadCapacityData->BytesPerBlock)[3])));
+    }
+
+    {
+        memset(&Cdb, 0, sizeof Cdb);
+        Cdb.READ_CAPACITY16.OperationCode = SCSIOP_SERVICE_ACTION_IN16;
+        Cdb.READ_CAPACITY16.ServiceAction = SERVICE_ACTION_READ_CAPACITY16;
+        Cdb.READ_CAPACITY16.AllocationLength[3] = 255;
+
+        DataLength = sizeof DataBuffer;
+        Error = SpdIoctlScsiExecute(DeviceHandle, Btl, &Cdb, +1, DataBuffer, &DataLength,
+            &ScsiStatus, Sense.Buffer);
+        ASSERT(ERROR_SUCCESS == Error);
+
+        PREAD_CAPACITY16_DATA ReadCapacityData = (PVOID)DataBuffer;
+        ASSERT(StorageUnitParams.BlockCount - 1 == (
+            ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[0] << 56) |
+            ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[1] << 48) |
+            ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[2] << 40) |
+            ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[3] << 32) |
+            ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[4] << 24) |
+            ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[5] << 16) |
+            ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[6] << 8) |
+            ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[7])));
+        ASSERT(StorageUnitParams.BlockLength == (
+            (((PUINT8)&ReadCapacityData->BytesPerBlock)[0] << 24) |
+            (((PUINT8)&ReadCapacityData->BytesPerBlock)[1] << 16) |
+            (((PUINT8)&ReadCapacityData->BytesPerBlock)[2] << 8) |
+            (((PUINT8)&ReadCapacityData->BytesPerBlock)[3])));
+        ASSERT(ReadCapacityData->LBPME);
+    }
+
+    Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Success = CloseHandle(DeviceHandle);
+    ASSERT(Success);
+}
+
 void scsi_tests(void)
 {
     TEST(scsi_inquiry_test);
+    TEST(scsi_read_capacity_test);
 }
