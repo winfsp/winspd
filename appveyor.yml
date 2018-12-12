@@ -1,0 +1,27 @@
+version: '{build}'
+
+environment:
+  matrix:
+  - CONFIGURATION: Debug
+  - CONFIGURATION: Release
+
+install:
+- appveyor AddMessage "Change boot configuration and reboot" -Category Information
+- bcdedit /set testsigning on
+- verifier /standard /driver winspd-x64.sys
+- reg add HKLM\SYSTEM\CurrentControlSet\Control\StorPort\Verifier /v VerifyLevel2 /t REG_DWORD /d 1 /f
+- if exist %SystemRoot%\memory.dmp del %SystemRoot%\memory.dmp
+- ps: Restart-Computer -Force
+- ps: Start-Sleep -s 60
+
+build_script:
+- appveyor AddMessage "Reboot complete" -Category Information
+- devenv winfsp.sln /build "%CONFIGURATION%|x64"
+- devenv winfsp.sln /build "%CONFIGURATION%|x86"
+
+test_script:
+- if exist %SystemRoot%\memory.dmp exit 1
+
+on_finish:
+- if exist %SystemRoot%\memory.dmp (7z a memory.dmp.zip %SystemRoot%\memory.dmp && appveyor PushArtifact memory.dmp.zip)
+- verifier /query
