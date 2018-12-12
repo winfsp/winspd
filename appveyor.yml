@@ -16,8 +16,7 @@ install:
 
 build_script:
 - appveyor AddMessage "Reboot complete" -Category Information
-- devenv winfsp.sln /build "%CONFIGURATION%|x64"
-- devenv winfsp.sln /build "%CONFIGURATION%|x86"
+- tools\build.bat %CONFIGURATION%
 
 test_script:
 - if exist %SystemRoot%\memory.dmp exit 1
