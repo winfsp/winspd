@@ -41,6 +41,7 @@ LONG WINAPI UnhandledExceptionHandler(struct _EXCEPTION_POINTERS *ExceptionInfo)
 int main(int argc, char *argv[])
 {
     TESTSUITE(ioctl_tests);
+    TESTSUITE(scsi_tests);
 
     atexit(exiting);
     signal(SIGABRT, abort_handler);

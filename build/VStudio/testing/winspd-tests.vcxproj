@@ -177,6 +177,7 @@
       <SDLCheck Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</SDLCheck>
     </ClCompile>
     <ClCompile Include="..\..\..\tst\winspd-tests\ioctl-test.c" />
+    <ClCompile Include="..\..\..\tst\winspd-tests\scsi-test.c" />
     <ClCompile Include="..\..\..\tst\winspd-tests\winspd-tests.c" />
   </ItemGroup>
   <ItemGroup>
