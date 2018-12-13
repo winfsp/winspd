@@ -313,6 +313,9 @@ static void ioctl_transact_test(void)
     ASSERT(ERROR_SUCCESS == Error);
     ASSERT(0 == Btl);
 
+    Error = SpdIoctlScsiInquiry(DeviceHandle, Btl, 0, 3000);
+    ASSERT(ERROR_SUCCESS == Error);
+
     Thread = (HANDLE)_beginthreadex(0, 0, ioctl_transact_test_thread, (PVOID)(UINT_PTR)Btl, 0, 0);
     ASSERT(0 != Thread);
 
@@ -415,6 +418,9 @@ static void ioctl_transact_cancel_test(void)
     Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
     ASSERT(ERROR_SUCCESS == Error);
     ASSERT(0 == Btl);
+
+    Error = SpdIoctlScsiInquiry(DeviceHandle, Btl, 0, 3000);
+    ASSERT(ERROR_SUCCESS == Error);
 
     Thread = (HANDLE)_beginthreadex(0, 0, ioctl_transact_cancel_test_thread, (PVOID)(UINT_PTR)Btl, 0, 0);
     ASSERT(0 != Thread);

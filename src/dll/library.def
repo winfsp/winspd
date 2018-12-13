@@ -4,6 +4,7 @@ EXPORTS
 	SpdIoctlGetDevicePath
 	SpdIoctlOpenDevice
 	SpdIoctlScsiExecute
+	SpdIoctlScsiInquiry
 	SpdIoctlProvision
 	SpdIoctlUnprovision
 	SpdIoctlGetList

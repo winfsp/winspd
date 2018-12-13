@@ -57,6 +57,9 @@ static void scsi_inquiry_test(void)
     ASSERT(ERROR_SUCCESS == Error);
     ASSERT(0 == Btl);
 
+    Error = SpdIoctlScsiInquiry(DeviceHandle, Btl, 0, 3000);
+    ASSERT(ERROR_SUCCESS == Error);
+
     CDB Cdb;
     UINT8 DataBuffer[VPD_MAX_BUFFER_SIZE];
     UINT32 DataLength;
@@ -231,6 +234,9 @@ static void scsi_read_capacity_test(void)
     Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
     ASSERT(ERROR_SUCCESS == Error);
     ASSERT(0 == Btl);
+
+    Error = SpdIoctlScsiInquiry(DeviceHandle, Btl, 0, 3000);
+    ASSERT(ERROR_SUCCESS == Error);
 
     CDB Cdb;
     UINT8 DataBuffer[255];

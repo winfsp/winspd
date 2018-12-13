@@ -193,6 +193,8 @@ DWORD SpdIoctlOpenDevice(PWSTR DeviceName, PHANDLE PDeviceHandle);
 DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
     UINT32 Btl, PCDB Cdb, INT DataDirection, PVOID DataBuffer, PUINT32 PDataLength,
     PUCHAR PScsiStatus, UCHAR SenseInfoBuffer[32]);
+DWORD SpdIoctlScsiInquiry(HANDLE DeviceHandle,
+    UINT32 Btl, PINQUIRYDATA InquiryData, ULONG Timeout);
 DWORD SpdIoctlProvision(HANDLE DeviceHandle,
     const SPD_IOCTL_STORAGE_UNIT_PARAMS *Params, PUINT32 PBtl);
 DWORD SpdIoctlUnprovision(HANDLE DeviceHandle,

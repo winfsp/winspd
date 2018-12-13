@@ -266,6 +266,58 @@ exit:
     return Error;
 }
 
+DWORD SpdIoctlScsiInquiry(HANDLE DeviceHandle,
+    UINT32 Btl, PINQUIRYDATA InquiryData, ULONG Timeout)
+{
+    static const ULONG Delays[] =
+    {
+        100,
+        300,
+        300,
+        300,
+        1000,
+    };
+    CDB Cdb;
+    __declspec(align(16)) UINT8 DataBuffer[VPD_MAX_BUFFER_SIZE];
+    UINT32 DataLength;
+    UCHAR ScsiStatus, SenseInfoBuffer[32];
+    ULONG Delay;
+    DWORD Error;
+
+    for (ULONG I = 0, N = sizeof(Delays) / sizeof(Delays[0]);; I++)
+    {
+        memset(&Cdb, 0, sizeof Cdb);
+        Cdb.CDB6INQUIRY3.OperationCode = SCSIOP_INQUIRY;
+        Cdb.CDB6INQUIRY3.AllocationLength = sizeof DataBuffer;
+
+        DataLength = sizeof DataBuffer;
+        Error = SpdIoctlScsiExecute(DeviceHandle, Btl, &Cdb, +1, DataBuffer, &DataLength,
+            &ScsiStatus, SenseInfoBuffer);
+        if (ERROR_SUCCESS == Error && SCSISTAT_GOOD == ScsiStatus)
+            break;
+        if (0 == Timeout)
+        {
+            Error = ERROR_TIMEOUT;
+            break;
+        }
+
+        Delay = N > I ? Delays[I] : Delays[N - 1];
+        Delay = Delay < Timeout ? Delay : Timeout;
+        Sleep(Delay);
+        Timeout -= Delay;
+    }
+
+    if (0 != InquiryData)
+    {
+        memset(InquiryData, 0, sizeof *InquiryData);
+        if (ERROR_SUCCESS == Error)
+            memcpy(InquiryData, DataBuffer,
+                sizeof *InquiryData < DataLength ? sizeof *InquiryData : DataLength);
+    }
+
+    return Error;
+}
+
 DWORD SpdIoctlProvision(HANDLE DeviceHandle,
     const SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams, PUINT32 PBtl)
 {
