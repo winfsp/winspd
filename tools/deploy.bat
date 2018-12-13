@@ -21,7 +21,7 @@ for /f "tokens=2,*" %%i in ('reg query %RegKey% /v %RegVal% ^| findstr %RegVal%'
     set KitRoot="%%j"
 )
 copy %KitRoot%\Tools\%SUFFIX%\devcon.exe %TARGET% >nul
-copy %KitRoot%\bin\x86\certmgr.exe %TARGET% >nul
+copy %KitRoot%\bin\%SUFFIX%\certmgr.exe %TARGET% >nul
 
 echo certmgr /add /c winspd-%SUFFIX%.cer /s /r localMachine root >%TARGET%install.bat
 echo certmgr /add /c winspd-%SUFFIX%.cer /s /r localMachine TrustedPublisher >>%TARGET%install.bat
