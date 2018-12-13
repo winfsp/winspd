@@ -107,7 +107,7 @@
       <MapFileName>$(OutDir)$(TargetFileName).map</MapFileName>
     </Link>
     <PostBuildEvent>
-      <Command>call "$(SolutionDir)..\..\tools\mkcat.bat" $(PlatformTarget) "$(OutDir)" $(TargetName).inf $(TargetName).sys $(TargetName).dll</Command>
+      <Command>call "$(SolutionDir)..\..\tools\mkcat.bat" $(PlatformTarget) -sign "$(CertificateOutputPath)" "$(OutDir)" $(TargetName).inf $(TargetName).sys $(TargetName).dll</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -122,7 +122,7 @@
       <MapFileName>$(OutDir)$(TargetFileName).map</MapFileName>
     </Link>
     <PostBuildEvent>
-      <Command>call "$(SolutionDir)..\..\tools\mkcat.bat" $(PlatformTarget) "$(OutDir)" $(TargetName).inf $(TargetName).sys $(TargetName).dll</Command>
+      <Command>call "$(SolutionDir)..\..\tools\mkcat.bat" $(PlatformTarget) -sign "$(CertificateOutputPath)" "$(OutDir)" $(TargetName).inf $(TargetName).sys $(TargetName).dll</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -137,7 +137,7 @@
       <MapFileName>$(OutDir)$(TargetFileName).map</MapFileName>
     </Link>
     <PostBuildEvent>
-      <Command>call "$(SolutionDir)..\..\tools\mkcat.bat" $(PlatformTarget) "$(OutDir)" $(TargetName).inf $(TargetName).sys $(TargetName).dll</Command>
+      <Command>call "$(SolutionDir)..\..\tools\mkcat.bat" $(PlatformTarget) -sign "$(CertificateOutputPath)" "$(OutDir)" $(TargetName).inf $(TargetName).sys $(TargetName).dll</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -152,7 +152,7 @@
       <MapFileName>$(OutDir)$(TargetFileName).map</MapFileName>
     </Link>
     <PostBuildEvent>
-      <Command>call "$(SolutionDir)..\..\tools\mkcat.bat" $(PlatformTarget) "$(OutDir)" $(TargetName).inf $(TargetName).sys $(TargetName).dll</Command>
+      <Command>call "$(SolutionDir)..\..\tools\mkcat.bat" $(PlatformTarget) -sign "$(CertificateOutputPath)" "$(OutDir)" $(TargetName).inf $(TargetName).sys $(TargetName).dll</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
