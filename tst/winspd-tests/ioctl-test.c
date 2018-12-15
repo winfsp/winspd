@@ -22,6 +22,7 @@
 #include <winspd/winspd.h>
 #include <tlib/testsuite.h>
 #include <process.h>
+#include <strsafe.h>
 
 static const GUID TestGuid = 
     { 0x4112a9a1, 0xf079, 0x4f3d, { 0xba, 0x53, 0x2d, 0x5d, 0xf2, 0x7d, 0x28, 0xb5 } };
@@ -451,6 +452,95 @@ static void ioctl_transact_cancel_test(void)
     ASSERT(0 != ExitCode);
 }
 
+static void ioctl_provision_die_test_DO_NOT_RUN_FROM_COMMAND_LINE(void)
+{
+    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
+    HANDLE DeviceHandle;
+    UINT32 Btl;
+    DWORD Error;
+    BOOL Success;
+
+    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    memset(&StorageUnitParams, 0, sizeof StorageUnitParams);
+    memcpy(&StorageUnitParams.Guid, &TestGuid, sizeof TestGuid);
+    StorageUnitParams.BlockCount = 16;
+    StorageUnitParams.BlockLength = 512;
+    StorageUnitParams.MaxTransferLength = 512;
+    Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    /* do not unprovision! */
+
+    Success = CloseHandle(DeviceHandle);
+    ASSERT(Success);
+}
+
+static void ioctl_process_death_test(void)
+{
+    HANDLE Stdout, Stderr;
+    WCHAR FileName[MAX_PATH];
+    WCHAR CommandLine[MAX_PATH + 64];
+    STARTUPINFOW StartupInfo;
+    PROCESS_INFORMATION ProcessInfo;
+    DWORD WaitResult;
+    DWORD ExitCode;
+    BOOL Success;
+
+    Stdout = CreateFileW(L"NUL",
+        GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        0, OPEN_EXISTING, 0, 0);
+    ASSERT(INVALID_HANDLE_VALUE != Stdout);
+    Stderr = CreateFileW(L"NUL",
+        GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        0, OPEN_EXISTING, 0, 0);
+    ASSERT(INVALID_HANDLE_VALUE != Stderr);
+
+    GetModuleFileNameW(0, FileName, MAX_PATH);
+    ASSERT(ERROR_SUCCESS == GetLastError());
+
+    StringCbPrintfW(CommandLine, sizeof CommandLine,
+        L"\"%s\" +ioctl_provision_die_test_DO_NOT_RUN_FROM_COMMAND_LINE",
+        FileName);
+
+    memset(&StartupInfo, 0, sizeof StartupInfo);
+    StartupInfo.cb = sizeof StartupInfo;
+    StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+    StartupInfo.hStdOutput = Stdout;
+    StartupInfo.hStdError = Stderr;
+    Success = CreateProcessW(FileName, CommandLine, 0, 0, TRUE, 0, 0, 0, &StartupInfo, &ProcessInfo);
+    ASSERT(Success);
+
+    CloseHandle(Stdout);
+    CloseHandle(Stderr);
+
+    WaitResult = WaitForSingleObject(ProcessInfo.hProcess, 3000);
+    ASSERT(WAIT_OBJECT_0 == WaitResult);
+
+    ASSERT(GetExitCodeProcess(ProcessInfo.hProcess, &ExitCode));
+    ASSERT(0 == ExitCode);
+
+    CloseHandle(ProcessInfo.hThread);
+    CloseHandle(ProcessInfo.hProcess);
+
+    HANDLE DeviceHandle;
+    UINT32 BtlBuf[256];
+    UINT32 BtlBufSize;
+    DWORD Error;
+
+    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    BtlBufSize = sizeof(BtlBuf);
+    Error = SpdIoctlGetList(DeviceHandle, BtlBuf, &BtlBufSize);
+    ASSERT(ERROR_SUCCESS == Error);
+    ASSERT(0 == BtlBufSize);
+
+    Success = CloseHandle(DeviceHandle);
+    ASSERT(Success);
+}
+
 void ioctl_tests(void)
 {
     TEST(ioctl_provision_test);
@@ -460,4 +550,6 @@ void ioctl_tests(void)
     TEST(ioctl_list_test);
     TEST(ioctl_transact_test);
     TEST(ioctl_transact_cancel_test);
+    TEST_OPT(ioctl_provision_die_test_DO_NOT_RUN_FROM_COMMAND_LINE);
+    TEST(ioctl_process_death_test);
 }
