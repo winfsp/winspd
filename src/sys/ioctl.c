@@ -294,15 +294,27 @@ exit:
         DeviceExtension, Irp0);
 }
 
-VOID SpdHwCompleteServiceIrp(PVOID DeviceExtension)
+VOID SpdHwCompleteServiceIrp(PVOID DeviceExtension0)
 {
     SPD_ENTER(ioctl,
         ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
 
-    // !!!: ???
-    // SpdIoqReset(DeviceExtension->Ioq, TRUE);
+    SPD_DEVICE_EXTENSION *DeviceExtension = DeviceExtension0;
+    SPD_STORAGE_UNIT *StorageUnit;
+
+    for (ULONG I = 0; DeviceExtension->StorageUnitCapacity > I; I++)
+    {
+        StorageUnit = SpdStorageUnitReferenceByBtl(DeviceExtension, SPD_IOCTL_BTL(0, I, 0));
+        if (0 == StorageUnit)
+            continue;
+
+        /* stop the unit's Ioq; this will cause all pending service IRP's to be cancelled */
+        SpdIoqReset(StorageUnit->Ioq, TRUE);
+
+        SpdStorageUnitDereference(DeviceExtension, StorageUnit);
+    }
 
     SPD_LEAVE(ioctl,
         "%p", "",
-        DeviceExtension);
+        DeviceExtension0);
 }
