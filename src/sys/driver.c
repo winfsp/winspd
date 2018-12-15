@@ -27,6 +27,38 @@ DRIVER_INITIALIZE DriverEntry;
 #pragma alloc_text(INIT, DriverEntry)
 #endif
 
+static NTSTATUS RegistryGetValue(PUNICODE_STRING Path, PUNICODE_STRING ValueName,
+    PKEY_VALUE_PARTIAL_INFORMATION ValueInformation, PULONG PValueInformationLength)
+{
+    OBJECT_ATTRIBUTES ObjectAttributes;
+    HANDLE Handle = 0;
+    NTSTATUS Result;
+
+    InitializeObjectAttributes(&ObjectAttributes,
+        Path, OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE, 0, 0);
+
+    Result = ZwOpenKey(&Handle, KEY_QUERY_VALUE, &ObjectAttributes);
+    if (!NT_SUCCESS(Result))
+        goto exit;
+
+    Result = ZwQueryValueKey(Handle, ValueName,
+        KeyValuePartialInformation, ValueInformation,
+        *PValueInformationLength, PValueInformationLength);
+    if (!NT_SUCCESS(Result))
+        goto exit;
+
+    Result = STATUS_SUCCESS;
+
+exit:
+    if (0 != Handle)
+        ZwClose(Handle);
+
+    return Result;
+}
+
+static DRIVER_UNLOAD DriverUnload;
+static PDRIVER_UNLOAD StorPortDriverUnload;
+
 NTSTATUS DriverEntry(
     PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
@@ -34,8 +66,27 @@ NTSTATUS DriverEntry(
     SPD_ENTER(drvrld,
         ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
 
-    VIRTUAL_HW_INITIALIZATION_DATA Data;
+    ExInitializeResourceLite(&SpdGlobalDeviceResource);
 
+    UNICODE_STRING RegistryValueName;
+    union
+    {
+        KEY_VALUE_PARTIAL_INFORMATION Information;
+        UINT8 Buffer[FIELD_OFFSET(KEY_VALUE_PARTIAL_INFORMATION, Data) + sizeof(DWORD)];
+    } RegistryValue;
+    ULONG RegistryValueLength;
+    RtlInitUnicodeString(&RegistryValueName, L"StorageUnitCapacity");
+    RegistryValueLength = sizeof RegistryValue;
+    Result = RegistryGetValue(RegistryPath, &RegistryValueName,
+        &RegistryValue.Information, &RegistryValueLength);
+    if (NT_SUCCESS(Result) && REG_DWORD == RegistryValue.Information.Type)
+    {
+        ULONG Value = *(PULONG)&RegistryValue.Information.Data;
+        if (SPD_IOCTL_STORAGE_UNIT_CAPACITY <= Value && Value <= SPD_IOCTL_STORAGE_UNIT_MAX_CAPACITY)
+            SpdStorageUnitCapacity = Value;
+    }
+
+    VIRTUAL_HW_INITIALIZATION_DATA Data;
     RtlZeroMemory(&Data, sizeof(Data));
     Data.HwInitializationDataSize = sizeof(VIRTUAL_HW_INITIALIZATION_DATA);
     Data.AdapterInterfaceType = Internal;
@@ -64,10 +115,32 @@ NTSTATUS DriverEntry(
 
     Result = StorPortInitialize(
         DriverObject, RegistryPath, (PHW_INITIALIZATION_DATA)&Data, 0);
+    if (!NT_SUCCESS(Result))
+        SPD_RETURN(ExDeleteResourceLite(&SpdGlobalDeviceResource));
+
+    StorPortDriverUnload = DriverObject->DriverUnload;
+    DriverObject->DriverUnload = DriverUnload;
 
 #pragma prefast(suppress:28175, "We are in DriverEntry: ok to access DriverName")
     SPD_LEAVE(drvrld,
         "DriverName=\"%wZ\", RegistryPath=\"%wZ\"", " = %lx",
         &DriverObject->DriverName, RegistryPath, Result);
     return Result;
+}
+
+VOID DriverUnload(
+    PDRIVER_OBJECT DriverObject)
+{
+    SPD_ENTER(drvrld,
+        ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
+
+    if (0 != StorPortDriverUnload)
+        StorPortDriverUnload(DriverObject);
+
+    ExDeleteResourceLite(&SpdGlobalDeviceResource);
+
+#pragma prefast(suppress:28175, "We are in DriverUnload: ok to access DriverName")
+    SPD_LEAVE(drvrld,
+        "DriverName=\"%wZ\"", "",
+        &DriverObject->DriverName);
 }

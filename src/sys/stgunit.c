@@ -21,12 +21,100 @@
 
 #include <sys/driver.h>
 
+ERESOURCE SpdGlobalDeviceResource;
+SPD_DEVICE_EXTENSION *SpdGlobalDeviceExtension;
+ULONG SpdStorageUnitCapacity = SPD_IOCTL_STORAGE_UNIT_CAPACITY;
+
+static VOID SpdDeviceExtensionNotifyRoutine(HANDLE ParentId, HANDLE ProcessId0, BOOLEAN Create);
+
+NTSTATUS SpdDeviceExtensionInit(SPD_DEVICE_EXTENSION *DeviceExtension)
+{
+    ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
+    ASSERT(0 != DeviceExtension);
+
+    NTSTATUS Result;
+
+    KeEnterCriticalRegion();
+    ExAcquireResourceExclusiveLite(&SpdGlobalDeviceResource, TRUE);
+
+    if (0 != SpdGlobalDeviceExtension)
+    {
+        Result = DeviceExtension == SpdGlobalDeviceExtension ?
+            STATUS_SUCCESS : STATUS_INVALID_PARAMETER;
+        goto exit;
+    }
+
+    Result = PsSetCreateProcessNotifyRoutine(SpdDeviceExtensionNotifyRoutine, FALSE);
+    if (!NT_SUCCESS(Result))
+        goto exit;
+
+    KeInitializeSpinLock(&DeviceExtension->SpinLock);
+    DeviceExtension->StorageUnitCapacity = SpdStorageUnitCapacity;
+    SpdGlobalDeviceExtension = DeviceExtension;
+
+    Result = STATUS_SUCCESS;
+
+exit:
+    ExReleaseResourceLite(&SpdGlobalDeviceResource);
+    KeLeaveCriticalRegion();
+
+    return Result;
+}
+
+VOID SpdDeviceExtensionFini(SPD_DEVICE_EXTENSION *DeviceExtension)
+{
+    ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
+    ASSERT(0 != DeviceExtension);
+
+    KeEnterCriticalRegion();
+    ExAcquireResourceExclusiveLite(&SpdGlobalDeviceResource, TRUE);
+
+    if (DeviceExtension == SpdGlobalDeviceExtension)
+    {
+        PsSetCreateProcessNotifyRoutine(SpdDeviceExtensionNotifyRoutine, TRUE);
+        SpdGlobalDeviceExtension = 0;
+    }
+
+    ExReleaseResourceLite(&SpdGlobalDeviceResource);
+    KeLeaveCriticalRegion();
+}
+
+static VOID SpdDeviceExtensionNotifyRoutine(HANDLE ParentId, HANDLE ProcessId0, BOOLEAN Create)
+{
+    ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
+
+    if (Create)
+        return;
+
+    ULONG ProcessId = (ULONG)(UINT_PTR)ProcessId0;
+    UINT8 Bitmap[32];
+    ULONG Count;
+
+    KeEnterCriticalRegion();
+    ExAcquireResourceSharedLite(&SpdGlobalDeviceResource, TRUE);
+
+    Count = SpdStorageUnitGetUseBitmap(SpdGlobalDeviceExtension, &ProcessId, Bitmap);
+
+    for (ULONG I = 0; 0 < Count && sizeof Bitmap * 8 > I; I++)
+        if (FlagOn(Bitmap[I >> 3], 1 << (I & 7)))
+        {
+            SpdStorageUnitUnprovision(SpdGlobalDeviceExtension, 0, I, ProcessId);
+            Count--;
+        }
+
+    ExReleaseResourceLite(&SpdGlobalDeviceResource);
+    KeLeaveCriticalRegion();
+}
+
 NTSTATUS SpdStorageUnitProvision(
     SPD_DEVICE_EXTENSION *DeviceExtension,
     SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams,
     ULONG ProcessId,
     PUINT32 PBtl)
 {
+    ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
+    ASSERT(0 != DeviceExtension);
+
     NTSTATUS Result;
     CHAR SerialNumber[RTL_FIELD_SIZE(SPD_STORAGE_UNIT, SerialNumber) + 1];
     SPD_STORAGE_UNIT *StorageUnit = 0;
@@ -82,7 +170,10 @@ NTSTATUS SpdStorageUnitProvision(
         }
     }
     if (0 == DuplicateUnit && -1 != Btl)
+    {
         DeviceExtension->StorageUnits[SPD_INDEX_FROM_BTL(Btl)] = StorageUnit;
+        DeviceExtension->StorageUnitCount++;
+    }
     KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
 
     if (0 != DuplicateUnit)
@@ -116,27 +207,44 @@ exit:
 
 NTSTATUS SpdStorageUnitUnprovision(
     SPD_DEVICE_EXTENSION *DeviceExtension,
-    PGUID Guid,
+    PGUID Guid, ULONG Index,
     ULONG ProcessId)
 {
+    ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
+    ASSERT(0 != DeviceExtension);
+
     NTSTATUS Result;
     SPD_STORAGE_UNIT *StorageUnit;
     KIRQL Irql;
 
     KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
     StorageUnit = 0;
-    for (ULONG I = 0; DeviceExtension->StorageUnitCapacity > I; I++)
+    if (0 != Guid)
     {
-        SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
-        if (0 == Unit)
-            continue;
-
-        if (RtlEqualMemory(Guid, &Unit->StorageUnitParams.Guid,
-            sizeof Unit->StorageUnitParams.Guid))
+        for (ULONG I = 0; DeviceExtension->StorageUnitCapacity > I; I++)
         {
-            StorageUnit = Unit;
-            break;
+            SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
+            if (0 == Unit)
+                continue;
+
+            if (RtlEqualMemory(Guid, &Unit->StorageUnitParams.Guid,
+                sizeof Unit->StorageUnitParams.Guid))
+            {
+                StorageUnit = Unit;
+                Index = I;
+                break;
+            }
         }
+    }
+    else
+    {
+        ASSERT(DeviceExtension->StorageUnitCapacity > Index);
+        StorageUnit = DeviceExtension->StorageUnits[Index];
+    }
+    if (0 != StorageUnit && ProcessId == StorageUnit->ProcessId)
+    {
+        DeviceExtension->StorageUnitCount--;
+        DeviceExtension->StorageUnits[Index] = 0;
     }
     KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
 
@@ -190,17 +298,12 @@ VOID SpdStorageUnitDereference(
     SPD_DEVICE_EXTENSION *DeviceExtension,
     SPD_STORAGE_UNIT *StorageUnit)
 {
-    BOOLEAN Delete = FALSE;
+    BOOLEAN Delete;
     KIRQL Irql;
 
     KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
     StorageUnit->RefCount--;
     Delete = 0 == StorageUnit->RefCount;
-    if (Delete)
-    {
-        ASSERT(DeviceExtension->StorageUnits[SPD_INDEX_FROM_BTL(StorageUnit->Btl)] == StorageUnit);
-        DeviceExtension->StorageUnits[SPD_INDEX_FROM_BTL(StorageUnit->Btl)] = 0;
-    }
     KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
 
     if (Delete)
@@ -210,43 +313,29 @@ VOID SpdStorageUnitDereference(
     }
 }
 
-VOID SpdStorageUnitGetUseBitmap(
+ULONG SpdStorageUnitGetUseBitmap(
     SPD_DEVICE_EXTENSION *DeviceExtension,
+    PULONG PProcessId,
     UINT8 Bitmap[32])
 {
+    ULONG Count = 0;
     KIRQL Irql;
 
     RtlZeroMemory(Bitmap, 32);
 
     KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
-    for (ULONG I = 0; DeviceExtension->StorageUnitCapacity > I; I++)
+    for (ULONG I = 0;
+        DeviceExtension->StorageUnitCount > Count && DeviceExtension->StorageUnitCapacity > I;
+        I++)
     {
         SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
-        Bitmap[I >> 3] |= 0 != Unit ? (1 << (I & 7)) : 0;
+        if (0 != Unit && (0 == PProcessId || *PProcessId == Unit->ProcessId))
+        {
+            SetFlag(Bitmap[I >> 3], 1 << (I & 7));
+            Count++;
+        }
     }
     KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
-}
 
-#if 0
-static VOID SpdStorageUnitCollect(ULONG ProcessId)
-{
+    return Count;
 }
-
-static VOID SpdStorageUnitNotifyRoutine(HANDLE ParentId, HANDLE ProcessId, BOOLEAN Create)
-{
-    if (!Create)
-        SpdStorageUnitCollect((ULONG)(UINT_PTR)ProcessId);
-}
-
-NTSTATUS SpdStorageUnitInitialize(VOID)
-{
-    return PsSetCreateProcessNotifyRoutine(SpdStorageUnitNotifyRoutine, FALSE);
-}
-
-VOID SpdStorageUnitFinalize(VOID)
-{
-    PsSetCreateProcessNotifyRoutine(SpdStorageUnitNotifyRoutine, TRUE);
-}
-#endif
-
-UCHAR SpdStorageUnitCapacity = SPD_IOCTL_STORAGE_UNIT_CAPACITY;

@@ -80,7 +80,7 @@ static VOID SpdIoctlUnprovision(SPD_DEVICE_EXTENSION *DeviceExtension,
 
     Irp->IoStatus.Status = SpdStorageUnitUnprovision(
         DeviceExtension,
-        &Params->Dir.Par.Guid,
+        &Params->Dir.Par.Guid, 0,
         IoGetRequestorProcessId(Irp));
     if (!NT_SUCCESS(Irp->IoStatus.Status))
         goto exit;
@@ -101,6 +101,7 @@ static VOID SpdIoctlGetList(SPD_DEVICE_EXTENSION *DeviceExtension,
     PUINT32 BtlEndP = (PVOID)((PUINT8)BtlBgnP + OutputBufferLength);
     PUINT32 BtlP = BtlBgnP;
     UINT8 Bitmap[32];
+    ULONG Count;
 
     if (sizeof *Params > InputBufferLength)
     {
@@ -108,9 +109,9 @@ static VOID SpdIoctlGetList(SPD_DEVICE_EXTENSION *DeviceExtension,
         goto exit;
     }
 
-    SpdStorageUnitGetUseBitmap(DeviceExtension, Bitmap);
+    Count = SpdStorageUnitGetUseBitmap(DeviceExtension, 0, Bitmap);
 
-    for (ULONG I = 0; sizeof Bitmap * 8 > I; I++)
+    for (ULONG I = 0; 0 < Count && sizeof Bitmap * 8 > I; I++)
         if (FlagOn(Bitmap[I >> 3], 1 << (I & 7)))
         {
             if (BtlP + 1 > BtlEndP)
@@ -120,6 +121,7 @@ static VOID SpdIoctlGetList(SPD_DEVICE_EXTENSION *DeviceExtension,
             }
 
             *BtlP++ = SPD_BTL_FROM_INDEX(I);
+            Count--;
         }
 
     Irp->IoStatus.Status = STATUS_SUCCESS;

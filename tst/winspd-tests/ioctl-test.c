@@ -143,6 +143,7 @@ static void ioctl_provision_multi_test(void)
 
 static void ioctl_provision_toomany_test(void)
 {
+    ULONG StorageUnitCapacity = SPD_IOCTL_STORAGE_UNIT_CAPACITY; // !!!: read from registry
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
     HANDLE DeviceHandle;
     UINT32 Btl;
@@ -152,7 +153,7 @@ static void ioctl_provision_toomany_test(void)
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
     ASSERT(ERROR_SUCCESS == Error);
 
-    for (ULONG I = 0; SPD_IOCTL_STORAGE_UNIT_MAX_CAPACITY > I; I++)
+    for (ULONG I = 0; StorageUnitCapacity > I; I++)
     {
         memset(&StorageUnitParams, 0, sizeof StorageUnitParams);
         StorageUnitParams.Guid.Data1 = I;
@@ -174,7 +175,7 @@ static void ioctl_provision_toomany_test(void)
     ASSERT(ERROR_CANNOT_MAKE == Error);
     ASSERT(-1 == Btl);
 
-    for (ULONG I = 0; SPD_IOCTL_STORAGE_UNIT_MAX_CAPACITY > I; I++)
+    for (ULONG I = 0; StorageUnitCapacity > I; I++)
     {
         memset(&StorageUnitParams, 0, sizeof StorageUnitParams);
         StorageUnitParams.Guid.Data1 = I;

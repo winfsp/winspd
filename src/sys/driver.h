@@ -326,7 +326,7 @@ typedef struct _SPD_STORAGE_UNIT SPD_STORAGE_UNIT;
 typedef struct _SPD_DEVICE_EXTENSION
 {
     KSPIN_LOCK SpinLock;
-    ULONG StorageUnitCapacity;
+    ULONG StorageUnitCount, StorageUnitCapacity;
     SPD_STORAGE_UNIT *StorageUnits[];
 } SPD_DEVICE_EXTENSION;
 typedef struct _SPD_STORAGE_UNIT
@@ -339,6 +339,8 @@ typedef struct _SPD_STORAGE_UNIT
     SPD_IOQ *Ioq;
     UINT32 Btl;
 } SPD_STORAGE_UNIT;
+NTSTATUS SpdDeviceExtensionInit(SPD_DEVICE_EXTENSION *DeviceExtension);
+VOID SpdDeviceExtensionFini(SPD_DEVICE_EXTENSION *DeviceExtension);
 NTSTATUS SpdStorageUnitProvision(
     SPD_DEVICE_EXTENSION *DeviceExtension,
     SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams,
@@ -346,7 +348,7 @@ NTSTATUS SpdStorageUnitProvision(
     PUINT32 PBtl);
 NTSTATUS SpdStorageUnitUnprovision(
     SPD_DEVICE_EXTENSION *DeviceExtension,
-    PGUID Guid,
+    PGUID Guid, ULONG Index,
     ULONG ProcessId);
 SPD_STORAGE_UNIT *SpdStorageUnitReferenceByBtl(
     SPD_DEVICE_EXTENSION *DeviceExtension,
@@ -354,8 +356,9 @@ SPD_STORAGE_UNIT *SpdStorageUnitReferenceByBtl(
 VOID SpdStorageUnitDereference(
     SPD_DEVICE_EXTENSION *DeviceExtension,
     SPD_STORAGE_UNIT *StorageUnit);
-VOID SpdStorageUnitGetUseBitmap(
+ULONG SpdStorageUnitGetUseBitmap(
     SPD_DEVICE_EXTENSION *DeviceExtension,
+    PULONG PProcessId,
     UINT8 Bitmap[32]);
 static inline
 SPD_STORAGE_UNIT *SpdStorageUnitReference(PVOID DeviceExtension, PVOID Srb)
@@ -365,7 +368,9 @@ SPD_STORAGE_UNIT *SpdStorageUnitReference(PVOID DeviceExtension, PVOID Srb)
     SrbGetPathTargetLun(Srb, &PathId, &TargetId, &Lun);
     return SpdStorageUnitReferenceByBtl(DeviceExtension, SPD_IOCTL_BTL(PathId, TargetId, Lun));
 }
-extern UCHAR SpdStorageUnitCapacity;
+extern ERESOURCE SpdGlobalDeviceResource;
+extern SPD_DEVICE_EXTENSION *SpdGlobalDeviceExtension;  /* protected by SpdGlobalDeviceResource */
+extern ULONG SpdStorageUnitCapacity;                    /* read-only after DriverLoad */
 #define SPD_INDEX_FROM_BTL(Btl)         SPD_IOCTL_BTL_T(Btl)
 #define SPD_BTL_FROM_INDEX(Idx)         SPD_IOCTL_BTL(0, Idx, 0)
 

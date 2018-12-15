@@ -22,7 +22,7 @@
 #include <sys/driver.h>
 
 ULONG SpdHwFindAdapter(
-    PVOID DeviceExtension,
+    PVOID DeviceExtension0,
     PVOID HwContext,
     PVOID BusInformation,
     PVOID LowerDevice,
@@ -34,43 +34,40 @@ ULONG SpdHwFindAdapter(
     SPD_ENTER(adapter,
         ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
 
-    ConfigInfo->MaximumTransferLength = SP_UNINITIALIZED_VALUE;
-    ConfigInfo->NumberOfPhysicalBreaks = SP_UNINITIALIZED_VALUE;
-    ConfigInfo->AlignmentMask = FILE_BYTE_ALIGNMENT;
-    ConfigInfo->NumberOfBuses = 1;
-    ConfigInfo->ScatterGather = TRUE;
-    ConfigInfo->Master = TRUE;
-    ConfigInfo->CachesData = TRUE;
-    ConfigInfo->MaximumNumberOfTargets = SpdStorageUnitCapacity;
-    ConfigInfo->MaximumNumberOfLogicalUnits = 1;
-    ConfigInfo->WmiDataProvider = FALSE;
-    ConfigInfo->SynchronizationModel = StorSynchronizeFullDuplex;
-    ConfigInfo->VirtualDevice = TRUE;
+    SPD_DEVICE_EXTENSION *DeviceExtension = DeviceExtension0;
+    if (NT_SUCCESS(SpdDeviceExtensionInit(DeviceExtension)))
+    {
+        ConfigInfo->MaximumTransferLength = SP_UNINITIALIZED_VALUE;
+        ConfigInfo->NumberOfPhysicalBreaks = SP_UNINITIALIZED_VALUE;
+        ConfigInfo->AlignmentMask = FILE_BYTE_ALIGNMENT;
+        ConfigInfo->NumberOfBuses = 1;
+        ConfigInfo->ScatterGather = TRUE;
+        ConfigInfo->Master = TRUE;
+        ConfigInfo->CachesData = TRUE;
+        ConfigInfo->MaximumNumberOfTargets = (UCHAR)DeviceExtension->StorageUnitCapacity;
+        ConfigInfo->MaximumNumberOfLogicalUnits = 1;
+        ConfigInfo->WmiDataProvider = FALSE;
+        ConfigInfo->SynchronizationModel = StorSynchronizeFullDuplex;
+        ConfigInfo->VirtualDevice = TRUE;
 
-    Result = SP_RETURN_FOUND;
+        Result = SP_RETURN_FOUND;
+    }
 
     SPD_LEAVE(adapter,
         "%p, HwContext=%p, BusInformation=%p, LowerDevice=%p, ArgumentString=\"%s\"",
         " = %lu",
-        DeviceExtension, HwContext, BusInformation, LowerDevice, ArgumentString, Result);
+        DeviceExtension0, HwContext, BusInformation, LowerDevice, ArgumentString, Result);
     return Result;
 }
 
-BOOLEAN SpdHwInitialize(PVOID DeviceExtension0)
+BOOLEAN SpdHwInitialize(PVOID DeviceExtension)
 {
-    BOOLEAN Result = FALSE;
+    BOOLEAN Result = TRUE;
     SPD_ENTER(adapter);
-
-    SPD_DEVICE_EXTENSION *DeviceExtension = DeviceExtension0;
-
-    KeInitializeSpinLock(&DeviceExtension->SpinLock);
-    DeviceExtension->StorageUnitCapacity = SpdStorageUnitCapacity;
-
-    Result = TRUE;
 
     SPD_LEAVE(adapter,
         "%p", " = %d",
-        DeviceExtension0, Result);
+        DeviceExtension, Result);
     return Result;
 }
 
@@ -78,6 +75,8 @@ VOID SpdHwFreeAdapterResources(PVOID DeviceExtension)
 {
     SPD_ENTER(adapter,
         ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
+
+    SpdDeviceExtensionFini(DeviceExtension);
 
     SPD_LEAVE(adapter,
         "%p", "",

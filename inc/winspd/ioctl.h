@@ -34,7 +34,7 @@ extern "C" {
 #define SPD_IOCTL_BTL_B(Btl)            (((Btl) >> 16) & 0xff)
 #define SPD_IOCTL_BTL_T(Btl)            (((Btl) >> 8) & 0xff)
 #define SPD_IOCTL_BTL_L(Btl)            ((Btl) & 0xff)
-#define SPD_IOCTL_STORAGE_UNIT_CAPACITY 64
+#define SPD_IOCTL_STORAGE_UNIT_CAPACITY 16
 #define SPD_IOCTL_STORAGE_UNIT_MAX_CAPACITY 64
 
 /* alignment macros */
