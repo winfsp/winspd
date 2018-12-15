@@ -187,8 +187,6 @@ NTSTATUS SpdStorageUnitProvision(
         goto exit;
     }
 
-    StorageUnit->Btl = Btl;
-
     *PBtl = Btl;
     Result = STATUS_SUCCESS;
 
@@ -259,9 +257,8 @@ NTSTATUS SpdStorageUnitUnprovision(
         goto exit;
     }
 
-    /* stop the ioq */
+    /* stop the ioq and dereference the storage unit */
     SpdIoqReset(StorageUnit->Ioq, TRUE);
-
     SpdStorageUnitDereference(DeviceExtension, StorageUnit);
 
     Result = STATUS_SUCCESS;

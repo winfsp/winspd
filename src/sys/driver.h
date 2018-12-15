@@ -337,7 +337,6 @@ typedef struct _SPD_STORAGE_UNIT
     CHAR SerialNumber[36];
     ULONG ProcessId;
     SPD_IOQ *Ioq;
-    UINT32 Btl;
 } SPD_STORAGE_UNIT;
 NTSTATUS SpdDeviceExtensionInit(SPD_DEVICE_EXTENSION *DeviceExtension);
 VOID SpdDeviceExtensionFini(SPD_DEVICE_EXTENSION *DeviceExtension);
