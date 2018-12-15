@@ -256,11 +256,9 @@ static unsigned __stdcall ioctl_transact_test_thread(void *Data)
         UCHAR Buffer[32];
     } Sense;
 
-    SpdDebugLog(__FUNCTION__ " %x\n", (unsigned)Btl);
-
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
     if (ERROR_SUCCESS != Error)
-        return Error;
+        goto exit;
 
     memset(&Cdb, 0, sizeof Cdb);
     Cdb.READ16.OperationCode = SCSIOP_READ16;
@@ -274,7 +272,7 @@ static unsigned __stdcall ioctl_transact_test_thread(void *Data)
     CloseHandle(DeviceHandle);
 
     if (ERROR_SUCCESS != Error)
-        return Error;
+        goto exit;
 
     if (ScsiStatus != SCSISTAT_CHECK_CONDITION ||
         Sense.Data.SenseKey != SCSI_SENSE_MEDIUM_ERROR ||
@@ -282,9 +280,17 @@ static unsigned __stdcall ioctl_transact_test_thread(void *Data)
         Sense.Data.AdditionalSenseCodeQualifier != SCSI_SENSEQ_POSITIONING_ERROR_DETECTED_BY_READ_OF_MEDIUM ||
         Sense.Data.Information[3] != 11 ||
         Sense.Data.Valid != 1)
-        return -'ASRT';
+    {
+        Error = -'ASRT';
+        goto exit;
+    }
 
-    return ERROR_SUCCESS;
+    Error = ERROR_SUCCESS;
+
+exit:
+    tlib_printf("thread=%lu ", Error);
+
+    return Error;
 }
 
 static void ioctl_transact_test(void)
@@ -374,11 +380,9 @@ static unsigned __stdcall ioctl_transact_cancel_test_thread(void *Data)
         UCHAR Buffer[32];
     } Sense;
 
-    SpdDebugLog(__FUNCTION__ " %x\n", (unsigned)Btl);
-
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
     if (ERROR_SUCCESS != Error)
-        return Error;
+        goto exit;
 
     memset(&Cdb, 0, sizeof Cdb);
     Cdb.READ16.OperationCode = SCSIOP_READ16;
@@ -390,6 +394,9 @@ static unsigned __stdcall ioctl_transact_cancel_test_thread(void *Data)
         &ScsiStatus, Sense.Buffer);
 
     CloseHandle(DeviceHandle);
+
+exit:
+    tlib_printf("thread=%lu ", Error);
 
     return Error;
 }
