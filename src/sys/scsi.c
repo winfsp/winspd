@@ -465,8 +465,8 @@ static UCHAR SpdScsiPostUnmapSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
 
     if (0 == DataBuffer ||
         DataTransferLength < sizeof(UNMAP_LIST_HEADER) ||
-        DataTransferLength < sizeof(UNMAP_LIST_HEADER) +
-            (DataLength = ((ULONG)DataBuffer->DataLength[0] << 8) | (ULONG)DataBuffer->DataLength[1]) ||
+        DataTransferLength < sizeof(UNMAP_LIST_HEADER) + (DataLength =
+            ((ULONG)DataBuffer->BlockDescrDataLength[0] << 8) | (ULONG)DataBuffer->BlockDescrDataLength[1]) ||
         DataLength > StorageUnit->StorageUnitParams.MaxTransferLength)
         return SRB_STATUS_INTERNAL_ERROR;
 
