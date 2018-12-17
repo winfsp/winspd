@@ -510,11 +510,11 @@ static UCHAR SpdScsiPostSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
     ULONG StorResult;
     NTSTATUS Result;
 
+    SrbExtension = SpdSrbExtension(Srb);
+    RtlZeroMemory(SrbExtension, sizeof(SPD_SRB_EXTENSION));
+
     if (0 != DataLength)
     {
-        SrbExtension = SpdSrbExtension(Srb);
-        RtlZeroMemory(SrbExtension, sizeof(SPD_SRB_EXTENSION));
-
         StorResult = StorPortGetSystemAddress(DeviceExtension, Srb, &SrbExtension->SystemDataBuffer);
         if (STOR_STATUS_SUCCESS != StorResult)
         {
@@ -705,7 +705,9 @@ static VOID SpdCdbGetRange(PCDB Cdb,
         SCSIOP_WRITE6 == Cdb->AsByte[0] ||
         SCSIOP_WRITE == Cdb->AsByte[0] ||
         SCSIOP_WRITE12 == Cdb->AsByte[0] ||
-        SCSIOP_WRITE16 == Cdb->AsByte[0]);
+        SCSIOP_WRITE16 == Cdb->AsByte[0] ||
+        SCSIOP_SYNCHRONIZE_CACHE == Cdb->AsByte[0] ||
+        SCSIOP_SYNCHRONIZE_CACHE16 == Cdb->AsByte[0]);
 
     switch (Cdb->AsByte[0] & 0xE0)
     {

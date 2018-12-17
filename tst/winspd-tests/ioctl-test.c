@@ -488,6 +488,118 @@ static void ioctl_transact_write_test(void)
     ASSERT(ERROR_SUCCESS == ExitCode);
 }
 
+static unsigned __stdcall ioctl_transact_flush_test_thread(void *Data)
+{
+    UINT32 Btl = (UINT32)(UINT_PTR)Data;
+    HANDLE DeviceHandle;
+    DWORD Error;
+    CDB Cdb;
+    UINT32 DataLength;
+    UCHAR ScsiStatus;
+    union
+    {
+        SENSE_DATA Data;
+        UCHAR Buffer[32];
+    } Sense;
+
+    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    memset(&Cdb, 0, sizeof Cdb);
+    Cdb.READ16.OperationCode = SCSIOP_SYNCHRONIZE_CACHE16;
+    Cdb.READ16.LogicalBlock[7] = 7;
+    Cdb.READ16.TransferLength[3] = 5;
+
+    DataLength = 0;
+    Error = SpdIoctlScsiExecute(DeviceHandle, Btl, &Cdb, 0, 0, &DataLength,
+        &ScsiStatus, Sense.Buffer);
+
+    CloseHandle(DeviceHandle);
+
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    if (ScsiStatus != SCSISTAT_GOOD ||
+        0 != DataLength)
+    {
+        Error = -'ASRT';
+        goto exit;
+    }
+
+    Error = ERROR_SUCCESS;
+
+exit:
+    tlib_printf("thread=%lu ", Error);
+
+    return Error;
+}
+
+static void ioctl_transact_flush_test(void)
+{
+    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
+    SPD_IOCTL_TRANSACT_REQ Req;
+    SPD_IOCTL_TRANSACT_RSP Rsp;
+    PVOID DataBuffer = 0;
+    HANDLE DeviceHandle;
+    UINT32 Btl;
+    DWORD Error;
+    BOOL Success;
+    HANDLE Thread;
+    DWORD ExitCode;
+
+    DataBuffer = malloc(5 * 512);
+    ASSERT(0 != DataBuffer);
+
+    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    memset(&StorageUnitParams, 0, sizeof StorageUnitParams);
+    memcpy(&StorageUnitParams.Guid, &TestGuid, sizeof TestGuid);
+    StorageUnitParams.BlockCount = 16;
+    StorageUnitParams.BlockLength = 512;
+    StorageUnitParams.MaxTransferLength = 5 * 512;
+    Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
+    ASSERT(ERROR_SUCCESS == Error);
+    ASSERT(0 == Btl);
+
+    Error = SpdIoctlScsiInquiry(DeviceHandle, Btl, 0, 3000);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Thread = (HANDLE)_beginthreadex(0, 0, ioctl_transact_flush_test_thread, (PVOID)(UINT_PTR)Btl, 0, 0);
+    ASSERT(0 != Thread);
+
+    memset(DataBuffer, 0, sizeof DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    ASSERT(0 != Req.Hint);
+    ASSERT(SpdIoctlTransactFlushKind == Req.Kind);
+    ASSERT(7 == Req.Op.Flush.BlockAddress);
+    ASSERT(5 == Req.Op.Flush.BlockCount);
+
+    memset(&Rsp, 0, sizeof Rsp);
+    Rsp.Hint = Req.Hint;
+    Rsp.Kind = Req.Kind;
+
+    Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Success = CloseHandle(DeviceHandle);
+    ASSERT(Success);
+
+    free(DataBuffer);
+
+    WaitForSingleObject(Thread, INFINITE);
+    GetExitCodeThread(Thread, &ExitCode);
+    CloseHandle(Thread);
+
+    ASSERT(ERROR_SUCCESS == ExitCode);
+}
+
 static unsigned __stdcall ioctl_transact_error_test_thread(void *Data)
 {
     UINT32 Btl = (UINT32)(UINT_PTR)Data;
@@ -804,6 +916,7 @@ void ioctl_tests(void)
     TEST(ioctl_list_test);
     TEST(ioctl_transact_read_test);
     TEST(ioctl_transact_write_test);
+    TEST(ioctl_transact_flush_test);
     TEST(ioctl_transact_error_test);
     TEST(ioctl_transact_cancel_test);
     TEST_OPT(ioctl_provision_die_test_DO_NOT_RUN_FROM_COMMAND_LINE);
