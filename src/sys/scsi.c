@@ -552,7 +552,7 @@ VOID SpdSrbExecuteScsiPrepare(PVOID SrbExtension0, PVOID Context, PVOID DataBuff
             &Req->Op.Read.BlockCount,
             &ForceUnitAccess);
         Req->Op.Read.ForceUnitAccess = ForceUnitAccess;
-        break;
+        return;
 
     case SCSIOP_WRITE6:
     case SCSIOP_WRITE:
@@ -566,7 +566,7 @@ VOID SpdSrbExecuteScsiPrepare(PVOID SrbExtension0, PVOID Context, PVOID DataBuff
             &ForceUnitAccess);
         Req->Op.Write.ForceUnitAccess = ForceUnitAccess;
         RtlCopyMemory(DataBuffer, SrbExtension->SystemDataBuffer, SrbExtension->SystemDataLength);
-        break;
+        return;
 
     case SCSIOP_SYNCHRONIZE_CACHE:
     case SCSIOP_SYNCHRONIZE_CACHE16:
@@ -576,7 +576,7 @@ VOID SpdSrbExecuteScsiPrepare(PVOID SrbExtension0, PVOID Context, PVOID DataBuff
             &Req->Op.Flush.BlockAddress,
             &Req->Op.Flush.BlockCount,
             0);
-        break;
+        return;
 
     case SCSIOP_UNMAP:
         Req->Hint = (UINT64)(UINT_PTR)SrbExtension;
@@ -602,11 +602,11 @@ VOID SpdSrbExecuteScsiPrepare(PVOID SrbExtension0, PVOID Context, PVOID DataBuff
                 ((UINT32)Src->LbaCount[3]);
             Dst->Reserved = 0;
         }
-        break;
+        return;
 
     default:
         ASSERT(FALSE);
-        break;
+        return;
     }
 }
 
@@ -637,6 +637,17 @@ UCHAR SpdSrbExecuteScsiComplete(PVOID SrbExtension0, PVOID Context, PVOID DataBu
             RtlCopyMemory(SrbExtension->SystemDataBuffer, DataBuffer, SrbExtension->SystemDataLength);
         else
             RtlZeroMemory(SrbExtension->SystemDataBuffer, SrbExtension->SystemDataLength);
+        SrbSetDataTransferLength(Srb, SrbExtension->SystemDataLength);
+        return SRB_STATUS_SUCCESS;
+
+    case SCSIOP_WRITE6:
+    case SCSIOP_WRITE:
+    case SCSIOP_WRITE12:
+    case SCSIOP_WRITE16:
+    case SCSIOP_SYNCHRONIZE_CACHE:
+    case SCSIOP_SYNCHRONIZE_CACHE16:
+    case SCSIOP_UNMAP:
+        SrbSetDataTransferLength(Srb, 0);
         return SRB_STATUS_SUCCESS;
 
     default:
