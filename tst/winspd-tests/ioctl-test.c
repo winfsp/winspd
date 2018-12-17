@@ -387,9 +387,9 @@ static unsigned __stdcall ioctl_transact_write_test_thread(void *Data)
         goto exit;
 
     memset(&Cdb, 0, sizeof Cdb);
-    Cdb.READ16.OperationCode = SCSIOP_WRITE16;
-    Cdb.READ16.LogicalBlock[7] = 7;
-    Cdb.READ16.TransferLength[3] = 5;
+    Cdb.WRITE16.OperationCode = SCSIOP_WRITE16;
+    Cdb.WRITE16.LogicalBlock[7] = 7;
+    Cdb.WRITE16.TransferLength[3] = 5;
 
     for (ULONG I = 0, N = sizeof DataBuffer; N > I; I++)
         ((PUINT8)DataBuffer)[I] = (UINT8)I;
@@ -507,9 +507,9 @@ static unsigned __stdcall ioctl_transact_flush_test_thread(void *Data)
         goto exit;
 
     memset(&Cdb, 0, sizeof Cdb);
-    Cdb.READ16.OperationCode = SCSIOP_SYNCHRONIZE_CACHE16;
-    Cdb.READ16.LogicalBlock[7] = 7;
-    Cdb.READ16.TransferLength[3] = 5;
+    Cdb.SYNCHRONIZE_CACHE16.OperationCode = SCSIOP_SYNCHRONIZE_CACHE16;
+    Cdb.SYNCHRONIZE_CACHE16.LogicalBlock[7] = 7;
+    Cdb.SYNCHRONIZE_CACHE16.BlockCount[3] = 5;
 
     DataLength = 0;
     Error = SpdIoctlScsiExecute(DeviceHandle, Btl, &Cdb, 0, 0, &DataLength,
