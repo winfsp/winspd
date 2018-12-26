@@ -1,5 +1,5 @@
 /**
- * @file diskpipe/diskpipe.c
+ * @file stgpipe/stgpipe.c
  *
  * @copyright 2018 Bill Zissimopoulos
  */
@@ -22,7 +22,7 @@
 #include <winspd/winspd.h>
 #include <shared/minimal.h>
 
-#define PROGNAME                        "diskpipe"
+#define PROGNAME                        "stgpipe"
 
 #define info(format, ...)               printlog(GetStdHandle(STD_OUTPUT_HANDLE), format, __VA_ARGS__)
 #define warn(format, ...)               printlog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__)

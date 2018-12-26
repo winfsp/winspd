@@ -7,7 +7,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\diskpipe\diskpipe.c">
+    <ClCompile Include="..\..\..\src\stgpipe\stgpipe.c">
       <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>
