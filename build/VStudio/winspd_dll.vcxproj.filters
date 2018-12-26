@@ -29,6 +29,9 @@
     <ClCompile Include="..\..\src\dll\debug.c">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\dll\stghandle.c">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\inc\winspd\ioctl.h">

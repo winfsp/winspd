@@ -424,6 +424,29 @@ DWORD SpdIoctlTransact(HANDLE DeviceHandle,
     if (Params.RspValid)
         memcpy(&Params.Dir.Rsp, Rsp, sizeof *Rsp);
 
+    /*
+     * Our DeviceHandle is opened with FILE_FLAG_OVERLAPPED, but we call
+     * DeviceIoControl with a NULL Overlapped parameter, which the MSDN
+     * explicitly warns against. Why do we do this and why does it work?
+     *
+     * The reason that this works despite MSDN warnings is that we know
+     * that our kernel driver handles IOCTL_MINIPORT_PROCESS_SERVICE_IRP
+     * in a *synchronous* manner and never returns STATUS_PENDING for it.
+     * This means that the OVERLAPPED structure special processing never
+     * comes into play for our DeviceIoControl calls and it is safe to
+     * call DeviceIoControl without an Overlapped structure.
+     *
+     * The next obvious question: what is the beneft of FILE_FLAG_OVERLAPPED
+     * then? To answer this consider that Windows serializes all calls for
+     * handles that are not open with FILE_FLAG_OVERLAPPED by acquiring an
+     * internal file lock. This effectively means that without the
+     * FILE_FLAG_OVERLAPPED flag, there can only be one DeviceIoControl active
+     * at a time, which is not something we want. (Our kernel driver I/O queue
+     * can very efficiently manage waiting threads and the above mentioned
+     * file lock serialization limits our performance.) By specifying the
+     * FILE_FLAG_OVERLAPPED flag we ensure that the unproductive serialization
+     * does not happen.
+     */
     if (!DeviceIoControl(DeviceHandle, IOCTL_MINIPORT_PROCESS_SERVICE_IRP,
         &Params, sizeof Params,
         &Params, sizeof Params,

@@ -72,7 +72,7 @@ typedef struct _SPD_STORAGE_UNIT
     PVOID UserContext;
     GUID Guid;
     UINT32 MaxTransferLength;
-    HANDLE DeviceHandle;
+    HANDLE Handle;
     UINT32 Btl;
     const SPD_STORAGE_UNIT_INTERFACE *Interface;
     HANDLE DispatcherThread;

@@ -22,6 +22,18 @@
 #include <winspd/winspd.h>
 #include <shared/minimal.h>
 
+DWORD SpdStorageUnitHandleOpen(PWSTR Name,
+    const SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams,
+    PHANDLE PHandle, PUINT32 PBtl);
+DWORD SpdStorageUnitHandleTransact(HANDLE Handle,
+    UINT32 Btl,
+    SPD_IOCTL_TRANSACT_RSP *Rsp,
+    SPD_IOCTL_TRANSACT_REQ *Req,
+    PVOID DataBuffer);
+DWORD SpdStorageUnitHandleShutdown(HANDLE Handle,
+    const GUID *Guid);
+DWORD SpdStorageUnitHandleClose(HANDLE Handle);
+
 static SPD_STORAGE_UNIT_INTERFACE SpdStorageUnitNullInterface;
 
 static INIT_ONCE SpdStorageUnitInitOnce = INIT_ONCE_STATIC_INIT;
@@ -47,7 +59,7 @@ DWORD SpdStorageUnitCreate(
 {
     DWORD Error;
     SPD_STORAGE_UNIT *StorageUnit = 0;
-    HANDLE DeviceHandle = INVALID_HANDLE_VALUE;
+    HANDLE Handle;
     UINT32 Btl;
 
     *PStorageUnit = 0;
@@ -70,17 +82,14 @@ DWORD SpdStorageUnitCreate(
     }
     memset(StorageUnit, 0, sizeof *StorageUnit);
 
-    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
-    if (ERROR_SUCCESS != Error)
-        goto exit;
-
-    Error = SpdIoctlProvision(DeviceHandle, StorageUnitParams, &Btl);
+    Error = SpdStorageUnitHandleOpen(L"" SPD_IOCTL_HARDWARE_ID, StorageUnitParams,
+        &Handle, &Btl);
     if (ERROR_SUCCESS != Error)
         goto exit;
 
     memcpy(&StorageUnit->Guid, &StorageUnitParams->Guid, sizeof StorageUnitParams->Guid);
     StorageUnit->MaxTransferLength = StorageUnitParams->MaxTransferLength;
-    StorageUnit->DeviceHandle = DeviceHandle;
+    StorageUnit->Handle = Handle;
     StorageUnit->Btl = Btl;
     StorageUnit->Interface = Interface;
 
@@ -90,20 +99,15 @@ DWORD SpdStorageUnitCreate(
 
 exit:
     if (ERROR_SUCCESS != Error)
-    {
-        if (INVALID_HANDLE_VALUE != DeviceHandle)
-            CloseHandle(DeviceHandle);
-
         MemFree(StorageUnit);
-    }
 
     return Error;
 }
 
 VOID SpdStorageUnitDelete(SPD_STORAGE_UNIT *StorageUnit)
 {
-    SpdIoctlUnprovision(StorageUnit->DeviceHandle, &StorageUnit->Guid);
-    CloseHandle(StorageUnit->DeviceHandle);
+    SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->Guid);
+    SpdStorageUnitHandleClose(StorageUnit->Handle);
     MemFree(StorageUnit);
 }
 
@@ -145,7 +149,7 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
     for (;;)
     {
         memset(Request, 0, sizeof *Request);
-        Error = SpdIoctlTransact(StorageUnit->DeviceHandle,
+        Error = SpdStorageUnitHandleTransact(StorageUnit->Handle,
             StorageUnit->Btl, Response, Request, DataBuffer);
         if (ERROR_SUCCESS != Error)
             goto exit;
@@ -232,7 +236,7 @@ exit:
 
     SpdStorageUnitSetDispatcherError(StorageUnit, Error);
 
-    SpdIoctlUnprovision(StorageUnit->DeviceHandle, &StorageUnit->Guid);
+    SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->Guid);
 
     if (0 != DispatcherThread)
     {
@@ -273,7 +277,7 @@ VOID SpdStorageUnitStopDispatcher(SPD_STORAGE_UNIT *StorageUnit)
     if (0 == StorageUnit->DispatcherThread)
         return;
 
-    SpdIoctlUnprovision(StorageUnit->DeviceHandle, &StorageUnit->Guid);
+    SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->Guid);
 
     WaitForSingleObject(StorageUnit->DispatcherThread, INFINITE);
     CloseHandle(StorageUnit->DispatcherThread);
@@ -292,13 +296,13 @@ VOID SpdStorageUnitSendResponse(SPD_STORAGE_UNIT *StorageUnit,
             SpdDebugLogResponse(Response);
     }
 
-    Error = SpdIoctlTransact(StorageUnit->DeviceHandle,
+    Error = SpdStorageUnitHandleTransact(StorageUnit->Handle,
         StorageUnit->Btl, Response, 0, DataBuffer);
     if (ERROR_SUCCESS != Error)
     {
         SpdStorageUnitSetDispatcherError(StorageUnit, Error);
 
-        SpdIoctlUnprovision(StorageUnit->DeviceHandle, &StorageUnit->Guid);
+        SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->Guid);
     }
 }
 
