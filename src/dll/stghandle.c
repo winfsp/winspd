@@ -46,7 +46,8 @@ typedef struct _HINT_VALUE_ITEM
 typedef struct
 {
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
-    SRWLOCK HashLock;
+    SRWLOCK Lock;
+    BOOLEAN Connected;
     HINT_VALUE_ITEM *HashBuckets[61];
 } STORAGE_UNIT;
 static SRWLOCK StorageUnitLock = SRWLOCK_INIT;
@@ -66,7 +67,7 @@ static inline ULONG TakeHintValue(STORAGE_UNIT *StorageUnit, UINT64 Hint)
 {
     ULONG Result = 0;
 
-    AcquireSRWLockExclusive(&StorageUnit->HashLock);
+    AcquireSRWLockExclusive(&StorageUnit->Lock);
 
     ULONG HashIndex = HashMix64(Hint) %
         (sizeof StorageUnit->HashBuckets / sizeof StorageUnit->HashBuckets[0]);
@@ -80,7 +81,7 @@ static inline ULONG TakeHintValue(STORAGE_UNIT *StorageUnit, UINT64 Hint)
             break;
         }
 
-    ReleaseSRWLockExclusive(&StorageUnit->HashLock);
+    ReleaseSRWLockExclusive(&StorageUnit->Lock);
 
     return Result;
 }
@@ -89,7 +90,7 @@ static inline BOOLEAN PutHintValue(STORAGE_UNIT *StorageUnit, UINT64 Hint, ULONG
 {
     BOOLEAN Result = FALSE;
 
-    AcquireSRWLockExclusive(&StorageUnit->HashLock);
+    AcquireSRWLockExclusive(&StorageUnit->Lock);
 
     ULONG HashIndex = HashMix64(Hint) %
         (sizeof StorageUnit->HashBuckets / sizeof StorageUnit->HashBuckets[0]);
@@ -107,7 +108,7 @@ static inline BOOLEAN PutHintValue(STORAGE_UNIT *StorageUnit, UINT64 Hint, ULONG
     Result = TRUE;
 
 exit:
-    ReleaseSRWLockExclusive(&StorageUnit->HashLock);
+    ReleaseSRWLockExclusive(&StorageUnit->Lock);
 
     return Result;
 }
@@ -150,7 +151,7 @@ static DWORD SpdStorageUnitHandleOpenPipe(PWSTR Name,
     }
     memset(&StorageUnit, 0, sizeof *StorageUnit);
     memcpy(&StorageUnit->StorageUnitParams, StorageUnitParams, sizeof *StorageUnitParams);
-    InitializeSRWLock(&StorageUnit->HashLock);
+    InitializeSRWLock(&StorageUnit->Lock);
 
     for (ULONG I = 0; SPD_IOCTL_STORAGE_UNIT_MAX_CAPACITY > I; I++)
     {
@@ -217,6 +218,18 @@ exit:
     return Error;
 }
 
+static inline DWORD WaitOverlappedResult(BOOL Success,
+    HANDLE Handle, OVERLAPPED *Overlapped, PDWORD PBytesTransferred)
+{
+    if (!Success && ERROR_IO_PENDING != GetLastError())
+        return GetLastError();
+
+    if (!GetOverlappedResult(Handle, Overlapped, PBytesTransferred, TRUE))
+        return GetLastError();
+
+    return ERROR_SUCCESS;
+}
+
 DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
     UINT32 Btl,
     SPD_IOCTL_TRANSACT_RSP *Rsp,
@@ -258,6 +271,25 @@ DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
         goto exit;
     }
 
+    Error = ERROR_SUCCESS;
+    AcquireSRWLockExclusive(&StorageUnit->Lock);
+    if (!StorageUnit->Connected)
+    {
+        Error = WaitOverlappedResult(
+            ConnectNamedPipe(Handle, &Overlapped),
+            Handle, &Overlapped, &BytesTransferred);
+        if (ERROR_SUCCESS == Error || ERROR_PIPE_CONNECTED == Error)
+        {
+            Error = ERROR_SUCCESS;
+            StorageUnit->Connected = TRUE;
+        }
+    }
+    ReleaseSRWLockExclusive(&StorageUnit->Lock);
+    if (ERROR_NO_DATA == Error)
+        goto zeroout;
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
     if (0 != Rsp)
     {
         DataLength = SpdIoctlTransactReadKind == Rsp->Kind && 0 != DataBuffer ?
@@ -265,66 +297,50 @@ DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
         memcpy(Msg, Rsp, sizeof *Rsp);
         if (0 != DataLength)
             memcpy(Msg + 1, DataBuffer, DataLength);
-        if (!WriteFile(Handle,
-            Msg, sizeof(TRANSACT_MSG) + DataLength, 0,
-            &Overlapped))
-        {
-            Error = GetLastError();
-            goto exit;
-        }
-        if (!GetOverlappedResult(Handle, &Overlapped, &BytesTransferred, TRUE))
-        {
-            Error = GetLastError();
-            goto exit;
-        }
+        Error = WaitOverlappedResult(
+            WriteFile(Handle, Msg, sizeof(TRANSACT_MSG) + DataLength, 0, &Overlapped),
+            Handle, &Overlapped, &BytesTransferred);
+        if (ERROR_SUCCESS != Error)
+            goto disconnect;
     }
 
     if (0 != Req)
     {
-        if (!ReadFile(Handle,
-            Msg, sizeof(TRANSACT_MSG) + StorageUnit->StorageUnitParams.MaxTransferLength, 0,
-            &Overlapped))
+        Error = WaitOverlappedResult(
+            ReadFile(Handle,
+                Msg, sizeof(TRANSACT_MSG) + StorageUnit->StorageUnitParams.MaxTransferLength, 0, &Overlapped),
+            Handle, &Overlapped, &BytesTransferred);
+        if (ERROR_SUCCESS != Error)
+            goto disconnect;
+
+        if (sizeof(TRANSACT_MSG) > BytesTransferred)
+            goto zeroout;
+
+        if (SpdIoctlTransactReadKind == Msg->Req.Kind)
         {
-            Error = GetLastError();
-            goto exit;
+            DataLength = Msg->Req.Op.Read.BlockCount *
+                StorageUnit->StorageUnitParams.BlockLength;
+            if (DataLength > StorageUnit->StorageUnitParams.MaxTransferLength)
+                goto zeroout;
+
+            if (!PutHintValue(StorageUnit, Msg->Req.Hint, DataLength))
+                goto zeroout;
         }
-        if (!GetOverlappedResult(Handle, &Overlapped, &BytesTransferred, TRUE))
+        else if (SpdIoctlTransactWriteKind == Msg->Req.Kind)
         {
-            Error = GetLastError();
-            goto exit;
+            DataLength = Msg->Req.Op.Write.BlockCount *
+                StorageUnit->StorageUnitParams.BlockLength;
+            if (DataLength > StorageUnit->StorageUnitParams.MaxTransferLength)
+                goto zeroout;
+
+            BytesTransferred -= sizeof(TRANSACT_MSG);
+            if (BytesTransferred > DataLength)
+                BytesTransferred = DataLength;
+            memcpy(DataBuffer, Msg + 1, BytesTransferred);
+            memset((PUINT8)(DataBuffer) + BytesTransferred, 0, DataLength - BytesTransferred);
         }
 
-        if (sizeof(TRANSACT_MSG) <= BytesTransferred)
-        {
-            if (SpdIoctlTransactReadKind == Msg->Req.Kind)
-            {
-                DataLength = Msg->Req.Op.Read.BlockCount *
-                    StorageUnit->StorageUnitParams.BlockLength;
-                if (DataLength > StorageUnit->StorageUnitParams.MaxTransferLength)
-                    goto zeroout;
-
-                if (!PutHintValue(StorageUnit, Msg->Req.Hint, DataLength))
-                    goto zeroout;
-            }
-            else if (SpdIoctlTransactWriteKind == Msg->Req.Kind)
-            {
-                DataLength = Msg->Req.Op.Write.BlockCount *
-                    StorageUnit->StorageUnitParams.BlockLength;
-                if (DataLength > StorageUnit->StorageUnitParams.MaxTransferLength)
-                    goto zeroout;
-
-                BytesTransferred -= sizeof(TRANSACT_MSG);
-                if (BytesTransferred > DataLength)
-                    BytesTransferred = DataLength;
-                memcpy(DataBuffer, Msg + 1, BytesTransferred);
-                memset((PUINT8)(DataBuffer) + BytesTransferred, 0, DataLength - BytesTransferred);
-            }
-
-            memcpy(Req, &Msg->Req, sizeof *Req);
-        }
-        else
-        zeroout:
-            memset(Req, 0, sizeof *Req);
+        memcpy(Req, &Msg->Req, sizeof *Req);
     }
 
     Error = ERROR_SUCCESS;
@@ -338,6 +354,22 @@ exit:
     ReleaseSRWLockShared(&StorageUnitLock);
 
     return Error;
+
+disconnect:
+    AcquireSRWLockExclusive(&StorageUnit->Lock);
+    if (StorageUnit->Connected)
+    {
+        DisconnectNamedPipe(Handle);
+        StorageUnit->Connected = FALSE;
+    }
+    ReleaseSRWLockExclusive(&StorageUnit->Lock);
+
+zeroout:
+    if (0 != Req)
+        memset(Req, 0, sizeof *Req);
+
+    Error = ERROR_SUCCESS;
+    goto exit;
 }
 
 DWORD SpdStorageUnitHandleShutdownPipe(HANDLE Handle,
@@ -369,7 +401,7 @@ DWORD SpdStorageUnitHandleShutdownPipe(HANDLE Handle,
         goto exit;
     }
 
-    DisconnectNamedPipe(GetPipeHandle(Handle));
+    DisconnectNamedPipe(Handle);
 
     Error = ERROR_SUCCESS;
 
