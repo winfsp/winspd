@@ -28,8 +28,6 @@
 #define warn(format, ...)               printlog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__)
 #define fail(ExitCode, format, ...)     (warn(format, __VA_ARGS__), ExitProcess(ExitCode))
 
-static void usage(void);
-
 static void vprintlog(HANDLE h, const char *format, va_list ap)
 {
     char buf[1024];
@@ -55,49 +53,168 @@ static void printlog(HANDLE h, const char *format, ...)
     va_end(ap);
 }
 
+typedef struct
+{
+    SPD_IOCTL_TRANSACT_REQ Req;
+    SPD_IOCTL_TRANSACT_RSP Rsp;
+} TRANSACT_MSG;
+
+static DWORD StgPipeOpen(PWSTR PipeName, ULONG Timeout, PHANDLE PHandle)
+{
+    HANDLE Handle = INVALID_HANDLE_VALUE;
+    DWORD PipeMode;
+    DWORD Error;
+
+    Handle = CreateFileW(PipeName,
+        GENERIC_READ | FILE_WRITE_DATA | FILE_WRITE_ATTRIBUTES,
+        FILE_SHARE_READ | FILE_SHARE_WRITE, 0, OPEN_EXISTING,
+        FILE_FLAG_OVERLAPPED | SECURITY_SQOS_PRESENT | SECURITY_IDENTIFICATION,
+        0);
+    if (INVALID_HANDLE_VALUE == Handle)
+    {
+        Error = GetLastError();
+        if (ERROR_PIPE_BUSY != Error)
+            goto exit;
+
+        WaitNamedPipeW(PipeName, Timeout);
+
+        Handle = CreateFileW(PipeName,
+            GENERIC_READ | FILE_WRITE_DATA | FILE_WRITE_ATTRIBUTES,
+            FILE_SHARE_READ | FILE_SHARE_WRITE, 0, OPEN_EXISTING,
+            FILE_FLAG_OVERLAPPED | SECURITY_SQOS_PRESENT | SECURITY_IDENTIFICATION,
+            0);
+        if (INVALID_HANDLE_VALUE == Handle)
+        {
+            Error = GetLastError();
+            goto exit;
+        }
+    }
+
+    PipeMode = PIPE_READMODE_MESSAGE | PIPE_WAIT;
+    if (!SetNamedPipeHandleState(Handle, &PipeMode, 0, 0))
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    Error = ERROR_SUCCESS;
+
+exit:
+    return Error;
+}
+
+static inline DWORD WaitOverlappedResult(BOOL Success,
+    HANDLE Handle, OVERLAPPED *Overlapped, PDWORD PBytesTransferred)
+{
+    if (!Success && ERROR_IO_PENDING != GetLastError())
+        return GetLastError();
+
+    if (!GetOverlappedResult(Handle, Overlapped, PBytesTransferred, TRUE))
+        return GetLastError();
+
+    return ERROR_SUCCESS;
+}
+
+DWORD StgPipeTransact(HANDLE Handle,
+    SPD_IOCTL_TRANSACT_REQ *Req,
+    SPD_IOCTL_TRANSACT_RSP *Rsp,
+    PVOID DataBuffer,
+    const SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams)
+{
+    ULONG DataLength;
+    TRANSACT_MSG *Msg = 0;
+    OVERLAPPED Overlapped;
+    DWORD BytesTransferred;
+    DWORD Error;
+
+    if (0 == Req || 0 == Rsp)
+    {
+        Error = ERROR_INVALID_PARAMETER;
+        goto exit;
+    }
+
+    memset(&Overlapped, 0, sizeof Overlapped);
+
+    Msg = MemAlloc(
+        sizeof(TRANSACT_MSG) + StorageUnitParams->MaxTransferLength);
+    if (0 == Msg)
+    {
+        Error = ERROR_NO_SYSTEM_RESOURCES;
+        goto exit;
+    }
+
+    Overlapped.hEvent = CreateEventW(0, TRUE, TRUE, 0);
+    if (0 == Overlapped.hEvent)
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    DataLength = 0;
+    if (0 != DataBuffer)
+        switch (Req->Kind)
+        {
+        case SpdIoctlTransactWriteKind:
+            DataLength = Msg->Req.Op.Write.BlockCount * StorageUnitParams->BlockLength;
+            break;
+        case SpdIoctlTransactUnmapKind:
+            DataLength = Msg->Req.Op.Unmap.Count * sizeof(SPD_IOCTL_UNMAP_DESCRIPTOR);
+            break;
+        default:
+            break;
+        }
+    memcpy(Msg, Req, sizeof *Req);
+    if (0 != DataLength)
+        memcpy(Msg + 1, DataBuffer, DataLength);
+    Error = WaitOverlappedResult(
+        WriteFile(Handle, Msg, sizeof(TRANSACT_MSG) + DataLength, 0, &Overlapped),
+        Handle, &Overlapped, &BytesTransferred);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    Error = WaitOverlappedResult(
+        ReadFile(Handle,
+            Msg, sizeof(TRANSACT_MSG) + StorageUnitParams->MaxTransferLength, 0, &Overlapped),
+        Handle, &Overlapped, &BytesTransferred);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+    if (sizeof(TRANSACT_MSG) > BytesTransferred || Req->Hint != Msg->Rsp.Hint)
+    {
+        Error = ERROR_IO_DEVICE;
+        goto exit;
+    }
+    if (SpdIoctlTransactReadKind == Msg->Rsp.Kind && SCSISTAT_GOOD == Msg->Rsp.Status.ScsiStatus)
+    {
+        DataLength = Msg->Req.Op.Read.BlockCount * StorageUnitParams->BlockLength;
+        if (DataLength > StorageUnitParams->MaxTransferLength)
+        {
+            Error = ERROR_IO_DEVICE;
+            goto exit;
+        }
+        BytesTransferred -= sizeof(TRANSACT_MSG);
+        if (BytesTransferred > DataLength)
+            BytesTransferred = DataLength;
+        memcpy(DataBuffer, Msg + 1, BytesTransferred);
+        memset((PUINT8)(DataBuffer) + BytesTransferred, 0, DataLength - BytesTransferred);
+    }
+    memcpy(Req, &Msg->Req, sizeof *Req);
+
+    Error = ERROR_SUCCESS;
+
+exit:
+    if (0 != Overlapped.hEvent)
+        CloseHandle(Overlapped.hEvent);
+
+    MemFree(Msg);
+
+    return Error;
+}
+
 static void usage(void)
 {
     warn(
-        "usage: %s PIPENAME BTL\n",
+        "usage: %s PIPENAME N [RWFU]\n",
         PROGNAME);
-    warn(
-        "message syntax (RFC 5234 ABNF):\n");
-    warn(
-        "    request     = read-req / write-req / flush-req / unmap-req\n"
-        "    read-req    = R SP hint SP address SP count SP fua NL\n"
-        "    write-req   = W SP hint SP address SP count SP fua SP datalen NL databuf\n"
-        "    flush-req   = F SP hint SP address SP count NL\n"
-        "    unmap-req   = U SP hint SP count NL *(address SP count NL)\n");
-    warn(
-        "    response    = read-rsp / write-rsp / flush-rsp / unmap-rsp\n"
-        "    read-rsp    = (R SP hint SP status-ok SP datalen NL databuf) /\n"
-        "                  (R SP hint SP status-ko NL)\n"
-        "    write-rsp   = W SP hint SP status NL\n"
-        "    flush-rsp   = F SP hint SP status NL\n"
-        "    unmap-rsp   = U SP hint SP status NL\n");
-    warn(
-        "    status      = status-ok / status-ko\n"
-        "    status-ok   = OK\n"
-        "    status-ko   = KO SP SenseKey SP ASC SP ASCQ [SP Information]\n"
-        "\n"
-        "    R           = %%x52          ; Read\n"
-        "    W           = %%x57          ; Write\n"
-        "    F           = %%x46          ; Flush\n"
-        "    U           = %%x55          ; Unmap\n"
-        "\n"
-        "    hint        = 1*DIGIT       ; request/response id\n"
-        "    address     = 1*DIGIT       ; block address (LBA)\n"
-        "    count       = 1*DIGIT       ; block count\n"
-        "    fua         = \"0\" / \"1\"     ; force unit access\n"
-        "    datalen     = 1*DIGIT       ; data buffer length\n"
-        "    databuf     = *%%x00-ff      ; data buffer\n"
-        "\n"
-        "    OK          = \"0\"\n"
-        "    KO          = \"2\"\n"
-        "    SenseKey    = 1*DIGIT\n"
-        "    ASC         = 1*DIGIT\n"
-        "    ASCQ        = 1*DIGIT\n"
-        "    Information = 1*DIGIT\n");
 
     ExitProcess(ERROR_INVALID_PARAMETER);
 }
