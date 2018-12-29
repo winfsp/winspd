@@ -59,10 +59,12 @@ typedef struct
     SPD_IOCTL_TRANSACT_RSP Rsp;
 } TRANSACT_MSG;
 
-static DWORD StgPipeOpen(PWSTR PipeName, ULONG Timeout, PHANDLE PHandle)
+static DWORD StgPipeOpen(PWSTR PipeName, ULONG Timeout,
+    PHANDLE PHandle, SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams)
 {
     HANDLE Handle = INVALID_HANDLE_VALUE;
     DWORD PipeMode;
+    DWORD BytesTransferred;
     DWORD Error;
 
     Handle = CreateFileW(PipeName,
@@ -97,9 +99,27 @@ static DWORD StgPipeOpen(PWSTR PipeName, ULONG Timeout, PHANDLE PHandle)
         goto exit;
     }
 
+    /* ok to use non-overlapped ReadFile with overlapped handle, because no other I/O is posted on it */
+    if (!ReadFile(Handle, StorageUnitParams, sizeof *StorageUnitParams, &BytesTransferred, 0))
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+    if (sizeof *StorageUnitParams > BytesTransferred)
+    {
+        Error = ERROR_IO_DEVICE;
+        goto exit;
+    }
+
     Error = ERROR_SUCCESS;
 
 exit:
+    if (ERROR_SUCCESS != Error)
+    {
+        if (INVALID_HANDLE_VALUE != Handle)
+            CloseHandle(Handle);
+    }
+
     return Error;
 }
 

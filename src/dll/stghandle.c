@@ -280,8 +280,15 @@ DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
             Handle, &Overlapped, &BytesTransferred);
         if (ERROR_SUCCESS == Error || ERROR_PIPE_CONNECTED == Error)
         {
-            Error = ERROR_SUCCESS;
-            StorageUnit->Connected = TRUE;
+            Error = WaitOverlappedResult(
+                WriteFile(Handle,
+                    &StorageUnit->StorageUnitParams, sizeof StorageUnit->StorageUnitParams,
+                    0, &Overlapped),
+                Handle, &Overlapped, &BytesTransferred);
+            if (ERROR_SUCCESS == Error)
+                StorageUnit->Connected = TRUE;
+            else
+                Error = ERROR_NO_DATA;
         }
     }
     ReleaseSRWLockExclusive(&StorageUnit->Lock);
