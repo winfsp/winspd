@@ -22,6 +22,8 @@
 #include <winspd/winspd.h>
 #include <shared/minimal.h>
 
+#include <ntsecapi.h>
+
 #define PROGNAME                        "stgpipe"
 
 #define info(format, ...)               printlog(GetStdHandle(STD_OUTPUT_HANDLE), format, __VA_ARGS__)
@@ -105,7 +107,11 @@ static DWORD StgPipeOpen(PWSTR PipeName, ULONG Timeout,
         Error = GetLastError();
         goto exit;
     }
-    if (sizeof *StorageUnitParams > BytesTransferred)
+    if (sizeof *StorageUnitParams > BytesTransferred ||
+        0 == StorageUnitParams->BlockCount ||
+        sizeof(SPD_IOCTL_UNMAP_DESCRIPTOR) > StorageUnitParams->BlockLength ||
+        0 == StorageUnitParams->MaxTransferLength ||
+        0 != StorageUnitParams->MaxTransferLength % StorageUnitParams->BlockLength)
     {
         Error = ERROR_IO_DEVICE;
         goto exit;
@@ -230,15 +236,204 @@ exit:
     return Error;
 }
 
+static inline UINT64 HashMix64(UINT64 k)
+{
+    k ^= k >> 33;
+    k *= 0xff51afd7ed558ccdULL;
+    k ^= k >> 33;
+    k *= 0xc4ceb9fe1a85ec53ULL;
+    k ^= k >> 33;
+    return k;
+}
+
+static int fill_or_test(PVOID DataBuffer, UINT32 BlockLength, UINT64 BlockAddress, UINT32 BlockCount,
+    int test)
+{
+    for (ULONG I = 0, N = BlockCount; N > I; I++)
+    {
+        PUINT64 Buffer = (PVOID)((PUINT8)DataBuffer + I * BlockLength);
+        UINT64 HashAddress = HashMix64(BlockAddress + I);
+        for (ULONG J = 0, M = BlockLength / 8; M > J; J++)
+            if (test)
+            {
+                if (Buffer[J] != HashAddress)
+                    return 0;
+            }
+            else
+            {
+                Buffer[J] = HashAddress;
+            }
+    }
+    return 1;
+}
+
+static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, UINT32 BlockCount)
+{
+#define CheckCondition(x)               \
+    if (x)                              \
+    {                                   \
+        warn("condition fail: %s: A=%x:%x, C=%u",\
+            #x, (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, BlockCount);\
+        Error = ERROR_IO_DEVICE;        \
+        goto exit;                      \
+    }                                   \
+    else
+    HANDLE Handle = INVALID_HANDLE_VALUE;
+    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
+    SPD_IOCTL_TRANSACT_REQ Req;
+    SPD_IOCTL_TRANSACT_RSP Rsp;
+    PVOID DataBuffer = 0;
+    UINT8 OpKinds[32];
+    ULONG OpKindCount;
+    BOOLEAN RandomAddress, RandomCount;
+    UINT32 MaxBlockCount;
+    DWORD ThreadId;
+    DWORD Error;
+
+    Error = StgPipeOpen(PipeName, 3000, &Handle, &StorageUnitParams);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    DataBuffer = MemAlloc(StorageUnitParams.MaxTransferLength);
+    if (0 == DataBuffer)
+    {
+        Error = ERROR_NO_SYSTEM_RESOURCES;
+        goto exit;
+    }
+
+    OpKindCount = 0;
+    for (ULONG I = 0, N = sizeof OpKinds / sizeof OpKinds[0]; N > I && L'\0' != OpSet[I]; I++)
+        switch (OpSet[I])
+        {
+        case 'R':
+            OpKinds[OpKindCount++] = SpdIoctlTransactReadKind;
+            break;
+        case 'W':
+            OpKinds[OpKindCount++] = SpdIoctlTransactWriteKind;
+            break;
+        case 'F':
+            OpKinds[OpKindCount++] = SpdIoctlTransactFlushKind;
+            break;
+        case 'U':
+            OpKinds[OpKindCount++] = SpdIoctlTransactUnmapKind;
+            break;
+        }
+    if (0 == OpKindCount)
+    {
+        OpKinds[OpKindCount++] = SpdIoctlTransactWriteKind;
+        OpKinds[OpKindCount++] = SpdIoctlTransactReadKind;
+    }
+
+    RandomAddress = -1 == BlockAddress;
+    if (!RandomAddress)
+        BlockAddress %= StorageUnitParams.BlockCount;
+
+    RandomCount = -1 == BlockCount;
+    MaxBlockCount = StorageUnitParams.MaxTransferLength / StorageUnitParams.BlockLength;
+    if (!RandomCount)
+    {
+        if (BlockCount == 0)
+            BlockCount = 1;
+        else if (BlockCount > MaxBlockCount)
+            BlockCount = MaxBlockCount;
+    }
+
+    ThreadId = GetCurrentThreadId();
+
+    for (ULONG I = 0, J = 0; OpCount > I; I++)
+    {
+        memset(&Req, 0, sizeof Req);
+        memset(&Rsp, 0, sizeof Rsp);
+
+        Req.Hint = ((UINT64)ThreadId << 32) | I;
+        Req.Kind = OpKinds[I % OpKindCount];
+        switch (Req.Kind)
+        {
+        case SpdIoctlTransactReadKind:
+            Req.Op.Read.BlockAddress = BlockAddress;
+            Req.Op.Read.BlockCount = BlockCount;
+            Req.Op.Read.ForceUnitAccess = 0;
+            break;
+        case SpdIoctlTransactWriteKind:
+            Req.Op.Write.BlockAddress = BlockAddress;
+            Req.Op.Write.BlockCount = BlockCount;
+            Req.Op.Write.ForceUnitAccess = 0;
+            fill_or_test(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, BlockCount, 0);
+            break;
+        case SpdIoctlTransactFlushKind:
+            Req.Op.Flush.BlockAddress = BlockAddress;
+            Req.Op.Flush.BlockCount = BlockCount;
+            break;
+        case SpdIoctlTransactUnmapKind:
+            Req.Op.Unmap.Count = 1;
+            ((SPD_IOCTL_UNMAP_DESCRIPTOR *)DataBuffer)->BlockAddress = BlockAddress;
+            ((SPD_IOCTL_UNMAP_DESCRIPTOR *)DataBuffer)->BlockCount = BlockCount;
+            ((SPD_IOCTL_UNMAP_DESCRIPTOR *)DataBuffer)->Reserved = 0;
+            break;
+        }
+
+        Error = StgPipeTransact(Handle, &Req, &Rsp, DataBuffer, &StorageUnitParams);
+        if (ERROR_SUCCESS != Error)
+            goto exit;
+
+        CheckCondition(Req.Hint == Rsp.Hint);
+        CheckCondition(Req.Kind == Rsp.Kind);
+        CheckCondition(SCSISTAT_GOOD == Rsp.Status.ScsiStatus);
+        switch (Rsp.Kind)
+        {
+        case SpdIoctlTransactReadKind:
+            if (!fill_or_test(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, BlockCount, 1))
+            {
+                warn("bad Read buffer: A=%x:%x, C=%u",
+                    (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, BlockCount);
+                Error = ERROR_IO_DEVICE;
+                goto exit;
+            }
+            break;
+        }
+
+        J++;
+        J %= OpKindCount;
+
+        if (0 == J)
+        {
+            if (RandomAddress)
+                RtlGenRandom(&BlockAddress, sizeof BlockAddress);
+            else
+            {
+                BlockAddress += BlockCount;
+                BlockAddress %= StorageUnitParams.BlockCount;
+            }
+
+            if (RandomCount)
+                RtlGenRandom(&BlockCount, sizeof BlockCount);
+
+            if (BlockAddress + BlockCount > StorageUnitParams.BlockCount)
+                BlockCount = (UINT32)(StorageUnitParams.BlockCount - BlockAddress);
+        }
+    }
+
+    Error = ERROR_SUCCESS;
+
+exit:
+    MemFree(DataBuffer);
+
+    if (INVALID_HANDLE_VALUE != Handle)
+        CloseHandle(Handle);
+
+    return Error;
+#undef CheckCondition
+}
+
 static void usage(void)
 {
     warn(
-        "usage: %s pipename n {RWFU|*} {incr|*} {count|*}\n"
+        "usage: %s pipename opcount [RWFU] [address|*] [count|*]\n"
         "    pipename    Name of pipe to storage unit\n"
-        "    n           Number of operations\n"
-        "    RWFU        One or more: R: Read, W: Write, F: Flush, U: Unmap, *: random\n"
-        "    incr        Block address increment, *: random\n"
-        "    count       Block address count, *: random\n"
+        "    opcount     Operation count\n"
+        "    RWFU        One or more: R: Read, W: Write, F: Flush, U: Unmap\n"
+        "    address     Starting block address, *: random\n"
+        "    count       Block count per operation, *: random\n"
         "",
         PROGNAME);
 
