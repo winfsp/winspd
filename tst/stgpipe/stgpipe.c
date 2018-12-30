@@ -1,5 +1,5 @@
 /**
- * @file stgpipe/stgpipe.c
+ * @file stgpipe.c
  *
  * @copyright 2018 Bill Zissimopoulos
  */
