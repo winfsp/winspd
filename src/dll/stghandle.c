@@ -288,7 +288,10 @@ DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
             if (ERROR_SUCCESS == Error)
                 StorageUnit->Connected = TRUE;
             else
+            {
+                DisconnectNamedPipe(Handle);
                 Error = ERROR_NO_DATA;
+            }
         }
     }
     ReleaseSRWLockExclusive(&StorageUnit->Lock);
