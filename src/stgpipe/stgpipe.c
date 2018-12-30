@@ -233,7 +233,13 @@ exit:
 static void usage(void)
 {
     warn(
-        "usage: %s PIPENAME N [RWFU]\n",
+        "usage: %s pipename n {RWFU|*} {incr|*} {count|*}\n"
+        "    pipename    Name of pipe to storage unit\n"
+        "    n           Number of operations\n"
+        "    RWFU        One or more: R: Read, W: Write, F: Flush, U: Unmap, *: random\n"
+        "    incr        Block address increment, *: random\n"
+        "    count       Block address count, *: random\n"
+        "",
         PROGNAME);
 
     ExitProcess(ERROR_INVALID_PARAMETER);
