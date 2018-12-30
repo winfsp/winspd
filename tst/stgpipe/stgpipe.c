@@ -246,7 +246,7 @@ static inline UINT64 HashMix64(UINT64 k)
     return k;
 }
 
-static int fill_or_test(PVOID DataBuffer, UINT32 BlockLength, UINT64 BlockAddress, UINT32 BlockCount,
+static int FillOrTest(PVOID DataBuffer, UINT32 BlockLength, UINT64 BlockAddress, UINT32 BlockCount,
     int test)
 {
     for (ULONG I = 0, N = BlockCount; N > I; I++)
@@ -292,14 +292,21 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
 
     Error = StgPipeOpen(PipeName, 3000, &Handle, &StorageUnitParams);
     if (ERROR_SUCCESS != Error)
+    {
+        warn("cannot open \"%s\": %lu", PipeName, Error);
         goto exit;
+    }
 
     DataBuffer = MemAlloc(StorageUnitParams.MaxTransferLength);
     if (0 == DataBuffer)
     {
         Error = ERROR_NO_SYSTEM_RESOURCES;
+        warn("cannot allocate memory");
         goto exit;
     }
+
+    if (0 == OpCount)
+        OpCount = 1;
 
     OpKindCount = 0;
     for (ULONG I = 0, N = sizeof OpKinds / sizeof OpKinds[0]; N > I && L'\0' != OpSet[I]; I++)
@@ -358,7 +365,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
             Req.Op.Write.BlockAddress = BlockAddress;
             Req.Op.Write.BlockCount = BlockCount;
             Req.Op.Write.ForceUnitAccess = 0;
-            fill_or_test(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, BlockCount, 0);
+            FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, BlockCount, 0);
             break;
         case SpdIoctlTransactFlushKind:
             Req.Op.Flush.BlockAddress = BlockAddress;
@@ -374,7 +381,10 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
 
         Error = StgPipeTransact(Handle, &Req, &Rsp, DataBuffer, &StorageUnitParams);
         if (ERROR_SUCCESS != Error)
+        {
+            warn("pipe error: %lu", Error);
             goto exit;
+        }
 
         CheckCondition(Req.Hint == Rsp.Hint);
         CheckCondition(Req.Kind == Rsp.Kind);
@@ -382,7 +392,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
         switch (Rsp.Kind)
         {
         case SpdIoctlTransactReadKind:
-            if (!fill_or_test(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, BlockCount, 1))
+            if (!FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, BlockCount, 1))
             {
                 warn("bad Read buffer: A=%x:%x, C=%u",
                     (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, BlockCount);
@@ -440,11 +450,30 @@ static void usage(void)
     ExitProcess(ERROR_INVALID_PARAMETER);
 }
 
+long long wcstoint(const wchar_t *p, int base, int is_signed, const wchar_t **endp);
+
 int wmain(int argc, wchar_t **argv)
 {
-    usage();
+    PWSTR PipeName = 0;
+    ULONG OpCount = 0;
+    PWSTR OpSet = L"";
+    UINT64 BlockAddress = 0;
+    UINT32 BlockCount = 0;
+    wchar_t *endp;
 
-    return 0;
+    if (3 > argc || 6 < argc)
+        usage();
+
+    PipeName = argv[1];
+    OpCount = (ULONG)wcstoint(argv[2], 0, 0, &endp);
+    if (4 <= argc)
+        OpSet = argv[3];
+    if (5 <= argc)
+        BlockAddress = wcstoint(argv[4], 0, 0, &endp);
+    if (6 <= argc)
+        BlockCount = (UINT32)wcstoint(argv[5], 0, 0, &endp);
+
+    return run(PipeName, OpCount, OpSet, BlockAddress, BlockCount);
 }
 
 void wmainCRTStartup(void)
