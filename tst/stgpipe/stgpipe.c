@@ -306,7 +306,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
     Error = StgPipeOpen(PipeName, 3000, &Handle, &StorageUnitParams);
     if (ERROR_SUCCESS != Error)
     {
-        warn("cannot open \"%s\": %lu", PipeName, Error);
+        warn("cannot open %S: %lu", PipeName, Error);
         goto exit;
     }
 
@@ -325,16 +325,16 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
     for (ULONG I = 0, N = sizeof OpKinds / sizeof OpKinds[0]; N > I && L'\0' != OpSet[I]; I++)
         switch (OpSet[I])
         {
-        case 'R':
+        case 'R': case 'r':
             OpKinds[OpKindCount++] = SpdIoctlTransactReadKind;
             break;
-        case 'W':
+        case 'W': case 'w':
             OpKinds[OpKindCount++] = SpdIoctlTransactWriteKind;
             break;
-        case 'F':
+        case 'F': case 'f':
             OpKinds[OpKindCount++] = SpdIoctlTransactFlushKind;
             break;
-        case 'U':
+        case 'U': case 'u':
             OpKinds[OpKindCount++] = SpdIoctlTransactUnmapKind;
             break;
         }
@@ -478,7 +478,7 @@ int wmain(int argc, wchar_t **argv)
 
     argc--;
     argv++;
-    if (0 != argv[0] && L'-' != argv[0][0] && L's' != argv[0][1] && L'\0' != argv[0][2] &&
+    if (0 != argv[0] && L'-' == argv[0][0] && L's' == argv[0][1] && L'\0' == argv[0][2] &&
         0 != argv[1])
     {
         RandomSeed = (ULONG)wcstoint(argv[1], 0, 0, &endp);
@@ -507,8 +507,9 @@ int wmain(int argc, wchar_t **argv)
         wsprintfA(BlockAddressStr, "%x:%x", (UINT32)(BlockAddress >> 32), BlockAddress);
     if (-1 != BlockCount)
         wsprintfA(BlockCountStr, "%lu", BlockCount);
-    info("%s -s %lu %S %lu %s %s %s",
+    info("%s -s %lu %S %lu \"%S\" %s %s",
         PROGNAME, RandomSeed, PipeName, OpCount, OpSet, BlockAddressStr, BlockCountStr);
+
     return run(PipeName, OpCount, OpSet, BlockAddress, BlockCount, &RandomSeed);
 }
 
