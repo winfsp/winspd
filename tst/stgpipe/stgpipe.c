@@ -451,8 +451,9 @@ exit:
 static void usage(void)
 {
     warn(
-        "usage: %s pipename opcount [RWFU] [address|*] [count|*]\n"
-        "    pipename    Name of pipe to storage unit\n"
+        "usage: %s [-s seed] pipename opcount [RWFU] [address|*] [count|*]\n"
+        "    -s seed     Seed to use for randomness (default: time)\n"
+        "    pipename    Name of storage unit pipe\n"
         "    opcount     Operation count\n"
         "    RWFU        One or more: R: Read, W: Write, F: Flush, U: Unmap\n"
         "    address     Starting block address, *: random\n"
@@ -472,21 +473,42 @@ int wmain(int argc, wchar_t **argv)
     PWSTR OpSet = L"";
     UINT64 BlockAddress = 0;
     UINT32 BlockCount = 0;
-    ULONG RandomSeed = 0;
+    ULONG RandomSeed = 1;
     wchar_t *endp;
 
-    if (3 > argc || 6 < argc)
+    argc--;
+    argv++;
+    if (0 != argv[0] && L'-' != argv[0][0] && L's' != argv[0][1] && L'\0' != argv[0][2] &&
+        0 != argv[1])
+    {
+        RandomSeed = (ULONG)wcstoint(argv[1], 0, 0, &endp);
+        argc -= 2;
+        argv += 2;
+    }
+    else
+        RandomSeed = GetTickCount();
+
+    if (2 > argc || 5 < argc)
         usage();
 
-    PipeName = argv[1];
-    OpCount = (ULONG)wcstoint(argv[2], 0, 0, &endp);
+    PipeName = argv[0];
+    OpCount = (ULONG)wcstoint(argv[1], 0, 0, &endp);
+    if (3 <= argc)
+        OpSet = argv[2];
     if (4 <= argc)
-        OpSet = argv[3];
+        BlockAddress = L'*' == argv[3][0] && L'\0' == argv[3][1] ?
+            -1 : wcstoint(argv[3], 0, 0, &endp);
     if (5 <= argc)
-        BlockAddress = wcstoint(argv[4], 0, 0, &endp);
-    if (6 <= argc)
-        BlockCount = (UINT32)wcstoint(argv[5], 0, 0, &endp);
+        BlockCount = L'*' == argv[4][0] && L'\0' == argv[4][1] ?
+            -1 : (UINT32)wcstoint(argv[4], 0, 0, &endp);
 
+    char BlockAddressStr[64] = "*", BlockCountStr[64] = "*";
+    if (-1 != BlockAddress)
+        wsprintfA(BlockAddressStr, "%x:%x", (UINT32)(BlockAddress >> 32), BlockAddress);
+    if (-1 != BlockCount)
+        wsprintfA(BlockCountStr, "%lu", BlockCount);
+    info("%s -s %lu %S %lu %s %s %s",
+        PROGNAME, RandomSeed, PipeName, OpCount, OpSet, BlockAddressStr, BlockCountStr);
     return run(PipeName, OpCount, OpSet, BlockAddress, BlockCount, &RandomSeed);
 }
 
