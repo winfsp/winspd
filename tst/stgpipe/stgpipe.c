@@ -22,8 +22,6 @@
 #include <winspd/winspd.h>
 #include <shared/minimal.h>
 
-#include <ntsecapi.h>
-
 #define PROGNAME                        "stgpipe"
 
 #define info(format, ...)               printlog(GetStdHandle(STD_OUTPUT_HANDLE), format, __VA_ARGS__)
