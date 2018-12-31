@@ -89,6 +89,9 @@ typedef struct _SPD_STORAGE_UNIT_OPERATION_CONTEXT
 /**
  * Create a storage unit object.
  *
+ * @param DeviceName
+ *     The name of a kernel device or 0 for the default device.
+ *     This may also be a named pipe (\\.\pipe\PipeName).
  * @param StorageUnitParams
  *     Parameters for the newly created storage unit.
  * @param Interface
@@ -100,6 +103,7 @@ typedef struct _SPD_STORAGE_UNIT_OPERATION_CONTEXT
  *     ERROR_SUCCESS or error code.
  */
 DWORD SpdStorageUnitCreate(
+    PWSTR DeviceName,
     const SPD_STORAGE_UNIT_PARAMS *StorageUnitParams,
     const SPD_STORAGE_UNIT_INTERFACE *Interface,
     SPD_STORAGE_UNIT **PStorageUnit);

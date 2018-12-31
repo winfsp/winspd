@@ -58,6 +58,7 @@ static void usage(void)
         "usage: %s OPTIONS\n"
         "\n"
         "options:\n"
+        "    -p PipeName\n"
         "    -c BlockCount\n"
         "    -l BlockLength\n"
         "    -i ProductId        [1-16 chars]\n"
@@ -97,6 +98,7 @@ static BOOL WINAPI ConsoleCtrlHandler(DWORD CtrlType)
 int wmain(int argc, wchar_t **argv)
 {
     wchar_t **argp;
+    PWSTR PipeName = 0;
     ULONG BlockCount = 1024 * 1024;
     ULONG BlockLength = 4096;
     PWSTR ProductId = L"RawDisk";
@@ -113,6 +115,9 @@ int wmain(int argc, wchar_t **argv)
         {
         case L'?':
             usage();
+            break;
+        case L'p':
+            PipeName = argtos(++argp);
             break;
         case L'c':
             BlockCount = argtol(++argp, BlockCount);
@@ -142,7 +147,7 @@ int wmain(int argc, wchar_t **argv)
     if (0 == MainEvent)
         fail(GetLastError(), "error: cannot create MainEvent: error %lu", GetLastError());
 
-    Error = RawDiskCreate(RawDiskFile, BlockCount, BlockLength, ProductId, ProductRevision,
+    Error = RawDiskCreate(RawDiskFile, BlockCount, BlockLength, ProductId, ProductRevision, PipeName,
         &RawDisk);
     if (0 != Error)
         fail(Error, "error: cannot create RawDisk: error %lu", Error);

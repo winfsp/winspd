@@ -53,6 +53,7 @@ VOID SpdStorageUnitFinalize(BOOLEAN Dynamic)
 }
 
 DWORD SpdStorageUnitCreate(
+    PWSTR DeviceName,
     const SPD_STORAGE_UNIT_PARAMS *StorageUnitParams,
     const SPD_STORAGE_UNIT_INTERFACE *Interface,
     SPD_STORAGE_UNIT **PStorageUnit)
@@ -82,8 +83,10 @@ DWORD SpdStorageUnitCreate(
     }
     memset(StorageUnit, 0, sizeof *StorageUnit);
 
-    Error = SpdStorageUnitHandleOpen(L"" SPD_IOCTL_HARDWARE_ID, StorageUnitParams,
-        &Handle, &Btl);
+    if (0 == DeviceName)
+        DeviceName = L"" SPD_IOCTL_HARDWARE_ID;
+
+    Error = SpdStorageUnitHandleOpen(DeviceName, StorageUnitParams, &Handle, &Btl);
     if (ERROR_SUCCESS != Error)
         goto exit;
 

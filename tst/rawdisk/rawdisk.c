@@ -156,6 +156,7 @@ static SPD_STORAGE_UNIT_INTERFACE RawDiskInterface =
 
 DWORD RawDiskCreate(PWSTR RawDiskFile,
     UINT64 BlockCount, UINT32 BlockLength, PWSTR ProductId, PWSTR ProductRevision,
+    PWSTR PipeName,
     RAWDISK **PRawDisk)
 {
     RAWDISK *RawDisk = 0;
@@ -247,7 +248,7 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
         goto exit;
     }
 
-    Error = SpdStorageUnitCreate(&StorageUnitParams, &RawDiskInterface, &StorageUnit);
+    Error = SpdStorageUnitCreate(PipeName, &StorageUnitParams, &RawDiskInterface, &StorageUnit);
     if (ERROR_SUCCESS != Error)
         goto exit;
 

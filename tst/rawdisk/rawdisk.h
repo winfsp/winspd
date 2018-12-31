@@ -29,6 +29,7 @@ typedef struct _RAWDISK RAWDISK;
 
 DWORD RawDiskCreate(PWSTR RawDiskFile,
     UINT64 BlockCount, UINT32 BlockLength, PWSTR ProductId, PWSTR ProductRevision,
+    PWSTR PipeName,
     RAWDISK **PRawDisk);
 VOID RawDiskDelete(RAWDISK *RawDisk);
 SPD_STORAGE_UNIT *RawDiskStorageUnit(RAWDISK *RawDisk);
