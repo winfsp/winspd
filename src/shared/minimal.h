@@ -67,10 +67,8 @@
 
 #undef RtlFillMemory
 #undef RtlMoveMemory
-#undef RtlCompareMemory
-NTSYSAPI VOID NTAPI RtlFillMemory(VOID *Destination, SIZE_T Length, BYTE Fill);
-NTSYSAPI VOID NTAPI RtlMoveMemory(VOID *Destination, CONST VOID *Source, SIZE_T Length);
-NTSYSAPI SIZE_T NTAPI RtlCompareMemory(CONST VOID *Destination, CONST VOID *Source, SIZE_T Length);
+NTSYSAPI VOID NTAPI RtlFillMemory(VOID *Destination, DWORD Length, BYTE Fill);
+NTSYSAPI VOID NTAPI RtlMoveMemory(VOID *Destination, CONST VOID *Source, DWORD Length);
 
 #pragma function(memset)
 #pragma function(memcpy)
@@ -91,14 +89,6 @@ void *memmove(void *dst, const void *src, size_t siz)
 {
     RtlMoveMemory(dst, src, (DWORD)siz);
     return dst;
-}
-static inline
-int memcmp(const void *dst, const void *src, size_t siz)
-{
-    SIZE_T equ = RtlCompareMemory(dst, src, siz);
-    if (equ == siz)
-        return 0;
-    return ((PUINT8)dst)[equ] - ((PUINT8)src)[equ];
 }
 
 #define WINSPD_SHARED_MINIMAL_STRCMP(NAME, TYPE, CONV)\

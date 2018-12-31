@@ -267,7 +267,20 @@ static int FillOrTest(PVOID DataBuffer, UINT32 BlockLength, UINT64 BlockAddress,
     return 1;
 }
 
-static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, UINT32 BlockCount)
+static VOID GenRandomBytes(PULONG PSeed, PVOID Buffer, ULONG Size)
+{
+    ULONG Seed = 0 != *PSeed ? *PSeed : 1;
+    for (PUINT8 P = Buffer, EndP = P + Size; EndP > P; P++)
+    {
+        /* see ucrt sources */
+        Seed = Seed * 214013 + 2531011;
+        *P = (UINT8)(Seed >> 16);
+    }
+    *PSeed = Seed;
+}
+
+static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, UINT32 BlockCount,
+    PULONG RandomSeed)
 {
 #define CheckCondition(x)               \
     if (x)                              \
@@ -408,7 +421,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
         if (0 == J)
         {
             if (RandomAddress)
-                RtlGenRandom(&BlockAddress, sizeof BlockAddress);
+                GenRandomBytes(RandomSeed, &BlockAddress, sizeof BlockAddress);
             else
             {
                 BlockAddress += BlockCount;
@@ -416,7 +429,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
             }
 
             if (RandomCount)
-                RtlGenRandom(&BlockCount, sizeof BlockCount);
+                GenRandomBytes(RandomSeed, &BlockCount, sizeof BlockCount);
 
             if (BlockAddress + BlockCount > StorageUnitParams.BlockCount)
                 BlockCount = (UINT32)(StorageUnitParams.BlockCount - BlockAddress);
@@ -459,6 +472,7 @@ int wmain(int argc, wchar_t **argv)
     PWSTR OpSet = L"";
     UINT64 BlockAddress = 0;
     UINT32 BlockCount = 0;
+    ULONG RandomSeed = 0;
     wchar_t *endp;
 
     if (3 > argc || 6 < argc)
@@ -473,7 +487,7 @@ int wmain(int argc, wchar_t **argv)
     if (6 <= argc)
         BlockCount = (UINT32)wcstoint(argv[5], 0, 0, &endp);
 
-    return run(PipeName, OpCount, OpSet, BlockAddress, BlockCount);
+    return run(PipeName, OpCount, OpSet, BlockAddress, BlockCount, &RandomSeed);
 }
 
 void wmainCRTStartup(void)
