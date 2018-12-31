@@ -24,7 +24,7 @@
 
 #define IsPipeHandle(Handle)            (((UINT_PTR)(Handle)) & 1)
 #define GetPipeHandle(Handle)           ((HANDLE)((UINT_PTR)(Handle) & ~1))
-#define SetPipeHandle(PHandle)          (*((UINT_PTR *)(PHandle)) |= 1)
+#define SetPipeHandle(Handle)           ((HANDLE)((UINT_PTR)(Handle) | 1))
 #define GetDeviceHandle(Handle)         (Handle)
 
 #define SPD_INDEX_FROM_BTL(Btl)         SPD_IOCTL_BTL_T(Btl)
@@ -165,7 +165,7 @@ static DWORD SpdStorageUnitHandleOpenPipe(PWSTR Name,
         Error = ERROR_NO_SYSTEM_RESOURCES;
         goto exit;
     }
-    memset(&StorageUnit, 0, sizeof *StorageUnit);
+    memset(StorageUnit, 0, sizeof *StorageUnit);
     memcpy(&StorageUnit->StorageUnitParams, StorageUnitParams, sizeof *StorageUnitParams);
     InitializeSRWLock(&StorageUnit->Lock);
 
@@ -215,7 +215,7 @@ static DWORD SpdStorageUnitHandleOpenPipe(PWSTR Name,
         goto exit;
     }
 
-    *PHandle = Handle;
+    *PHandle = SetPipeHandle(Handle);
     *PBtl = Btl;
     Error = ERROR_SUCCESS;
 

@@ -155,8 +155,11 @@ int wmain(int argc, wchar_t **argv)
     if (0 != Error)
         fail(Error, "error: cannot start RawDisk: error %lu", Error);
 
-    warn("%s -c %lu -l %lu -i %S -r %S -f %S",
-        PROGNAME, BlockCount, BlockLength, ProductId, ProductRevision, RawDiskFile);
+    warn("%s%s%S -c %lu -l %lu -i %S -r %S -f %S",
+        PROGNAME,
+        0 != PipeName ? " -p " : "",
+        0 != PipeName ? PipeName : L"",
+        BlockCount, BlockLength, ProductId, ProductRevision, RawDiskFile);
 
     SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
     if (WAIT_OBJECT_0 != WaitForSingleObject(MainEvent, INFINITE))

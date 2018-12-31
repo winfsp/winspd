@@ -210,7 +210,7 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
     }
 
     Sparse.SetSparse = TRUE;
-    Sparse.SetSparse = DeviceIoControl(RawDiskFile,
+    Sparse.SetSparse = DeviceIoControl(Handle,
         FSCTL_SET_SPARSE, &Sparse, sizeof Sparse, 0, 0, &BytesTransferred, 0);
 
     if (!GetFileSizeEx(Handle, &FileSize))
@@ -261,6 +261,8 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
     RawDisk->Pointer = Pointer;
     RawDisk->Sparse = Sparse.SetSparse;
     StorageUnit->UserContext = RawDisk;
+
+    *PRawDisk = RawDisk;
 
     Error = ERROR_SUCCESS;
 
