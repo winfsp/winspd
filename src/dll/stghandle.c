@@ -47,7 +47,7 @@ typedef struct
     HANDLE Event;
     HANDLE Pipe;
     SRWLOCK Lock;
-    BOOLEAN Connected;
+    LONG Connected;
     HINT_VALUE_ITEM *HashBuckets[61];
 } STORAGE_UNIT;
 
@@ -282,6 +282,7 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
     PVOID DataBuffer)
 {
     STORAGE_UNIT *StorageUnit = Handle;
+    LONG Connected;
     ULONG DataLength;
     TRANSACT_MSG *Msg = 0;
     OVERLAPPED Overlapped;
@@ -320,7 +321,7 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
 
     Error = ERROR_SUCCESS;
     AcquireSRWLockExclusive(&StorageUnit->Lock);
-    if (!StorageUnit->Connected)
+    if (0 >= StorageUnit->Connected)
     {
         Error = WaitOverlappedResult(
             StorageUnit->Event,
@@ -335,7 +336,10 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
                     0, &Overlapped),
                 StorageUnit->Pipe, &Overlapped, &BytesTransferred);
             if (ERROR_SUCCESS == Error)
-                StorageUnit->Connected = TRUE;
+            {
+                StorageUnit->Connected = -StorageUnit->Connected;
+                StorageUnit->Connected++;
+            }
             else
             {
                 DisconnectNamedPipe(StorageUnit->Pipe);
@@ -343,6 +347,7 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
             }
         }
     }
+    Connected = StorageUnit->Connected;
     ReleaseSRWLockExclusive(&StorageUnit->Lock);
     if (ERROR_NO_DATA == Error)
         goto zeroout;
@@ -416,10 +421,10 @@ exit:
 
 disconnect:
     AcquireSRWLockExclusive(&StorageUnit->Lock);
-    if (StorageUnit->Connected)
+    if (Connected == StorageUnit->Connected)
     {
         DisconnectNamedPipe(StorageUnit->Pipe);
-        StorageUnit->Connected = FALSE;
+        StorageUnit->Connected = -StorageUnit->Connected;
     }
     ReleaseSRWLockExclusive(&StorageUnit->Lock);
 
