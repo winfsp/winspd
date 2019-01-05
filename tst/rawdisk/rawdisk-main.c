@@ -58,7 +58,7 @@ static void usage(void)
         "usage: %s OPTIONS\n"
         "\n"
         "options:\n"
-        "    -p PipeName\n"
+        "    -p \\\\.\\pipe\\PipeName\n"
         "    -c BlockCount\n"
         "    -l BlockLength\n"
         "    -i ProductId        [1-16 chars]\n"

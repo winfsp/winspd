@@ -53,7 +53,7 @@ static void printlog(HANDLE h, const char *format, ...)
     va_end(ap);
 }
 
-typedef struct
+typedef union
 {
     SPD_IOCTL_TRANSACT_REQ Req;
     SPD_IOCTL_TRANSACT_RSP Rsp;
@@ -66,6 +66,8 @@ static DWORD StgPipeOpen(PWSTR PipeName, ULONG Timeout,
     DWORD PipeMode;
     DWORD BytesTransferred;
     DWORD Error;
+
+    *PHandle = INVALID_HANDLE_VALUE;
 
     Handle = CreateFileW(PipeName,
         GENERIC_READ | FILE_WRITE_DATA | FILE_WRITE_ATTRIBUTES,
@@ -115,6 +117,8 @@ static DWORD StgPipeOpen(PWSTR PipeName, ULONG Timeout,
         goto exit;
     }
 
+    *PHandle = Handle;
+
     Error = ERROR_SUCCESS;
 
 exit:
@@ -151,19 +155,11 @@ DWORD StgPipeTransact(HANDLE Handle,
     DWORD BytesTransferred;
     DWORD Error;
 
+    memset(&Overlapped, 0, sizeof Overlapped);
+
     if (0 == Req || 0 == Rsp)
     {
         Error = ERROR_INVALID_PARAMETER;
-        goto exit;
-    }
-
-    memset(&Overlapped, 0, sizeof Overlapped);
-
-    Msg = MemAlloc(
-        sizeof(TRANSACT_MSG) + StorageUnitParams->MaxTransferLength);
-    if (0 == Msg)
-    {
-        Error = ERROR_NO_SYSTEM_RESOURCES;
         goto exit;
     }
 
@@ -174,15 +170,23 @@ DWORD StgPipeTransact(HANDLE Handle,
         goto exit;
     }
 
+    Msg = MemAlloc(
+        sizeof(TRANSACT_MSG) + StorageUnitParams->MaxTransferLength);
+    if (0 == Msg)
+    {
+        Error = ERROR_NO_SYSTEM_RESOURCES;
+        goto exit;
+    }
+
     DataLength = 0;
     if (0 != DataBuffer)
         switch (Req->Kind)
         {
         case SpdIoctlTransactWriteKind:
-            DataLength = Msg->Req.Op.Write.BlockCount * StorageUnitParams->BlockLength;
+            DataLength = Req->Op.Write.BlockCount * StorageUnitParams->BlockLength;
             break;
         case SpdIoctlTransactUnmapKind:
-            DataLength = Msg->Req.Op.Unmap.Count * sizeof(SPD_IOCTL_UNMAP_DESCRIPTOR);
+            DataLength = Req->Op.Unmap.Count * sizeof(SPD_IOCTL_UNMAP_DESCRIPTOR);
             break;
         default:
             break;
@@ -209,7 +213,7 @@ DWORD StgPipeTransact(HANDLE Handle,
     }
     if (SpdIoctlTransactReadKind == Msg->Rsp.Kind && SCSISTAT_GOOD == Msg->Rsp.Status.ScsiStatus)
     {
-        DataLength = Msg->Req.Op.Read.BlockCount * StorageUnitParams->BlockLength;
+        DataLength = Req->Op.Read.BlockCount * StorageUnitParams->BlockLength;
         if (DataLength > StorageUnitParams->MaxTransferLength)
         {
             Error = ERROR_IO_DEVICE;
@@ -221,15 +225,15 @@ DWORD StgPipeTransact(HANDLE Handle,
         memcpy(DataBuffer, Msg + 1, BytesTransferred);
         memset((PUINT8)(DataBuffer) + BytesTransferred, 0, DataLength - BytesTransferred);
     }
-    memcpy(Req, &Msg->Req, sizeof *Req);
+    memcpy(Rsp, &Msg->Rsp, sizeof *Rsp);
 
     Error = ERROR_SUCCESS;
 
 exit:
+    MemFree(Msg);
+
     if (0 != Overlapped.hEvent)
         CloseHandle(Overlapped.hEvent);
-
-    MemFree(Msg);
 
     return Error;
 }
@@ -250,7 +254,7 @@ static int FillOrTest(PVOID DataBuffer, UINT32 BlockLength, UINT64 BlockAddress,
     for (ULONG I = 0, N = BlockCount; N > I; I++)
     {
         PUINT64 Buffer = (PVOID)((PUINT8)DataBuffer + I * BlockLength);
-        UINT64 HashAddress = HashMix64(BlockAddress + I);
+        UINT64 HashAddress = HashMix64(BlockAddress + I + 1);
         for (ULONG J = 0, M = BlockLength / 8; M > J; J++)
             if (test)
             {
@@ -281,7 +285,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
     PULONG RandomSeed)
 {
 #define CheckCondition(x)               \
-    if (x)                              \
+    if (!(x))                              \
     {                                   \
         warn("condition fail: %s: A=%x:%x, C=%u",\
             #x, (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, BlockCount);\
@@ -449,13 +453,14 @@ exit:
 static void usage(void)
 {
     warn(
-        "usage: %s [-s seed] pipename opcount [RWFU] [address|*] [count|*]\n"
-        "    -s seed     Seed to use for randomness (default: time)\n"
-        "    pipename    Name of storage unit pipe\n"
-        "    opcount     Operation count\n"
+        "usage: %s [-s Seed] \\\\.\\pipe\\PipeName\\BTL OpCount [RWFU] [Address|*] [Count|*]\n"
+        "    -s Seed     Seed to use for randomness (default: time)\n"
+        "    PipeName    Name of storage unit pipe\n"
+        "    BTL         Bus,Target,Lun (usually 0)\n"
+        "    OpCount     Operation count\n"
         "    RWFU        One or more: R: Read, W: Write, F: Flush, U: Unmap\n"
-        "    address     Starting block address, *: random\n"
-        "    count       Block count per operation, *: random\n"
+        "    Address     Starting block address, *: random\n"
+        "    Count       Block count per operation, *: random\n"
         "",
         PROGNAME);
 

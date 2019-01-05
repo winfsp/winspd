@@ -30,7 +30,7 @@
 #define SetPipeHandle(Handle)           ((HANDLE)((UINT_PTR)(Handle) | 1))
 #define GetDeviceHandle(Handle)         (Handle)
 
-typedef struct
+typedef union
 {
     SPD_IOCTL_TRANSACT_REQ Req;
     SPD_IOCTL_TRANSACT_RSP Rsp;
