@@ -22,34 +22,35 @@
 #include <winspd/winspd.h>
 #include <shared/minimal.h>
 
+#define SPD_INDEX_FROM_BTL(Btl)         SPD_IOCTL_BTL_T(Btl)
+#define SPD_BTL_FROM_INDEX(Idx)         SPD_IOCTL_BTL(0, Idx, 0)
+
 #define IsPipeHandle(Handle)            (((UINT_PTR)(Handle)) & 1)
 #define GetPipeHandle(Handle)           ((HANDLE)((UINT_PTR)(Handle) & ~1))
 #define SetPipeHandle(Handle)           ((HANDLE)((UINT_PTR)(Handle) | 1))
 #define GetDeviceHandle(Handle)         (Handle)
-
-#define SPD_INDEX_FROM_BTL(Btl)         SPD_IOCTL_BTL_T(Btl)
-#define SPD_BTL_FROM_INDEX(Idx)         SPD_IOCTL_BTL(0, Idx, 0)
 
 typedef struct
 {
     SPD_IOCTL_TRANSACT_REQ Req;
     SPD_IOCTL_TRANSACT_RSP Rsp;
 } TRANSACT_MSG;
-
 typedef struct _HINT_VALUE_ITEM
 {
     struct _HINT_VALUE_ITEM *HashNext;
     UINT64 Hint;
     ULONG Value;
 } HINT_VALUE_ITEM;
-
 typedef struct
 {
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
+    HANDLE Event;
+    HANDLE Pipe;
     SRWLOCK Lock;
     BOOLEAN Connected;
     HINT_VALUE_ITEM *HashBuckets[61];
 } STORAGE_UNIT;
+
 static SRWLOCK StorageUnitLock = SRWLOCK_INIT;
 STORAGE_UNIT **StorageUnits;
 
@@ -133,11 +134,10 @@ static DWORD SpdStorageUnitHandleOpenPipe(PWSTR Name,
     const SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams,
     PHANDLE PHandle, PUINT32 PBtl)
 {
-    HANDLE Handle = INVALID_HANDLE_VALUE;
     UINT32 Btl = (UINT32)-1;
     STORAGE_UNIT *StorageUnit = 0;
     STORAGE_UNIT *DuplicateUnit = 0;
-    WCHAR PathBuf[1024];
+    WCHAR PipeNameBuf[1024];
     DWORD Error;
 
     *PHandle = INVALID_HANDLE_VALUE;
@@ -147,16 +147,13 @@ static DWORD SpdStorageUnitHandleOpenPipe(PWSTR Name,
 
     if (0 == StorageUnits)
     {
-        StorageUnits = MemAlloc(
-            sizeof *StorageUnits * SPD_IOCTL_STORAGE_UNIT_MAX_CAPACITY);
+        StorageUnits = MemAlloc(sizeof *StorageUnits * SPD_IOCTL_STORAGE_UNIT_MAX_CAPACITY);
         if (0 == StorageUnits)
         {
             Error = ERROR_NO_SYSTEM_RESOURCES;
             goto exit;
         }
-
-        memset(StorageUnits, 0,
-            sizeof *StorageUnits * SPD_IOCTL_STORAGE_UNIT_MAX_CAPACITY);
+        memset(StorageUnits, 0, sizeof *StorageUnits * SPD_IOCTL_STORAGE_UNIT_MAX_CAPACITY);
     }
 
     StorageUnit = MemAlloc(sizeof *StorageUnit);
@@ -167,6 +164,7 @@ static DWORD SpdStorageUnitHandleOpenPipe(PWSTR Name,
     }
     memset(StorageUnit, 0, sizeof *StorageUnit);
     memcpy(&StorageUnit->StorageUnitParams, StorageUnitParams, sizeof *StorageUnitParams);
+    StorageUnit->Pipe = INVALID_HANDLE_VALUE;
     InitializeSRWLock(&StorageUnit->Lock);
 
     for (ULONG I = 0; SPD_IOCTL_STORAGE_UNIT_MAX_CAPACITY > I; I++)
@@ -199,8 +197,15 @@ static DWORD SpdStorageUnitHandleOpenPipe(PWSTR Name,
         goto exit;
     }
 
-    wsprintfW(PathBuf, L"%s\\%u", Name, (unsigned)SPD_INDEX_FROM_BTL(Btl));
-    Handle = CreateNamedPipeW(PathBuf,
+    StorageUnit->Event = CreateEventW(0, TRUE, FALSE, 0);
+    if (0 == StorageUnit->Event)
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    wsprintfW(PipeNameBuf, L"%s\\%u", Name, (unsigned)SPD_INDEX_FROM_BTL(Btl));
+    StorageUnit->Pipe = CreateNamedPipeW(PipeNameBuf,
         PIPE_ACCESS_DUPLEX |
             FILE_FLAG_FIRST_PIPE_INSTANCE | FILE_FLAG_WRITE_THROUGH | FILE_FLAG_OVERLAPPED,
         PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
@@ -209,23 +214,31 @@ static DWORD SpdStorageUnitHandleOpenPipe(PWSTR Name,
         sizeof(TRANSACT_MSG) + StorageUnit->StorageUnitParams.MaxTransferLength,
         60 * 60 * 1000,
         0);
-    if (INVALID_HANDLE_VALUE == Handle)
+    if (INVALID_HANDLE_VALUE == StorageUnit->Pipe)
     {
         Error = GetLastError();
         goto exit;
     }
 
-    *PHandle = SetPipeHandle(Handle);
+    *PHandle = SetPipeHandle(StorageUnit);
     *PBtl = Btl;
+
     Error = ERROR_SUCCESS;
 
 exit:
     if (ERROR_SUCCESS != Error)
     {
-        if (0 == DuplicateUnit&& -1 != Btl)
+        if (0 == DuplicateUnit && -1 != Btl)
             StorageUnits[SPD_INDEX_FROM_BTL(Btl)] = 0;
 
-        MemFree(StorageUnit);
+        if (0 != StorageUnit)
+        {
+            if (INVALID_HANDLE_VALUE != StorageUnit->Pipe)
+                CloseHandle(StorageUnit->Pipe);
+            if (0 != StorageUnit->Event)
+                CloseHandle(StorageUnit->Event);
+            MemFree(StorageUnit);
+        }
     }
 
     ReleaseSRWLockExclusive(&StorageUnitLock);
@@ -233,25 +246,42 @@ exit:
     return Error;
 }
 
-static inline DWORD WaitOverlappedResult(BOOL Success,
+static inline DWORD WaitOverlappedResult(HANDLE StopEvent, BOOL Success,
     HANDLE Handle, OVERLAPPED *Overlapped, PDWORD PBytesTransferred)
 {
+    HANDLE WaitObjects[2];
+    DWORD WaitResult;
+
     if (!Success && ERROR_IO_PENDING != GetLastError())
         return GetLastError();
 
-    if (!GetOverlappedResult(Handle, Overlapped, PBytesTransferred, TRUE))
+    WaitObjects[0] = StopEvent;
+    WaitObjects[1] = Overlapped->hEvent;
+    WaitResult = WaitForMultipleObjects(2, WaitObjects, FALSE, INFINITE);
+    if (WAIT_OBJECT_0 == WaitResult)
+    {
+        CancelIoEx(Handle, Overlapped);
+        GetOverlappedResult(Handle, Overlapped, PBytesTransferred, TRUE);
+        return ERROR_OPERATION_ABORTED;
+    }
+    else if (WAIT_OBJECT_0 + 1 == WaitResult)
+    {
+        if (!GetOverlappedResult(Handle, Overlapped, PBytesTransferred, TRUE))
+            return GetLastError();
+    }
+    else
         return GetLastError();
 
     return ERROR_SUCCESS;
 }
 
-DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
+static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
     UINT32 Btl,
     SPD_IOCTL_TRANSACT_RSP *Rsp,
     SPD_IOCTL_TRANSACT_REQ *Req,
     PVOID DataBuffer)
 {
-    STORAGE_UNIT *StorageUnit;
+    STORAGE_UNIT *StorageUnit = Handle;
     ULONG DataLength;
     TRANSACT_MSG *Msg = 0;
     OVERLAPPED Overlapped;
@@ -260,24 +290,19 @@ DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
 
     memset(&Overlapped, 0, sizeof Overlapped);
 
-    AcquireSRWLockShared(&StorageUnitLock);
-
-    StorageUnit = StorageUnits[SPD_INDEX_FROM_BTL(Btl)];
-    if (0 == StorageUnit ||
-        (0 == Req && 0 == Rsp) ||
+    if ((0 == Req && 0 == Rsp) ||
         (0 != Req && 0 == DataBuffer))
     {
         Error = ERROR_INVALID_PARAMETER;
         goto exit;
     }
 
-    Msg = MemAlloc(
-        sizeof(TRANSACT_MSG) + StorageUnit->StorageUnitParams.MaxTransferLength);
-    if (0 == Msg)
-    {
-        Error = ERROR_NO_SYSTEM_RESOURCES;
+    AcquireSRWLockShared(&StorageUnitLock);
+    Error = StorageUnit == StorageUnits[SPD_INDEX_FROM_BTL(Btl)] ?
+        ERROR_SUCCESS : ERROR_FILE_NOT_FOUND;
+    ReleaseSRWLockShared(&StorageUnitLock);
+    if (ERROR_SUCCESS != Error)
         goto exit;
-    }
 
     Overlapped.hEvent = CreateEventW(0, TRUE, TRUE, 0);
     if (0 == Overlapped.hEvent)
@@ -286,16 +311,25 @@ DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
         goto exit;
     }
 
+    Msg = MemAlloc(sizeof(TRANSACT_MSG) + StorageUnit->StorageUnitParams.MaxTransferLength);
+    if (0 == Msg)
+    {
+        Error = ERROR_NO_SYSTEM_RESOURCES;
+        goto exit;
+    }
+
     Error = ERROR_SUCCESS;
     AcquireSRWLockExclusive(&StorageUnit->Lock);
     if (!StorageUnit->Connected)
     {
         Error = WaitOverlappedResult(
+            StorageUnit->Event,
             ConnectNamedPipe(Handle, &Overlapped),
             Handle, &Overlapped, &BytesTransferred);
         if (ERROR_SUCCESS == Error || ERROR_PIPE_CONNECTED == Error)
         {
             Error = WaitOverlappedResult(
+                StorageUnit->Event,
                 WriteFile(Handle,
                     &StorageUnit->StorageUnitParams, sizeof StorageUnit->StorageUnitParams,
                     0, &Overlapped),
@@ -323,6 +357,7 @@ DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
         if (0 != DataLength)
             memcpy(Msg + 1, DataBuffer, DataLength);
         Error = WaitOverlappedResult(
+            StorageUnit->Event,
             WriteFile(Handle, Msg, sizeof(TRANSACT_MSG) + DataLength, 0, &Overlapped),
             Handle, &Overlapped, &BytesTransferred);
         if (ERROR_SUCCESS != Error)
@@ -332,6 +367,7 @@ DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
     if (0 != Req)
     {
         Error = WaitOverlappedResult(
+            StorageUnit->Event,
             ReadFile(Handle,
                 Msg, sizeof(TRANSACT_MSG) + StorageUnit->StorageUnitParams.MaxTransferLength, 0, &Overlapped),
             Handle, &Overlapped, &BytesTransferred);
@@ -371,12 +407,10 @@ DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
     Error = ERROR_SUCCESS;
 
 exit:
-    if (0 != Overlapped.hEvent)
-        CloseHandle(Overlapped.hEvent);
-
     MemFree(Msg);
 
-    ReleaseSRWLockShared(&StorageUnitLock);
+    if (0 != Overlapped.hEvent)
+        CloseHandle(Overlapped.hEvent);
 
     return Error;
 
@@ -397,9 +431,10 @@ zeroout:
     goto exit;
 }
 
-DWORD SpdStorageUnitHandleShutdownPipe(HANDLE Handle,
+static DWORD SpdStorageUnitHandleShutdownPipe(HANDLE Handle,
     const GUID *Guid)
 {
+    STORAGE_UNIT *StorageUnit = Handle;
     ULONG Index = -1;
     DWORD Error;
 
@@ -417,7 +452,7 @@ DWORD SpdStorageUnitHandleShutdownPipe(HANDLE Handle,
             break;
         }
     }
-    if (-1 != Index)
+    if (-1 != Index && StorageUnit == StorageUnits[Index])
         StorageUnits[Index] = 0;
     else
     {
@@ -425,7 +460,7 @@ DWORD SpdStorageUnitHandleShutdownPipe(HANDLE Handle,
         goto exit;
     }
 
-    DisconnectNamedPipe(Handle);
+    SetEvent(StorageUnit->Event);
 
     Error = ERROR_SUCCESS;
 
@@ -433,6 +468,17 @@ exit:
     ReleaseSRWLockExclusive(&StorageUnitLock);
 
     return Error;
+}
+
+static DWORD SpdStorageUnitHandleClosePipe(HANDLE Handle)
+{
+    STORAGE_UNIT *StorageUnit = Handle;
+
+    CloseHandle(StorageUnit->Pipe);
+    CloseHandle(StorageUnit->Event);
+    MemFree(StorageUnit);
+
+    return ERROR_SUCCESS;
 }
 
 static DWORD SpdStorageUnitHandleOpenDevice(PWSTR Name,
@@ -510,7 +556,7 @@ DWORD SpdStorageUnitHandleShutdown(HANDLE Handle,
 DWORD SpdStorageUnitHandleClose(HANDLE Handle)
 {
     if (IsPipeHandle(Handle))
-        return CloseHandle(GetPipeHandle(Handle)) ? 0 : GetLastError();
+        return SpdStorageUnitHandleClosePipe(GetPipeHandle(Handle));
     else
         return CloseHandle(GetDeviceHandle(Handle)) ? 0 : GetLastError();
 }
