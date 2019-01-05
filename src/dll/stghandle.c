@@ -324,21 +324,21 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
     {
         Error = WaitOverlappedResult(
             StorageUnit->Event,
-            ConnectNamedPipe(Handle, &Overlapped),
-            Handle, &Overlapped, &BytesTransferred);
+            ConnectNamedPipe(StorageUnit->Pipe, &Overlapped),
+            StorageUnit->Pipe, &Overlapped, &BytesTransferred);
         if (ERROR_SUCCESS == Error || ERROR_PIPE_CONNECTED == Error)
         {
             Error = WaitOverlappedResult(
                 StorageUnit->Event,
-                WriteFile(Handle,
+                WriteFile(StorageUnit->Pipe,
                     &StorageUnit->StorageUnitParams, sizeof StorageUnit->StorageUnitParams,
                     0, &Overlapped),
-                Handle, &Overlapped, &BytesTransferred);
+                StorageUnit->Pipe, &Overlapped, &BytesTransferred);
             if (ERROR_SUCCESS == Error)
                 StorageUnit->Connected = TRUE;
             else
             {
-                DisconnectNamedPipe(Handle);
+                DisconnectNamedPipe(StorageUnit->Pipe);
                 Error = ERROR_NO_DATA;
             }
         }
@@ -358,8 +358,8 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
             memcpy(Msg + 1, DataBuffer, DataLength);
         Error = WaitOverlappedResult(
             StorageUnit->Event,
-            WriteFile(Handle, Msg, sizeof(TRANSACT_MSG) + DataLength, 0, &Overlapped),
-            Handle, &Overlapped, &BytesTransferred);
+            WriteFile(StorageUnit->Pipe, Msg, sizeof(TRANSACT_MSG) + DataLength, 0, &Overlapped),
+            StorageUnit->Pipe, &Overlapped, &BytesTransferred);
         if (ERROR_SUCCESS != Error)
             goto disconnect;
     }
@@ -368,9 +368,9 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
     {
         Error = WaitOverlappedResult(
             StorageUnit->Event,
-            ReadFile(Handle,
+            ReadFile(StorageUnit->Pipe,
                 Msg, sizeof(TRANSACT_MSG) + StorageUnit->StorageUnitParams.MaxTransferLength, 0, &Overlapped),
-            Handle, &Overlapped, &BytesTransferred);
+            StorageUnit->Pipe, &Overlapped, &BytesTransferred);
         if (ERROR_SUCCESS != Error)
             goto disconnect;
 
@@ -418,7 +418,7 @@ disconnect:
     AcquireSRWLockExclusive(&StorageUnit->Lock);
     if (StorageUnit->Connected)
     {
-        DisconnectNamedPipe(Handle);
+        DisconnectNamedPipe(StorageUnit->Pipe);
         StorageUnit->Connected = FALSE;
     }
     ReleaseSRWLockExclusive(&StorageUnit->Lock);
