@@ -158,7 +158,10 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
             goto exit;
 
         if (0 == Request->Hint)
+        {
+            Response = 0;
             continue;
+        }
 
         if (StorageUnit->DebugLog)
         {
