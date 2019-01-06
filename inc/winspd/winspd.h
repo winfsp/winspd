@@ -172,6 +172,12 @@ VOID SpdStorageUnitSetDispatcherError(SPD_STORAGE_UNIT *StorageUnit,
         return;
     InterlockedCompareExchange(&StorageUnit->DispatcherError, DispatcherError, ERROR_SUCCESS);
 }
+static inline
+VOID SpdStorageUnitSetDebugLog(SPD_STORAGE_UNIT *StorageUnit,
+    UINT32 DebugLog)
+{
+    StorageUnit->DebugLog = DebugLog;
+}
 
 /*
  * Helpers

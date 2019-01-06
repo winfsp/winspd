@@ -75,7 +75,7 @@ static ULONG argtol(wchar_t **argp, ULONG deflt)
 
     long long wcstoint(const wchar_t *p, int base, int is_signed, const wchar_t **endp);
     wchar_t *endp;
-    ULONG ul = (ULONG)wcstoint(argp[0], 10, 0, &endp);
+    ULONG ul = (ULONG)wcstoint(argp[0], 10, 1, &endp);
     return L'\0' != argp[0][0] && L'\0' == *endp ? ul : deflt;
 }
 
@@ -105,6 +105,9 @@ int wmain(int argc, wchar_t **argv)
     PWSTR ProductRevision = L"1.0";
     PWSTR RawDiskFile = 0;
     RAWDISK *RawDisk = 0;
+    ULONG DebugFlags = 0;
+    PWSTR DebugLogFile = 0;
+    HANDLE DebugLogHandle = INVALID_HANDLE_VALUE;
     DWORD Error;
 
     for (argp = argv + 1; 0 != argp[0]; argp++)
@@ -134,6 +137,12 @@ int wmain(int argc, wchar_t **argv)
         case L'f':
             RawDiskFile = argtos(++argp);
             break;
+        case L'd':
+            DebugFlags = argtol(++argp, DebugFlags);
+            break;
+        case L'D':
+            DebugLogFile = argtos(++argp);
+            break;
         default:
             usage();
             break;
@@ -142,6 +151,25 @@ int wmain(int argc, wchar_t **argv)
 
     if (0 != argp[0] || 0 == RawDiskFile)
         usage();
+
+    if (0 != DebugLogFile)
+    {
+        if (L'-' == DebugLogFile[0] && L'\0' == DebugLogFile[1])
+            DebugLogHandle = GetStdHandle(STD_ERROR_HANDLE);
+        else
+            DebugLogHandle = CreateFileW(
+                DebugLogFile,
+                FILE_APPEND_DATA,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                0,
+                OPEN_ALWAYS,
+                FILE_ATTRIBUTE_NORMAL,
+                0);
+        if (INVALID_HANDLE_VALUE == DebugLogHandle)
+            fail(GetLastError(), "error: cannot open debug log file");
+
+        SpdDebugLogSetHandle(DebugLogHandle);
+    }
 
     MainEvent = CreateEvent(0, TRUE, FALSE, 0);
     if (0 == MainEvent)
@@ -154,6 +182,8 @@ int wmain(int argc, wchar_t **argv)
     Error = SpdStorageUnitStartDispatcher(RawDiskStorageUnit(RawDisk), 2);
     if (0 != Error)
         fail(Error, "error: cannot start RawDisk: error %lu", Error);
+
+    SpdStorageUnitSetDebugLog(RawDiskStorageUnit(RawDisk), DebugFlags);
 
     warn("%s%s%S -c %lu -l %lu -i %S -r %S -f %S",
         PROGNAME,

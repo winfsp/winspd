@@ -45,7 +45,7 @@ static BOOL WINAPI SpdDiagIdentInitialize(
             break;
         }
         else if (L'\\' == *P)
-            ModuleBaseName = P;
+            ModuleBaseName = P + 1;
         else if (L'.' == *P)
             Dot = P;
     }
