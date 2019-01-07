@@ -95,7 +95,7 @@ VOID SpdDebugLogRequest(SPD_IOCTL_TRANSACT_REQ *Request)
     switch (Request->Kind)
     {
     case SpdIoctlTransactReadKind:
-        SpdDebugLog("%S[TID=%04lx]: %p: >>Read "
+        SpdDebugLog("%S[TID=%04lx]: %p: >>Read  "
             "BlockAddress=%lx:%lx, BlockCount=%u, ForceUnitAccess=%u\n",
             SpdDiagIdent(), GetCurrentThreadId(), (PVOID)Request->Hint,
             MAKE_UINT32_PAIR(Request->Op.Read.BlockAddress),
@@ -124,7 +124,7 @@ VOID SpdDebugLogRequest(SPD_IOCTL_TRANSACT_REQ *Request)
             (unsigned)Request->Op.Unmap.Count);
         break;
     default:
-        SpdDebugLog("%S[TID=%04lx]: %p: >>INVALID\n",
+        SpdDebugLog("%S[TID=%04lx]: %p: >>INVLD\n",
             SpdDiagIdent(), GetCurrentThreadId(), (PVOID)Request->Hint);
         break;
     }
@@ -220,7 +220,7 @@ VOID SpdDebugLogResponse(SPD_IOCTL_TRANSACT_RSP *Response)
     switch (Response->Kind)
     {
     case SpdIoctlTransactReadKind:
-        SpdDebugLogResponseStatus(Response, "Read");
+        SpdDebugLogResponseStatus(Response, "Read ");
         break;
     case SpdIoctlTransactWriteKind:
         SpdDebugLogResponseStatus(Response, "Write");
@@ -232,7 +232,7 @@ VOID SpdDebugLogResponse(SPD_IOCTL_TRANSACT_RSP *Response)
         SpdDebugLogResponseStatus(Response, "Unmap");
         break;
     default:
-        SpdDebugLogResponseStatus(Response, "INVALID");
+        SpdDebugLogResponseStatus(Response, "INVLD");
         break;
     }
 }

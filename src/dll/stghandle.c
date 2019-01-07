@@ -405,6 +405,19 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
             memcpy(DataBuffer, Msg + 1, BytesTransferred);
             memset((PUINT8)(DataBuffer) + BytesTransferred, 0, DataLength - BytesTransferred);
         }
+        else if (SpdIoctlTransactUnmapKind == Msg->Req.Kind)
+        {
+            DataLength = Msg->Req.Op.Unmap.Count *
+                sizeof(SPD_IOCTL_UNMAP_DESCRIPTOR);
+            if (DataLength > StorageUnit->StorageUnitParams.MaxTransferLength)
+                goto zeroout;
+
+            BytesTransferred -= sizeof(TRANSACT_MSG);
+            if (BytesTransferred > DataLength)
+                BytesTransferred = DataLength;
+            memcpy(DataBuffer, Msg + 1, BytesTransferred);
+            memset((PUINT8)(DataBuffer) + BytesTransferred, 0, DataLength - BytesTransferred);
+        }
 
         memcpy(Req, &Msg->Req, sizeof *Req);
     }
