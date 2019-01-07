@@ -440,9 +440,11 @@ static UCHAR SpdScsiPostRangeSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
         ULONG DataTransferLength = SrbGetDataTransferLength(Srb);
 
         if (0 == DataBuffer ||
-            DataTransferLength < (DataLength = BlockCount * StorageUnit->StorageUnitParams.BlockLength) ||
-            DataLength > StorageUnit->StorageUnitParams.MaxTransferLength)
+            DataTransferLength < (DataLength = BlockCount * StorageUnit->StorageUnitParams.BlockLength))
             return SRB_STATUS_INTERNAL_ERROR;
+
+        if (DataLength > StorageUnit->StorageUnitParams.MaxTransferLength)
+            return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_CDB);
     }
 
     if (0 == BlockCount)
@@ -466,9 +468,11 @@ static UCHAR SpdScsiPostUnmapSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
     if (0 == DataBuffer ||
         DataTransferLength < sizeof(UNMAP_LIST_HEADER) ||
         DataTransferLength < sizeof(UNMAP_LIST_HEADER) + (DataLength =
-            ((ULONG)DataBuffer->BlockDescrDataLength[0] << 8) | (ULONG)DataBuffer->BlockDescrDataLength[1]) ||
-        DataLength > StorageUnit->StorageUnitParams.MaxTransferLength)
+            ((ULONG)DataBuffer->BlockDescrDataLength[0] << 8) | (ULONG)DataBuffer->BlockDescrDataLength[1]))
         return SRB_STATUS_INTERNAL_ERROR;
+
+    if (DataLength > StorageUnit->StorageUnitParams.MaxTransferLength)
+        return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_FIELD_PARAMETER_LIST);
 
     if (Cdb->UNMAP.Anchor)
         return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_CDB);
