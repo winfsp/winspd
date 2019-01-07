@@ -298,6 +298,38 @@ static int inquiry_vpd83(int argc, wchar_t **argv)
     return ScsiDataInAndPrint(argc, argv, &Cdb, VPD_MAX_BUFFER_SIZE, Format);
 }
 
+static int inquiry_vpdb0(int argc, wchar_t **argv)
+{
+    CDB Cdb;
+    const char *Format;
+
+    memset(&Cdb, 0, sizeof Cdb);
+    Cdb.CDB6INQUIRY3.OperationCode = SCSIOP_INQUIRY;
+    Cdb.CDB6INQUIRY3.EnableVitalProductData = 1;
+    Cdb.CDB6INQUIRY3.PageCode = 0xb0;
+    Cdb.CDB6INQUIRY3.AllocationLength = VPD_MAX_BUFFER_SIZE;
+
+    Format =
+        "u3  PERIPHERAL QUALIFIER\n"
+        "u5  PERIPHERAL DEVICE TYPE\n"
+        "u8  PAGE CODE (B0h)\n"
+        "u16 PAGE LENGTH (003Ch)\n"
+        "u8  Reserved\n"
+        "u8  MAXIMUM COMPARE AND WRITE LENGTH\n"
+        "u16 OPTIMAL TRANSFER LENGTH GRANULARITY\n"
+        "u32 MAXIMUM TRANSFER LENGTH\n"
+        "u32 OPTIMAL TRANSFER LENGTH\n"
+        "u32 MAXIMUM PREFETCH XDREAD XDWRITE TRANSFER LENGTH\n"
+        "u32 MAXIMUM UNMAP LBA COUNT\n"
+        "u32 MAXIMUM UNMAP BLOCK DESCRIPTOR COUNT\n"
+        "u32 OPTIMAL UNMAP GRANULARITY\n"
+        "u1  UGAVALID\n"
+        "u31 UNMAP GRANULARITY ALIGNMENT\n"
+        "X28 Reserved\n";
+
+    return ScsiDataInAndPrint(argc, argv, &Cdb, VPD_MAX_BUFFER_SIZE, Format);
+}
+
 static int report_luns(int argc, wchar_t **argv)
 {
     CDB Cdb;
@@ -329,6 +361,7 @@ static void usage(void)
         "    vpd0 device-name [b:t:l]\n"
         "    vpd80 device-name [b:t:l]\n"
         "    vpd83 device-name [b:t:l]\n"
+        "    vpdb0 device-name [b:t:l]\n"
         "",
         PROGNAME);
 }
@@ -360,6 +393,9 @@ int wmain(int argc, wchar_t **argv)
     else
     if (0 == invariant_wcscmp(L"vpd83", argv[0]))
         Error = inquiry_vpd83(argc, argv);
+    else
+    if (0 == invariant_wcscmp(L"vpdb0", argv[0]))
+        Error = inquiry_vpdb0(argc, argv);
     else
         usage();
 
