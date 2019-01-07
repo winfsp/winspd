@@ -417,11 +417,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
         switch (Rsp.Kind)
         {
         case SpdIoctlTransactReadKind:
-            if (SpdIoctlTransactReservedKind == TestOpKind)
-            {
-                /* unknown buffer state: anything goes! */
-            }
-            else if (SpdIoctlTransactWriteKind == TestOpKind)
+            if (SpdIoctlTransactWriteKind == TestOpKind)
             {
                 /* test buffer after Write */
                 if (!FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, BlockCount,
