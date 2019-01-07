@@ -249,21 +249,27 @@ static inline UINT64 HashMix64(UINT64 k)
 }
 
 static int FillOrTest(PVOID DataBuffer, UINT32 BlockLength, UINT64 BlockAddress, UINT32 BlockCount,
-    int test)
+    UINT8 FillOrTestOpKind)
 {
     for (ULONG I = 0, N = BlockCount; N > I; I++)
     {
         PUINT64 Buffer = (PVOID)((PUINT8)DataBuffer + I * BlockLength);
         UINT64 HashAddress = HashMix64(BlockAddress + I + 1);
         for (ULONG J = 0, M = BlockLength / 8; M > J; J++)
-            if (test)
+            if (SpdIoctlTransactReservedKind == FillOrTestOpKind)
+                /* fill buffer */
+                Buffer[J] = HashAddress;
+            else if (SpdIoctlTransactWriteKind == FillOrTestOpKind)
             {
+                /* test buffer for Write */
                 if (Buffer[J] != HashAddress)
                     return 0;
             }
-            else
+            else if (SpdIoctlTransactUnmapKind == FillOrTestOpKind)
             {
-                Buffer[J] = HashAddress;
+                /* test buffer for Unmap */
+                if (Buffer[J] != 0)
+                    return 0;
             }
     }
     return 1;
@@ -300,6 +306,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
     PVOID DataBuffer = 0;
     UINT8 OpKinds[32];
     ULONG OpKindCount;
+    UINT8 TestOpKind;
     BOOLEAN RandomAddress, RandomCount;
     UINT32 MaxBlockCount;
     DWORD ThreadId;
@@ -362,6 +369,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
 
     ThreadId = GetCurrentThreadId();
 
+    TestOpKind = SpdIoctlTransactReservedKind;
     for (ULONG I = 0, J = 0; OpCount > I; I++)
     {
         memset(&Req, 0, sizeof Req);
@@ -381,6 +389,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
             Req.Op.Write.BlockCount = BlockCount;
             Req.Op.Write.ForceUnitAccess = 0;
             FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, BlockCount, 0);
+            TestOpKind = SpdIoctlTransactWriteKind;
             break;
         case SpdIoctlTransactFlushKind:
             Req.Op.Flush.BlockAddress = BlockAddress;
@@ -391,6 +400,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
             ((SPD_IOCTL_UNMAP_DESCRIPTOR *)DataBuffer)->BlockAddress = BlockAddress;
             ((SPD_IOCTL_UNMAP_DESCRIPTOR *)DataBuffer)->BlockCount = BlockCount;
             ((SPD_IOCTL_UNMAP_DESCRIPTOR *)DataBuffer)->Reserved = 0;
+            TestOpKind = SpdIoctlTransactUnmapKind;
             break;
         }
 
@@ -407,12 +417,33 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
         switch (Rsp.Kind)
         {
         case SpdIoctlTransactReadKind:
-            if (!FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, BlockCount, 1))
+            if (SpdIoctlTransactReservedKind == TestOpKind)
             {
-                warn("bad Read buffer: A=%x:%x, C=%u",
-                    (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, BlockCount);
-                Error = ERROR_IO_DEVICE;
-                goto exit;
+                /* unknown buffer state: anything goes! */
+            }
+            else if (SpdIoctlTransactWriteKind == TestOpKind)
+            {
+                /* test buffer after Write */
+                if (!FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, BlockCount,
+                    SpdIoctlTransactWriteKind))
+                {
+                    warn("bad Read buffer after Write: A=%x:%x, C=%u",
+                        (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, BlockCount);
+                    Error = ERROR_IO_DEVICE;
+                    goto exit;
+                }
+            }
+            else if (SpdIoctlTransactUnmapKind == TestOpKind)
+            {
+                /* test buffer after Unmap */
+                if (!FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, BlockCount,
+                    SpdIoctlTransactUnmapKind))
+                {
+                    warn("bad Read buffer after Unmap: A=%x:%x, C=%u",
+                        (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, BlockCount);
+                    Error = ERROR_IO_DEVICE;
+                    goto exit;
+                }
             }
             break;
         }
@@ -435,6 +466,8 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
 
             if (BlockAddress + BlockCount > StorageUnitParams.BlockCount)
                 BlockCount = (UINT32)(StorageUnitParams.BlockCount - BlockAddress);
+
+            TestOpKind = SpdIoctlTransactReservedKind;
         }
     }
 
