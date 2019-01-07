@@ -330,6 +330,36 @@ static int inquiry_vpdb0(int argc, wchar_t **argv)
     return ScsiDataInAndPrint(argc, argv, &Cdb, VPD_MAX_BUFFER_SIZE, Format);
 }
 
+static int inquiry_vpdb2(int argc, wchar_t **argv)
+{
+    CDB Cdb;
+    const char *Format;
+
+    memset(&Cdb, 0, sizeof Cdb);
+    Cdb.CDB6INQUIRY3.OperationCode = SCSIOP_INQUIRY;
+    Cdb.CDB6INQUIRY3.EnableVitalProductData = 1;
+    Cdb.CDB6INQUIRY3.PageCode = 0xb2;
+    Cdb.CDB6INQUIRY3.AllocationLength = VPD_MAX_BUFFER_SIZE;
+
+    Format =
+        "u3  PERIPHERAL QUALIFIER\n"
+        "u5  PERIPHERAL DEVICE TYPE\n"
+        "u8  PAGE CODE (B2h)\n"
+        "u16 PAGE LENGTH (n-3)\n"
+        "u8  THRESHOLD EXPONENT\n"
+        "u1  LBPU\n"
+        "u1  LBPWS\n"
+        "u4  Reserved\n"
+        "u1  ANC_SUP\n"
+        "u1  DP\n"
+        "u5  Reserved\n"
+        "u3  PROVISIONING TYPE\n"
+        "u8  Reserved\n"
+        "X255 PROVISIONING GROUP DESCRIPTOR\n";
+
+    return ScsiDataInAndPrint(argc, argv, &Cdb, VPD_MAX_BUFFER_SIZE, Format);
+}
+
 static int report_luns(int argc, wchar_t **argv)
 {
     CDB Cdb;
@@ -396,6 +426,9 @@ int wmain(int argc, wchar_t **argv)
     else
     if (0 == invariant_wcscmp(L"vpdb0", argv[0]))
         Error = inquiry_vpdb0(argc, argv);
+    else
+    if (0 == invariant_wcscmp(L"vpdb2", argv[0]))
+        Error = inquiry_vpdb2(argc, argv);
     else
         usage();
 
