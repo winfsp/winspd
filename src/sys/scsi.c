@@ -25,6 +25,8 @@ static UCHAR SpdScsiReportLuns(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageU
     PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
     PVOID Srb, PCDB Cdb);
+static UCHAR SpdScsiModeSense(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
+    PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiReadCapacity(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
     PVOID Srb, PCDB Cdb);
 static UCHAR SpdScsiPostRangeSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
@@ -75,6 +77,11 @@ UCHAR SpdSrbExecuteScsi(PVOID DeviceExtension, PVOID Srb)
 
     case SCSIOP_INQUIRY:
         SrbStatus = SpdScsiInquiry(DeviceExtension, StorageUnit, Srb, Cdb);
+        break;
+
+    case SCSIOP_MODE_SENSE:
+    case SCSIOP_MODE_SENSE10:
+        SrbStatus = SpdScsiModeSense(DeviceExtension, StorageUnit, Srb, Cdb);
         break;
 
     case SCSIOP_READ_CAPACITY:
@@ -356,6 +363,76 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
             return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_CDB);
         }
     }
+}
+
+static UCHAR SpdScsiModeSense(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
+    PVOID Srb, PCDB Cdb)
+{
+    PVOID DataBuffer = SrbGetDataBuffer(Srb);
+    ULONG DataTransferLength = SrbGetDataTransferLength(Srb);
+
+    if (0 == DataBuffer)
+        return SRB_STATUS_INTERNAL_ERROR;
+
+    RtlZeroMemory(DataBuffer, DataTransferLength);
+
+    PMODE_CACHING_PAGE ModeCachingPage;
+    ULONG DataLength;
+    if (SCSIOP_MODE_SENSE == Cdb->AsByte[0])
+    {
+        /* MODE SENSE (6) */
+        if (MODE_SENSE_CHANGEABLE_VALUES == Cdb->MODE_SENSE.Pc ||
+            (MODE_PAGE_CACHING != Cdb->MODE_SENSE.PageCode &&
+            MODE_SENSE_RETURN_ALL != Cdb->MODE_SENSE.PageCode))
+            return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_CDB);
+
+        DataLength = sizeof(MODE_PARAMETER_HEADER) + sizeof(MODE_CACHING_PAGE);
+        if (DataLength > DataTransferLength)
+            return SRB_STATUS_DATA_OVERRUN;
+
+        PMODE_PARAMETER_HEADER ModeParameterHeader = DataBuffer;
+        ModeCachingPage = (PVOID)(ModeParameterHeader + 1);
+
+        ModeParameterHeader->ModeDataLength = (UCHAR)(DataLength -
+            RTL_SIZEOF_THROUGH_FIELD(MODE_PARAMETER_HEADER, ModeDataLength));
+        ModeParameterHeader->MediumType = 0;
+        ModeParameterHeader->DeviceSpecificParameter = MODE_DSP_FUA_SUPPORTED;
+        ModeParameterHeader->BlockDescriptorLength = 0;
+    }
+    else
+    {
+        /* MODE SENSE (10) */
+        if (MODE_SENSE_CHANGEABLE_VALUES == Cdb->MODE_SENSE10.Pc ||
+            (MODE_PAGE_CACHING != Cdb->MODE_SENSE10.PageCode &&
+            MODE_SENSE_RETURN_ALL != Cdb->MODE_SENSE10.PageCode))
+            return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_CDB);
+
+        DataLength = sizeof(MODE_PARAMETER_HEADER) + sizeof(MODE_CACHING_PAGE);
+        if (DataLength > DataTransferLength)
+            return SRB_STATUS_DATA_OVERRUN;
+
+        PMODE_PARAMETER_HEADER10 ModeParameterHeader = DataBuffer;
+        ModeCachingPage = (PVOID)(ModeParameterHeader + 1);
+
+        ModeParameterHeader->ModeDataLength[0] = 0;
+        ModeParameterHeader->ModeDataLength[1] = (UCHAR)(DataLength -
+            RTL_SIZEOF_THROUGH_FIELD(MODE_PARAMETER_HEADER10, ModeDataLength));
+        ModeParameterHeader->MediumType = 0;
+        ModeParameterHeader->DeviceSpecificParameter = MODE_DSP_FUA_SUPPORTED;
+        ModeParameterHeader->BlockDescriptorLength[0] = 0;
+        ModeParameterHeader->BlockDescriptorLength[1] = 0;
+    }
+
+    ModeCachingPage->PageCode = MODE_PAGE_CACHING;
+    ModeCachingPage->PageSavable = 0;
+    ModeCachingPage->PageLength = sizeof(MODE_CACHING_PAGE) -
+        RTL_SIZEOF_THROUGH_FIELD(MODE_CACHING_PAGE, PageLength);
+    ModeCachingPage->ReadDisableCache = 0;
+    ModeCachingPage->WriteCacheEnable = 1;
+
+    SrbSetDataTransferLength(Srb, DataLength);
+
+    return SRB_STATUS_SUCCESS;
 }
 
 static UCHAR SpdScsiReadCapacity(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
