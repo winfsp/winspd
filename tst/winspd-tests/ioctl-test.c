@@ -260,6 +260,8 @@ static unsigned __stdcall ioctl_transact_read_test_thread(void *Data)
     if (ERROR_SUCCESS != Error)
         goto exit;
 
+    SpdIoctlScsiInquiry(DeviceHandle, Btl, 0, 3000);
+
     memset(&Cdb, 0, sizeof Cdb);
     Cdb.READ16.OperationCode = SCSIOP_READ16;
     Cdb.READ16.LogicalBlock[7] = 7;
@@ -386,6 +388,8 @@ static unsigned __stdcall ioctl_transact_write_test_thread(void *Data)
     if (ERROR_SUCCESS != Error)
         goto exit;
 
+    SpdIoctlScsiInquiry(DeviceHandle, Btl, 0, 3000);
+
     memset(&Cdb, 0, sizeof Cdb);
     Cdb.WRITE16.OperationCode = SCSIOP_WRITE16;
     Cdb.WRITE16.LogicalBlock[7] = 7;
@@ -506,6 +510,8 @@ static unsigned __stdcall ioctl_transact_flush_test_thread(void *Data)
     if (ERROR_SUCCESS != Error)
         goto exit;
 
+    SpdIoctlScsiInquiry(DeviceHandle, Btl, 0, 3000);
+
     memset(&Cdb, 0, sizeof Cdb);
     Cdb.SYNCHRONIZE_CACHE16.OperationCode = SCSIOP_SYNCHRONIZE_CACHE16;
     Cdb.SYNCHRONIZE_CACHE16.LogicalBlock[7] = 7;
@@ -622,6 +628,8 @@ static unsigned __stdcall ioctl_transact_unmap_test_thread(void *Data)
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
     if (ERROR_SUCCESS != Error)
         goto exit;
+
+    SpdIoctlScsiInquiry(DeviceHandle, Btl, 0, 3000);
 
     memset(&Cdb, 0, sizeof Cdb);
     Cdb.UNMAP.OperationCode = SCSIOP_UNMAP;
@@ -754,6 +762,8 @@ static unsigned __stdcall ioctl_transact_error_test_thread(void *Data)
     if (ERROR_SUCCESS != Error)
         goto exit;
 
+    SpdIoctlScsiInquiry(DeviceHandle, Btl, 0, 3000);
+
     memset(&Cdb, 0, sizeof Cdb);
     Cdb.READ16.OperationCode = SCSIOP_READ16;
     Cdb.READ16.LogicalBlock[7] = 7;
@@ -877,6 +887,8 @@ static unsigned __stdcall ioctl_transact_cancel_test_thread(void *Data)
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
     if (ERROR_SUCCESS != Error)
         goto exit;
+
+    SpdIoctlScsiInquiry(DeviceHandle, Btl, 0, 3000);
 
     memset(&Cdb, 0, sizeof Cdb);
     Cdb.READ16.OperationCode = SCSIOP_READ16;
@@ -1013,9 +1025,6 @@ static void ioctl_process_death_test(void)
     Success = CreateProcessW(FileName, CommandLine, 0, 0, TRUE, 0, 0, 0, &StartupInfo, &ProcessInfo);
     ASSERT(Success);
 
-    CloseHandle(Stdout);
-    CloseHandle(Stderr);
-
     WaitResult = WaitForSingleObject(ProcessInfo.hProcess, 3000);
     ASSERT(WAIT_OBJECT_0 == WaitResult);
 
@@ -1024,6 +1033,9 @@ static void ioctl_process_death_test(void)
 
     CloseHandle(ProcessInfo.hThread);
     CloseHandle(ProcessInfo.hProcess);
+
+    CloseHandle(Stdout);
+    CloseHandle(Stderr);
 
     HANDLE DeviceHandle;
     UINT32 BtlBuf[256];
