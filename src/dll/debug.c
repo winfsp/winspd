@@ -96,7 +96,7 @@ VOID SpdDebugLogRequest(SPD_IOCTL_TRANSACT_REQ *Request)
     {
     case SpdIoctlTransactReadKind:
         SpdDebugLog("%S[TID=%04lx]: %p: >>Read  "
-            "BlockAddress=%lx:%lx, BlockCount=%u, ForceUnitAccess=%u\n",
+            "BlockAddress=%lx:%lx, BlockCount=%u, FUA=%u\n",
             SpdDiagIdent(), GetCurrentThreadId(), (PVOID)Request->Hint,
             MAKE_UINT32_PAIR(Request->Op.Read.BlockAddress),
             (unsigned)Request->Op.Read.BlockCount,
@@ -104,7 +104,7 @@ VOID SpdDebugLogRequest(SPD_IOCTL_TRANSACT_REQ *Request)
         break;
     case SpdIoctlTransactWriteKind:
         SpdDebugLog("%S[TID=%04lx]: %p: >>Write "
-            "BlockAddress=%lx:%lx, BlockCount=%u, ForceUnitAccess=%u\n",
+            "BlockAddress=%lx:%lx, BlockCount=%u, FUA=%u\n",
             SpdDiagIdent(), GetCurrentThreadId(), (PVOID)Request->Hint,
             MAKE_UINT32_PAIR(Request->Op.Write.BlockAddress),
             (unsigned)Request->Op.Write.BlockCount,
