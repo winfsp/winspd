@@ -94,6 +94,7 @@ exit /b 0
 
 :rawdisk-stgpipe-x64
 start "" /b rawdisk-x64 -p \\.\pipe\rawdisk -f test.disk
+waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
 stgpipe-x64 \\.\pipe\rawdisk\0 10000 WRUR * *
 if !ERRORLEVEL! neq 0 goto fail
 taskkill /f /im rawdisk-x64.exe
@@ -103,6 +104,7 @@ exit /b 0
 
 :rawdisk-stgpipe-x86
 start "" /b rawdisk-x86 -p \\.\pipe\rawdisk -f test.disk
+waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
 stgpipe-x86 \\.\pipe\rawdisk\0 10000 WRUR * *
 if !ERRORLEVEL! neq 0 goto fail
 taskkill /f /im rawdisk-x86.exe
