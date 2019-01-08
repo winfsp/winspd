@@ -83,12 +83,12 @@ exit /b 0
 exit /b 1
 
 :winspd-tests-x64
-winspd-tests-x64 +*
+winspd-tests-x64 *
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :winspd-tests-x86
-winspd-tests-x86 +*
+winspd-tests-x86 *
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
