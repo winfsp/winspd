@@ -294,7 +294,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
     if (!(x))                              \
     {                                   \
         warn("condition fail: %s: A=%x:%x, C=%u",\
-            #x, (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, BlockCount);\
+            #x, (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, OpBlockCount);\
         Error = ERROR_IO_DEVICE;        \
         goto exit;                      \
     }                                   \
@@ -308,7 +308,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
     ULONG OpKindCount;
     UINT8 TestOpKind;
     BOOLEAN RandomAddress, RandomCount;
-    UINT32 MaxBlockCount;
+    UINT32 MaxBlockCount, OpBlockCount;
     DWORD ThreadId;
     DWORD Error;
 
@@ -354,24 +354,36 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
     }
 
     RandomAddress = -1 == BlockAddress;
-    if (!RandomAddress)
-        BlockAddress %= StorageUnitParams.BlockCount;
-
     RandomCount = -1 == BlockCount;
     MaxBlockCount = StorageUnitParams.MaxTransferLength / StorageUnitParams.BlockLength;
-    if (!RandomCount)
-    {
-        if (BlockCount == 0)
-            BlockCount = 1;
-        else if (BlockCount > MaxBlockCount)
-            BlockCount = MaxBlockCount;
-    }
-
     ThreadId = GetCurrentThreadId();
 
-    TestOpKind = SpdIoctlTransactReservedKind;
     for (ULONG I = 0, J = 0; OpCount > I; I++)
     {
+        if (0 == J)
+        {
+            if (RandomAddress)
+                GenRandomBytes(RandomSeed, &BlockAddress, sizeof BlockAddress);
+            else if (0 != I)
+                BlockAddress += BlockCount;
+            BlockAddress %= StorageUnitParams.BlockCount;
+
+            if (RandomCount)
+            {
+                GenRandomBytes(RandomSeed, &BlockCount, sizeof BlockCount);
+                BlockCount %= MaxBlockCount;
+            }
+            else if (BlockCount > MaxBlockCount)
+                BlockCount = MaxBlockCount;
+            if (BlockCount == 0)
+                BlockCount = 1;
+
+            OpBlockCount = BlockAddress + BlockCount <= StorageUnitParams.BlockCount ?
+                BlockCount : (UINT32)(StorageUnitParams.BlockCount - BlockAddress);
+
+            TestOpKind = SpdIoctlTransactReservedKind;
+        }
+
         memset(&Req, 0, sizeof Req);
         memset(&Rsp, 0, sizeof Rsp);
 
@@ -381,24 +393,24 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
         {
         case SpdIoctlTransactReadKind:
             Req.Op.Read.BlockAddress = BlockAddress;
-            Req.Op.Read.BlockCount = BlockCount;
+            Req.Op.Read.BlockCount = OpBlockCount;
             Req.Op.Read.ForceUnitAccess = 0;
             break;
         case SpdIoctlTransactWriteKind:
             Req.Op.Write.BlockAddress = BlockAddress;
-            Req.Op.Write.BlockCount = BlockCount;
+            Req.Op.Write.BlockCount = OpBlockCount;
             Req.Op.Write.ForceUnitAccess = 0;
-            FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, BlockCount, 0);
+            FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, OpBlockCount, 0);
             TestOpKind = SpdIoctlTransactWriteKind;
             break;
         case SpdIoctlTransactFlushKind:
             Req.Op.Flush.BlockAddress = BlockAddress;
-            Req.Op.Flush.BlockCount = BlockCount;
+            Req.Op.Flush.BlockCount = OpBlockCount;
             break;
         case SpdIoctlTransactUnmapKind:
             Req.Op.Unmap.Count = 1;
             ((SPD_IOCTL_UNMAP_DESCRIPTOR *)DataBuffer)->BlockAddress = BlockAddress;
-            ((SPD_IOCTL_UNMAP_DESCRIPTOR *)DataBuffer)->BlockCount = BlockCount;
+            ((SPD_IOCTL_UNMAP_DESCRIPTOR *)DataBuffer)->BlockCount = OpBlockCount;
             ((SPD_IOCTL_UNMAP_DESCRIPTOR *)DataBuffer)->Reserved = 0;
             TestOpKind = SpdIoctlTransactUnmapKind;
             break;
@@ -420,11 +432,11 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
             if (SpdIoctlTransactWriteKind == TestOpKind)
             {
                 /* test buffer after Write */
-                if (!FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, BlockCount,
+                if (!FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, OpBlockCount,
                     SpdIoctlTransactWriteKind))
                 {
                     warn("bad Read buffer after Write: A=%x:%x, C=%u",
-                        (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, BlockCount);
+                        (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, OpBlockCount);
                     Error = ERROR_IO_DEVICE;
                     goto exit;
                 }
@@ -432,11 +444,11 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
             else if (SpdIoctlTransactUnmapKind == TestOpKind)
             {
                 /* test buffer after Unmap */
-                if (!FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, BlockCount,
+                if (!FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, OpBlockCount,
                     SpdIoctlTransactUnmapKind))
                 {
                     warn("bad Read buffer after Unmap: A=%x:%x, C=%u",
-                        (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, BlockCount);
+                        (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, OpBlockCount);
                     Error = ERROR_IO_DEVICE;
                     goto exit;
                 }
@@ -446,25 +458,6 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
 
         J++;
         J %= OpKindCount;
-
-        if (0 == J)
-        {
-            if (RandomAddress)
-                GenRandomBytes(RandomSeed, &BlockAddress, sizeof BlockAddress);
-            else
-            {
-                BlockAddress += BlockCount;
-                BlockAddress %= StorageUnitParams.BlockCount;
-            }
-
-            if (RandomCount)
-                GenRandomBytes(RandomSeed, &BlockCount, sizeof BlockCount);
-
-            if (BlockAddress + BlockCount > StorageUnitParams.BlockCount)
-                BlockCount = (UINT32)(StorageUnitParams.BlockCount - BlockAddress);
-
-            TestOpKind = SpdIoctlTransactReservedKind;
-        }
     }
 
     Error = ERROR_SUCCESS;

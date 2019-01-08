@@ -100,7 +100,7 @@ int wmain(int argc, wchar_t **argv)
     wchar_t **argp;
     PWSTR PipeName = 0;
     ULONG BlockCount = 1024 * 1024;
-    ULONG BlockLength = 4096;
+    ULONG BlockLength = 512;
     PWSTR ProductId = L"RawDisk";
     PWSTR ProductRevision = L"1.0";
     PWSTR RawDiskFile = 0;
