@@ -534,7 +534,9 @@ int wmain(int argc, wchar_t **argv)
         BlockCount = L'*' == argv[4][0] && L'\0' == argv[4][1] ?
             -1 : (UINT32)wcstoint(argv[4], 0, 0, &endp);
 
-    char BlockAddressStr[64] = "*", BlockCountStr[64] = "*";
+    char BlockAddressStr[64], BlockCountStr[64];
+    BlockAddressStr[0] = BlockCountStr[0] = '*';
+    BlockAddressStr[1] = BlockCountStr[1] = '\0';
     if (-1 != BlockAddress)
         wsprintfA(BlockAddressStr, "%x:%x", (UINT32)(BlockAddress >> 32), BlockAddress);
     if (-1 != BlockCount)
