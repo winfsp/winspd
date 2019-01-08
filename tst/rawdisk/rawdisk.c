@@ -176,7 +176,7 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
     UuidCreate(&StorageUnitParams.Guid);
     StorageUnitParams.BlockCount = BlockCount;
     StorageUnitParams.BlockLength = BlockLength;
-    StorageUnitParams.MaxTransferLength = 16 * BlockLength;
+    StorageUnitParams.MaxTransferLength = 64 * 1024;
     if (0 == WideCharToMultiByte(CP_UTF8, 0,
         ProductId, lstrlenW(ProductId),
         StorageUnitParams.ProductId, sizeof StorageUnitParams.ProductId,
