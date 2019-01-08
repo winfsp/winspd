@@ -54,6 +54,7 @@ enum
     spd_debug_dp_ioctl                  = 0x00100000,   /* ioctl functions DbgPrint switch */
     spd_debug_dp_io                     = 0x00200000,   /* io functions DbgPrint switch */
     spd_debug_dp_srb                    = 0x80000000,   /* srb completion DbgPrint switch */
+    spd_debug_dp_srberr                 = 0x40000000,   /* srb error completion DbgPrint switch */
     spd_debug_dp                        = 0xffff0000,
 };
 extern __declspec(selectany) int spd_debug =
@@ -82,13 +83,14 @@ const char *SrbStringize(PVOID Srb, char Buffer[], size_t Size);
 
 /* DEBUGLOG */
 #if DBG
-#define DEBUGLOG_EX(category, fmt, ...) \
-    ((void)((spd_debug & spd_debug_dp_ ## category) ?\
+#define DEBUGLOG_COND(cond, fmt, ...)   \
+    ((void)((cond) ?\
         DbgPrint("[%d] " DRIVER_NAME "!" __FUNCTION__ ": " fmt "\n", KeGetCurrentIrql(), __VA_ARGS__) :\
         0))
 #else
-#define DEBUGLOG_EX(category, fmt, ...) ((void)0)
+#define DEBUGLOG_COND(cond, fmt, ...)   ((void)0)
 #endif
+#define DEBUGLOG_EX(category, fmt, ...) DEBUGLOG_COND(spd_debug & spd_debug_dp_ ## category, fmt, __VA_ARGS__)
 #define DEBUGLOG(fmt, ...)              DEBUGLOG_EX(generic, fmt, __VA_ARGS__)
 
 /* SPD_ENTER/SPD_LEAVE */
@@ -185,12 +187,15 @@ HW_STARTIO SpdHwStartIo;
 /* I/O */
 FORCEINLINE VOID SpdSrbComplete(PVOID DeviceExtension, PVOID Srb, UCHAR SrbStatus)
 {
-    ASSERT(SRB_STATUS_PENDING != SrbStatus);
+    ASSERT(SRB_STATUS_PENDING != SRB_STATUS(SrbStatus));
     SrbSetSrbStatus(Srb, SrbStatus);
 #if DBG
     {
         char buf[1024];
-        DEBUGLOG_EX(srb, "%p, Srb=%p {%s}", DeviceExtension, Srb, SrbStringize(Srb, buf, sizeof buf));
+        DEBUGLOG_COND(
+            (spd_debug & spd_debug_dp_srb) ||
+                ((SRB_STATUS_SUCCESS != SRB_STATUS(SrbStatus)) && (spd_debug & spd_debug_dp_srberr)),
+            "%p, Srb=%p {%s}", DeviceExtension, Srb, SrbStringize(Srb, buf, sizeof buf));
     }
 #endif
     StorPortNotification(RequestComplete, DeviceExtension, Srb);
