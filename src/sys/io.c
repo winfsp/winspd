@@ -167,7 +167,44 @@ UCHAR SpdSrbShutdown(PVOID DeviceExtension, PVOID Srb)
 
 UCHAR SpdSrbPnp(PVOID DeviceExtension, PVOID Srb)
 {
-    return SRB_STATUS_INVALID_REQUEST;
+    /*
+     * This function assumes use of SCSI_REQUEST_BLOCK and SCSI_PNP_REQUEST_BLOCK.
+     * Revisit if/when we switch to STORAGE_REQUEST_BLOCK.
+     */
+
+    PSCSI_PNP_REQUEST_BLOCK PnP = Srb;
+    UCHAR SrbStatus = SRB_STATUS_INVALID_REQUEST;
+
+    switch (PnP->PnPAction)
+    {
+    case StorQueryCapabilities:
+        if (!FlagOn(PnP->SrbPnPFlags, SRB_PNP_FLAGS_ADAPTER_REQUEST))
+        {
+            PVOID DataBuffer = SrbGetDataBuffer(Srb);
+            ULONG DataTransferLength = SrbGetDataTransferLength(Srb);
+
+            if (0 == DataBuffer ||
+                sizeof(STOR_DEVICE_CAPABILITIES) > DataTransferLength)
+                break;
+
+            PSTOR_DEVICE_CAPABILITIES DeviceCapabilities = DataBuffer;
+            DeviceCapabilities->DeviceD1 = 0;
+            DeviceCapabilities->DeviceD2 = 0;
+            DeviceCapabilities->LockSupported = 0;
+            DeviceCapabilities->EjectSupported = 0;
+            DeviceCapabilities->Removable = 0;
+            DeviceCapabilities->DockDevice = 0;
+            DeviceCapabilities->UniqueID = 0;
+            DeviceCapabilities->SilentInstall = 1;
+            DeviceCapabilities->SurpriseRemovalOK = 0;
+            DeviceCapabilities->NoDisplayInUI = 0;
+
+            SrbStatus = SRB_STATUS_SUCCESS;
+        }
+        break;
+    }
+
+    return SrbStatus;
 }
 
 UCHAR SpdSrbWmi(PVOID DeviceExtension, PVOID Srb)
