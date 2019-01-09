@@ -290,7 +290,7 @@ static DWORD StgOpenRaw(PWSTR Name, ULONG Timeout,
         goto exit;
     }
     ReadCapacityData = (PVOID)DataBuffer;
-    StorageUnitParams->BlockCount = 1 +
+    StorageUnitParams->BlockCount = 1 + (
         ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[0] << 56) |
         ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[1] << 48) |
         ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[2] << 40) |
@@ -298,7 +298,7 @@ static DWORD StgOpenRaw(PWSTR Name, ULONG Timeout,
         ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[4] << 24) |
         ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[5] << 16) |
         ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[6] << 8) |
-        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[7]);
+        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[7]));
     StorageUnitParams->BlockLength =
         (((PUINT8)&ReadCapacityData->BytesPerBlock)[0] << 24) |
         (((PUINT8)&ReadCapacityData->BytesPerBlock)[1] << 16) |
@@ -321,11 +321,11 @@ static DWORD StgOpenRaw(PWSTR Name, ULONG Timeout,
         goto exit;
     }
     BlockLimits = (PVOID)DataBuffer;
-    StorageUnitParams->MaxTransferLength = StorageUnitParams->BlockLength *
+    StorageUnitParams->MaxTransferLength = StorageUnitParams->BlockLength * (
         (BlockLimits->MaximumTransferLength[0] << 24) |
         (BlockLimits->MaximumTransferLength[1] << 16) |
         (BlockLimits->MaximumTransferLength[2] << 8) |
-        (BlockLimits->MaximumTransferLength[3]);
+        (BlockLimits->MaximumTransferLength[3]));
     if (0 == StorageUnitParams->MaxTransferLength)
         StorageUnitParams->MaxTransferLength = 64 * 1024;
 
