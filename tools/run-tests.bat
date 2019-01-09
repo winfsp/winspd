@@ -138,8 +138,11 @@ exit /b 0
 
 :diskpart-partition
 echo select disk %1                     > %TMP%\diskpart.script
+echo attribute disk clear readonly noerr>>%TMP%\diskpart.script
+echo online disk noerr                  >>%TMP%\diskpart.script
 echo clean                              >>%TMP%\diskpart.script
 echo create partition primary           >>%TMP%\diskpart.script
+echo assign letter R                    >>%TMP%\diskpart.script
 echo exit                               >>%TMP%\diskpart.script
 diskpart /s %TMP%\diskpart.script
 if !ERRORLEVEL! neq 0 goto fail
