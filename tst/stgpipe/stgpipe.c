@@ -246,12 +246,38 @@ exit:
 static DWORD StgOpenRaw(PWSTR Name, ULONG Timeout,
     PHANDLE PHandle, SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams)
 {
+    typedef struct _FILE_FS_SIZE_INFORMATION
+    {
+        LARGE_INTEGER TotalAllocationUnits;
+        LARGE_INTEGER AvailableAllocationUnits;
+        ULONG SectorsPerAllocationUnit;
+        ULONG BytesPerSector;
+    } FILE_FS_SIZE_INFORMATION, *PFILE_FS_SIZE_INFORMATION;
+    typedef struct _IO_STATUS_BLOCK
+    {
+        union
+        {
+            NTSTATUS Status;
+            PVOID Pointer;
+        } DUMMYUNIONNAME;
+        ULONG_PTR Information;
+    } IO_STATUS_BLOCK, *PIO_STATUS_BLOCK;
+    NTSTATUS NTAPI NtQueryVolumeInformationFile(
+        HANDLE FileHandle,
+        PIO_STATUS_BLOCK IoStatusBlock,
+        PVOID FsInformation,
+        ULONG Length,
+        int FsInformationClass);
+    ULONG NTAPI RtlNtStatusToDosError(
+        NTSTATUS Status);
+
     HANDLE Handle = INVALID_HANDLE_VALUE;
+    FILE_FS_SIZE_INFORMATION FsSizeInfo;
+    IO_STATUS_BLOCK IoStatus;
     UINT32 Btl = 0;
     CDB Cdb;
     UINT8 DataBuffer[255];
     UINT32 DataLength;
-    PREAD_CAPACITY16_DATA ReadCapacityData;
     PVPD_BLOCK_LIMITS_PAGE BlockLimits;
     UCHAR ScsiStatus;
     union
@@ -275,35 +301,17 @@ static DWORD StgOpenRaw(PWSTR Name, ULONG Timeout,
         goto exit;
     }
 
-    memset(&Cdb, 0, sizeof Cdb);
-    Cdb.READ_CAPACITY16.OperationCode = SCSIOP_SERVICE_ACTION_IN16;
-    Cdb.READ_CAPACITY16.ServiceAction = SERVICE_ACTION_READ_CAPACITY16;
-    Cdb.READ_CAPACITY16.AllocationLength[3] = 255;
-    DataLength = sizeof DataBuffer;
-    Error = SpdIoctlScsiExecute(Handle, Btl, &Cdb, +1, DataBuffer, &DataLength,
-        &ScsiStatus, Sense.Buffer);
-    if (ERROR_SUCCESS != Error)
-        goto exit;
-    if (SCSISTAT_GOOD != ScsiStatus)
+    IoStatus.Status = NtQueryVolumeInformationFile(Handle,
+        &IoStatus, &FsSizeInfo, sizeof FsSizeInfo, 3/*FileFsSizeInformation*/);
+    if (0 > IoStatus.Status)
     {
-        Error = ERROR_IO_DEVICE;
+        Error = RtlNtStatusToDosError(IoStatus.Status);
         goto exit;
     }
-    ReadCapacityData = (PVOID)DataBuffer;
-    StorageUnitParams->BlockCount = 1 + (
-        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[0] << 56) |
-        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[1] << 48) |
-        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[2] << 40) |
-        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[3] << 32) |
-        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[4] << 24) |
-        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[5] << 16) |
-        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[6] << 8) |
-        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[7]));
+    StorageUnitParams->BlockCount =
+        FsSizeInfo.TotalAllocationUnits.QuadPart * FsSizeInfo.SectorsPerAllocationUnit;
     StorageUnitParams->BlockLength =
-        (((PUINT8)&ReadCapacityData->BytesPerBlock)[0] << 24) |
-        (((PUINT8)&ReadCapacityData->BytesPerBlock)[1] << 16) |
-        (((PUINT8)&ReadCapacityData->BytesPerBlock)[2] << 8) |
-        (((PUINT8)&ReadCapacityData->BytesPerBlock)[3]);
+        FsSizeInfo.BytesPerSector;
 
     memset(&Cdb, 0, sizeof Cdb);
     Cdb.CDB6INQUIRY3.OperationCode = SCSIOP_INQUIRY;
