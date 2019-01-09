@@ -30,6 +30,18 @@
 #define GLOBAL                          L"\\\\?\\"
 #define GLOBALROOT                      L"\\\\?\\GLOBALROOT"
 
+static inline DWORD WaitOverlappedResult(BOOL Success,
+    HANDLE Handle, OVERLAPPED *Overlapped, PDWORD PBytesTransferred)
+{
+    if (!Success && ERROR_IO_PENDING != GetLastError())
+        return GetLastError();
+
+    if (!GetOverlappedResult(Handle, Overlapped, PBytesTransferred, TRUE))
+        return GetLastError();
+
+    return ERROR_SUCCESS;
+}
+
 static DWORD GetDevicePathByHardwareId(GUID *ClassGuid, PWSTR HardwareId,
     PWCHAR PathBuf, UINT32 PathBufSize)
 {
@@ -203,8 +215,11 @@ DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
         __declspec(align(16)) UCHAR SenseInfoBuffer[32];
     } SCSI_PASS_THROUGH_DIRECT_DATA;
     SCSI_PASS_THROUGH_DIRECT_DATA Scsi;
+    OVERLAPPED Overlapped;
     DWORD BytesTransferred;
     DWORD Error;
+
+    memset(&Overlapped, 0, sizeof Overlapped);
 
     memset(&Scsi, 0, sizeof Scsi);
     Scsi.Base.Length = sizeof Scsi.Base;
@@ -242,14 +257,21 @@ DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
     Scsi.Base.SenseInfoOffset = FIELD_OFFSET(SCSI_PASS_THROUGH_DIRECT_DATA, SenseInfoBuffer);
     memcpy(Scsi.Base.Cdb, Cdb, sizeof Scsi.Base.Cdb);
 
-    if (!DeviceIoControl(DeviceHandle, IOCTL_SCSI_PASS_THROUGH_DIRECT,
-        &Scsi, sizeof Scsi,
-        &Scsi, sizeof Scsi,
-        &BytesTransferred, 0))
+    Overlapped.hEvent = CreateEventW(0, TRUE, TRUE, 0);
+    if (0 == Overlapped.hEvent)
     {
         Error = GetLastError();
         goto exit;
     }
+
+    Error = WaitOverlappedResult(
+        DeviceIoControl(DeviceHandle, IOCTL_SCSI_PASS_THROUGH_DIRECT,
+            &Scsi, sizeof Scsi,
+            &Scsi, sizeof Scsi,
+            0, &Overlapped),
+        DeviceHandle, &Overlapped, &BytesTransferred);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
 
     if (0 != PDataLength)
         *PDataLength = Scsi.Base.DataTransferLength;
@@ -263,6 +285,9 @@ DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
     Error = ERROR_SUCCESS;
 
 exit:
+    if (0 != Overlapped.hEvent)
+        CloseHandle(Overlapped.hEvent);
+
     return Error;
 }
 
