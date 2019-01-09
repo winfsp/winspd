@@ -360,6 +360,30 @@ static int inquiry_vpdb2(int argc, wchar_t **argv)
     return ScsiDataInAndPrint(argc, argv, &Cdb, VPD_MAX_BUFFER_SIZE, Format);
 }
 
+static int inquiry_mode_sense(int argc, wchar_t **argv)
+{
+    CDB Cdb;
+    const char *Format;
+
+    memset(&Cdb, 0, sizeof Cdb);
+    Cdb.MODE_SENSE.OperationCode = SCSIOP_MODE_SENSE;
+    Cdb.MODE_SENSE.Pc = MODE_SENSE_CURRENT_VALUES;
+    Cdb.MODE_SENSE.PageCode = MODE_SENSE_RETURN_ALL;
+    Cdb.MODE_SENSE.AllocationLength = 255;
+
+    Format =
+        "u8  MODE DATA LENGTH (n-0)\n"
+        "u8  MEDIUM TYPE\n"
+        "u1  WP\n"
+        "u2  Reserved\n"
+        "u1  DPOFUA\n"
+        "u4  Reserved\n"
+        "u8  BLOCK DESCRIPTOR LENGTH\n"
+        "X255 BLOCK DESCRIPTORS AND MODE PAGES\n";
+
+    return ScsiDataInAndPrint(argc, argv, &Cdb, 255, Format);
+}
+
 static int report_luns(int argc, wchar_t **argv)
 {
     CDB Cdb;
@@ -393,6 +417,7 @@ static void usage(void)
         "    vpd83 device-name [b:t:l]\n"
         "    vpdb0 device-name [b:t:l]\n"
         "    vpdb2 device-name [b:t:l]\n"
+        "    mode-sense device-name [b:t:l]\n"
         "",
         PROGNAME);
 }
@@ -430,6 +455,9 @@ int wmain(int argc, wchar_t **argv)
     else
     if (0 == invariant_wcscmp(L"vpdb2", argv[0]))
         Error = inquiry_vpdb2(argc, argv);
+    else
+    if (0 == invariant_wcscmp(L"mode-sense", argv[0]))
+        Error = inquiry_mode_sense(argc, argv);
     else
         usage();
 
