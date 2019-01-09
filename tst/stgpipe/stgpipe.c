@@ -53,13 +53,30 @@ static void printlog(HANDLE h, const char *format, ...)
     va_end(ap);
 }
 
+#define IsPipeHandle(Handle)            (((UINT_PTR)(Handle)) & 1)
+#define GetPipeHandle(Handle)           ((HANDLE)((UINT_PTR)(Handle) & ~1))
+#define SetPipeHandle(Handle)           ((HANDLE)((UINT_PTR)(Handle) | 1))
+#define GetRawHandle(Handle)            (Handle)
+
 typedef union
 {
     SPD_IOCTL_TRANSACT_REQ Req;
     SPD_IOCTL_TRANSACT_RSP Rsp;
 } TRANSACT_MSG;
 
-static DWORD StgPipeOpen(PWSTR PipeName, ULONG Timeout,
+static inline DWORD WaitOverlappedResult(BOOL Success,
+    HANDLE Handle, OVERLAPPED *Overlapped, PDWORD PBytesTransferred)
+{
+    if (!Success && ERROR_IO_PENDING != GetLastError())
+        return GetLastError();
+
+    if (!GetOverlappedResult(Handle, Overlapped, PBytesTransferred, TRUE))
+        return GetLastError();
+
+    return ERROR_SUCCESS;
+}
+
+static DWORD StgOpenPipe(PWSTR PipeName, ULONG Timeout,
     PHANDLE PHandle, SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams)
 {
     HANDLE Handle = INVALID_HANDLE_VALUE;
@@ -117,7 +134,7 @@ static DWORD StgPipeOpen(PWSTR PipeName, ULONG Timeout,
         goto exit;
     }
 
-    *PHandle = Handle;
+    *PHandle = SetPipeHandle(Handle);
 
     Error = ERROR_SUCCESS;
 
@@ -131,19 +148,7 @@ exit:
     return Error;
 }
 
-static inline DWORD WaitOverlappedResult(BOOL Success,
-    HANDLE Handle, OVERLAPPED *Overlapped, PDWORD PBytesTransferred)
-{
-    if (!Success && ERROR_IO_PENDING != GetLastError())
-        return GetLastError();
-
-    if (!GetOverlappedResult(Handle, Overlapped, PBytesTransferred, TRUE))
-        return GetLastError();
-
-    return ERROR_SUCCESS;
-}
-
-DWORD StgPipeTransact(HANDLE Handle,
+static DWORD StgTransactPipe(HANDLE Handle,
     SPD_IOCTL_TRANSACT_REQ *Req,
     SPD_IOCTL_TRANSACT_RSP *Rsp,
     PVOID DataBuffer,
@@ -238,6 +243,218 @@ exit:
     return Error;
 }
 
+static DWORD StgOpenRaw(PWSTR Name, ULONG Timeout,
+    PHANDLE PHandle, SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams)
+{
+    HANDLE Handle = INVALID_HANDLE_VALUE;
+    UINT32 Btl = 0;
+    CDB Cdb;
+    UINT8 DataBuffer[255];
+    UINT32 DataLength;
+    PREAD_CAPACITY16_DATA ReadCapacityData;
+    PVPD_BLOCK_LIMITS_PAGE BlockLimits;
+    UCHAR ScsiStatus;
+    union
+    {
+        SENSE_DATA Data;
+        UCHAR Buffer[32];
+    } Sense;
+    DWORD Error;
+
+    *PHandle = INVALID_HANDLE_VALUE;
+    memset(StorageUnitParams, 0, sizeof *StorageUnitParams);
+
+    Handle = CreateFileW(Name,
+        GENERIC_READ | GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE, 0, OPEN_EXISTING,
+        FILE_FLAG_OVERLAPPED,
+        0);
+    if (INVALID_HANDLE_VALUE == Handle)
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    memset(&Cdb, 0, sizeof Cdb);
+    Cdb.READ_CAPACITY16.OperationCode = SCSIOP_SERVICE_ACTION_IN16;
+    Cdb.READ_CAPACITY16.ServiceAction = SERVICE_ACTION_READ_CAPACITY16;
+    Cdb.READ_CAPACITY16.AllocationLength[3] = 255;
+    DataLength = sizeof DataBuffer;
+    Error = SpdIoctlScsiExecute(Handle, Btl, &Cdb, +1, DataBuffer, &DataLength,
+        &ScsiStatus, Sense.Buffer);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+    if (SCSISTAT_GOOD != ScsiStatus)
+    {
+        Error = ERROR_IO_DEVICE;
+        goto exit;
+    }
+    ReadCapacityData = (PVOID)DataBuffer;
+    StorageUnitParams->BlockCount = 1 +
+        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[0] << 56) |
+        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[1] << 48) |
+        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[2] << 40) |
+        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[3] << 32) |
+        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[4] << 24) |
+        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[5] << 16) |
+        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[6] << 8) |
+        ((UINT64)((PUINT8)&ReadCapacityData->LogicalBlockAddress)[7]);
+    StorageUnitParams->BlockLength =
+        (((PUINT8)&ReadCapacityData->BytesPerBlock)[0] << 24) |
+        (((PUINT8)&ReadCapacityData->BytesPerBlock)[1] << 16) |
+        (((PUINT8)&ReadCapacityData->BytesPerBlock)[2] << 8) |
+        (((PUINT8)&ReadCapacityData->BytesPerBlock)[3]);
+
+    memset(&Cdb, 0, sizeof Cdb);
+    Cdb.CDB6INQUIRY3.OperationCode = SCSIOP_INQUIRY;
+    Cdb.CDB6INQUIRY3.EnableVitalProductData = 1;
+    Cdb.CDB6INQUIRY3.PageCode = VPD_BLOCK_LIMITS;
+    Cdb.CDB6INQUIRY3.AllocationLength = VPD_MAX_BUFFER_SIZE;
+    DataLength = sizeof DataBuffer;
+    Error = SpdIoctlScsiExecute(Handle, Btl, &Cdb, +1, DataBuffer, &DataLength,
+        &ScsiStatus, Sense.Buffer);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+    if (SCSISTAT_GOOD != ScsiStatus)
+    {
+        Error = ERROR_IO_DEVICE;
+        goto exit;
+    }
+    BlockLimits = (PVOID)DataBuffer;
+    StorageUnitParams->MaxTransferLength = StorageUnitParams->BlockLength *
+        (BlockLimits->MaximumTransferLength[0] << 24) |
+        (BlockLimits->MaximumTransferLength[1] << 16) |
+        (BlockLimits->MaximumTransferLength[2] << 8) |
+        (BlockLimits->MaximumTransferLength[3]);
+    if (0 == StorageUnitParams->MaxTransferLength)
+        StorageUnitParams->MaxTransferLength = 64 * 1024;
+
+    if (0 == StorageUnitParams->BlockCount ||
+        0 == StorageUnitParams->BlockLength)
+    {
+        Error = ERROR_IO_DEVICE;
+        goto exit;
+    }
+
+    *PHandle = Handle;
+
+    Error = ERROR_SUCCESS;
+
+exit:
+    if (ERROR_SUCCESS != Error)
+    {
+        if (INVALID_HANDLE_VALUE != Handle)
+            CloseHandle(Handle);
+    }
+
+    return Error;
+}
+
+static DWORD StgTransactRaw(HANDLE Handle,
+    SPD_IOCTL_TRANSACT_REQ *Req,
+    SPD_IOCTL_TRANSACT_RSP *Rsp,
+    PVOID DataBuffer,
+    const SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams)
+{
+    LARGE_INTEGER Offset;
+    ULONG DataLength;
+    OVERLAPPED Overlapped;
+    DWORD BytesTransferred;
+    DWORD Error;
+
+    memset(&Overlapped, 0, sizeof Overlapped);
+
+    if (0 == Req || 0 == Rsp ||
+        (SpdIoctlTransactReadKind != Req->Kind && SpdIoctlTransactWriteKind != Req->Kind) ||
+        0 == DataBuffer)
+    {
+        Error = ERROR_INVALID_PARAMETER;
+        goto exit;
+    }
+
+    Overlapped.hEvent = CreateEventW(0, TRUE, TRUE, 0);
+    if (0 == Overlapped.hEvent)
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    DataLength = 0;
+    switch (Req->Kind)
+    {
+    case SpdIoctlTransactWriteKind:
+        Offset.QuadPart = Req->Op.Write.BlockAddress * StorageUnitParams->BlockLength;
+        DataLength = Req->Op.Write.BlockCount * StorageUnitParams->BlockLength;
+        Overlapped.Offset = Offset.LowPart;
+        Overlapped.OffsetHigh = Offset.HighPart;
+        Error = WaitOverlappedResult(
+            WriteFile(Handle, DataBuffer, DataLength, 0, &Overlapped),
+            Handle, &Overlapped, &BytesTransferred);
+        break;
+    case SpdIoctlTransactReadKind:
+        Offset.QuadPart = Req->Op.Read.BlockAddress * StorageUnitParams->BlockLength;
+        DataLength = Req->Op.Read.BlockCount * StorageUnitParams->BlockLength;
+        Overlapped.Offset = Offset.LowPart;
+        Overlapped.OffsetHigh = Offset.HighPart;
+        Error = WaitOverlappedResult(
+            ReadFile(Handle, DataBuffer, DataLength, 0, &Overlapped),
+            Handle, &Overlapped, &BytesTransferred);
+        break;
+    }
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    memset(Rsp, 0, sizeof *Rsp);
+    Rsp->Hint = Req->Hint;
+    Rsp->Kind = Req->Kind;
+    Rsp->Status.ScsiStatus = SCSISTAT_GOOD;
+
+    Error = ERROR_SUCCESS;
+
+exit:
+    if (0 != Overlapped.hEvent)
+        CloseHandle(Overlapped.hEvent);
+
+    return Error;
+}
+
+static DWORD StgOpen(PWSTR Name, ULONG Timeout,
+    PHANDLE PHandle, SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams)
+{
+    if (L'\\' == Name[0] &&
+        L'\\' == Name[1] &&
+        L'.'  == Name[2] &&
+        L'\\' == Name[3] &&
+        L'p'  == Name[4] &&
+        L'i'  == Name[5] &&
+        L'p'  == Name[6] &&
+        L'e'  == Name[7] &&
+        L'\\' == Name[8])
+        return StgOpenPipe(Name, Timeout, PHandle, StorageUnitParams);
+    else
+        return StgOpenRaw(Name, Timeout, PHandle, StorageUnitParams);
+}
+
+static DWORD StgTransact(HANDLE Handle,
+    SPD_IOCTL_TRANSACT_REQ *Req,
+    SPD_IOCTL_TRANSACT_RSP *Rsp,
+    PVOID DataBuffer,
+    const SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams)
+{
+    if (IsPipeHandle(Handle))
+        return StgTransactPipe(GetPipeHandle(Handle), Req, Rsp, DataBuffer, StorageUnitParams);
+    else
+        return StgTransactRaw(GetRawHandle(Handle), Req, Rsp, DataBuffer, StorageUnitParams);
+}
+
+DWORD StgClose(HANDLE Handle)
+{
+    if (IsPipeHandle(Handle))
+        return CloseHandle(GetPipeHandle(Handle)) ? 0 : GetLastError();
+    else
+        return CloseHandle(GetRawHandle(Handle)) ? 0 : GetLastError();
+}
+
 static inline UINT64 HashMix64(UINT64 k)
 {
     k ^= k >> 33;
@@ -312,7 +529,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
     DWORD ThreadId;
     DWORD Error;
 
-    Error = StgPipeOpen(PipeName, 3000, &Handle, &StorageUnitParams);
+    Error = StgOpen(PipeName, 3000, &Handle, &StorageUnitParams);
     if (ERROR_SUCCESS != Error)
     {
         warn("cannot open %S: %lu", PipeName, Error);
@@ -416,7 +633,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
             break;
         }
 
-        Error = StgPipeTransact(Handle, &Req, &Rsp, DataBuffer, &StorageUnitParams);
+        Error = StgTransact(Handle, &Req, &Rsp, DataBuffer, &StorageUnitParams);
         if (ERROR_SUCCESS != Error)
         {
             warn("pipe error: %lu", Error);
@@ -466,7 +683,7 @@ exit:
     MemFree(DataBuffer);
 
     if (INVALID_HANDLE_VALUE != Handle)
-        CloseHandle(Handle);
+        StgClose(Handle);
 
     return Error;
 #undef CheckCondition
@@ -475,10 +692,12 @@ exit:
 static void usage(void)
 {
     warn(
-        "usage: %s [-s Seed] \\\\.\\pipe\\PipeName\\BTL OpCount [RWFU] [Address|*] [Count|*]\n"
+        "usage: %s [-s Seed] \\\\.\\pipe\\PipeName\\Target OpCount [RWFU] [Address|*] [Count|*]\n"
+        "usage: %s [-s Seed] \\\\.\\X: OpCount [RWFU] [Address|*] [Count|*]\n"
         "    -s Seed     Seed to use for randomness (default: time)\n"
         "    PipeName    Name of storage unit pipe\n"
-        "    BTL         Bus,Target,Lun (usually 0)\n"
+        "    Target      SCSI target id (usually 0)\n"
+        "    X:          Volume drive (must use RAW file system; requires admin)\n"
         "    OpCount     Operation count\n"
         "    RWFU        One or more: R: Read, W: Write, F: Flush, U: Unmap\n"
         "    Address     Starting block address, *: random\n"

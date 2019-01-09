@@ -16,6 +16,9 @@
     <ClCompile Include="..\..\..\src\shared\strtoint.c">
       <Filter>Source\shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\shared\ioctl.c">
+      <Filter>Source\shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\shared\minimal.h">
