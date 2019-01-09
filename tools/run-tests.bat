@@ -17,7 +17,9 @@ set dfl_tests=^
     winspd-tests-x64 ^
     winspd-tests-x86 ^
     rawdisk-stgpipe-x64 ^
-    rawdisk-stgpipe-x86
+    rawdisk-stgpipe-x86 ^
+    rawdisk-stgpipe-raw-x64 ^
+    rawdisk-stgpipe-raw-x86
 set opt_tests=
 
 set tests=
@@ -110,6 +112,38 @@ if !ERRORLEVEL! neq 0 goto fail
 taskkill /f /im rawdisk-x86.exe
 if !ERRORLEVEL! neq 0 goto fail
 del test.disk 2>nul
+exit /b 0
+
+:rawdisk-stgpipe-raw-x64
+start "" /b rawdisk-x64 -f test.disk
+waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
+call :diskpart-partition 1
+stgpipe-x64 \\.\R: 10000 WRUR * *
+if !ERRORLEVEL! neq 0 goto fail
+taskkill /f /im rawdisk-x64.exe
+if !ERRORLEVEL! neq 0 goto fail
+del test.disk 2>nul
+exit /b 0
+
+:rawdisk-stgpipe-raw-x86
+start "" /b rawdisk-x86 -f test.disk
+waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
+call :diskpart-partition 1
+stgpipe-x86 \\.\R: 10000 WRUR * *
+if !ERRORLEVEL! neq 0 goto fail
+taskkill /f /im rawdisk-x86.exe
+if !ERRORLEVEL! neq 0 goto fail
+del test.disk 2>nul
+exit /b 0
+
+:diskpart-partition
+echo select disk %1                     > %TMP%\diskpart.script
+echo clean                              >>%TMP%\diskpart.script
+echo create partition primary           >>%TMP%\diskpart.script
+echo exit                               >>%TMP%\diskpart.script
+diskpart /s %TMP%\diskpart.script
+if !ERRORLEVEL! neq 0 goto fail
+del %TMP%\diskpart.script 2>nul
 exit /b 0
 
 :leak-test
