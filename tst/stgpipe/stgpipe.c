@@ -703,7 +703,7 @@ static void usage(void)
         "    Address     Starting block address, *: random\n"
         "    Count       Block count per operation, *: random\n"
         "",
-        PROGNAME);
+        PROGNAME, PROGNAME);
 
     ExitProcess(ERROR_INVALID_PARAMETER);
 }
