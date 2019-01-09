@@ -392,6 +392,7 @@ static void usage(void)
         "    vpd80 device-name [b:t:l]\n"
         "    vpd83 device-name [b:t:l]\n"
         "    vpdb0 device-name [b:t:l]\n"
+        "    vpdb2 device-name [b:t:l]\n"
         "",
         PROGNAME);
 }
