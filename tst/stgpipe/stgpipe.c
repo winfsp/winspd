@@ -411,6 +411,11 @@ static DWORD StgTransactRaw(HANDLE Handle,
     }
     if (ERROR_SUCCESS != Error)
         goto exit;
+    if (DataLength != BytesTransferred)
+    {
+        Error = ERROR_IO_DEVICE;
+        goto exit;
+    }
 
     memset(Rsp, 0, sizeof *Rsp);
     Rsp->Hint = Req->Hint;
@@ -512,14 +517,46 @@ static VOID GenRandomBytes(PULONG PSeed, PVOID Buffer, ULONG Size)
     *PSeed = Seed;
 }
 
+static void OpWarn(UINT8 OpKind, UINT64 BlockAddress, UINT32 BlockCount,
+    const char *Description, const char *Detail, DWORD Error)
+{
+    const char *OpName;
+    switch (OpKind)
+    {
+    case SpdIoctlTransactReadKind:
+        OpName = "Read";
+        break;
+    case SpdIoctlTransactWriteKind:
+        OpName = "Write";
+        break;
+    case SpdIoctlTransactFlushKind:
+        OpName = "Flush";
+        break;
+    case SpdIoctlTransactUnmapKind:
+        OpName = "Unmap";
+        break;
+    default:
+        OpName = "INVLD";
+        break;
+    }
+
+    if (0 != Detail)
+        warn("%s(Address=%x:%x, Count=%u): %s: %s",
+            OpName, (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, BlockCount,
+            Description, Detail);
+    else
+        warn("%s(Address=%x:%x, Count=%u): %s: %lu",
+            OpName, (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, BlockCount,
+            Description, Error);
+}
+
 static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, UINT32 BlockCount,
     PULONG RandomSeed)
 {
 #define CheckCondition(x)               \
-    if (!(x))                              \
+    if (!(x))                           \
     {                                   \
-        warn("condition fail: %s: A=%x:%x, C=%u",\
-            #x, (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, OpBlockCount);\
+        OpWarn(Req.Kind, BlockAddress, OpBlockCount, "condition fail", #x, 0);\
         Error = ERROR_IO_DEVICE;        \
         goto exit;                      \
     }                                   \
@@ -644,7 +681,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
         Error = StgTransact(Handle, &Req, &Rsp, DataBuffer, &StorageUnitParams);
         if (ERROR_SUCCESS != Error)
         {
-            warn("transact error: %lu", Error);
+            OpWarn(Req.Kind, BlockAddress, OpBlockCount, "transact error", 0, Error);
             goto exit;
         }
 
@@ -660,8 +697,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
                 if (!FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, OpBlockCount,
                     SpdIoctlTransactWriteKind))
                 {
-                    warn("bad Read buffer after Write: A=%x:%x, C=%u",
-                        (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, OpBlockCount);
+                    OpWarn(Req.Kind, BlockAddress, OpBlockCount, "bad buffer", "after Write", 0);
                     Error = ERROR_IO_DEVICE;
                     goto exit;
                 }
@@ -672,8 +708,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
                 if (!FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, OpBlockCount,
                     SpdIoctlTransactUnmapKind))
                 {
-                    warn("bad Read buffer after Unmap: A=%x:%x, C=%u",
-                        (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, OpBlockCount);
+                    OpWarn(Req.Kind, BlockAddress, OpBlockCount, "bad buffer", "after Unmap", 0);
                     Error = ERROR_IO_DEVICE;
                     goto exit;
                 }
@@ -764,7 +799,10 @@ int wmain(int argc, wchar_t **argv)
     info("%s -s %lu %S %lu \"%S\" %s %s",
         PROGNAME, RandomSeed, PipeName, OpCount, OpSet, BlockAddressStr, BlockCountStr);
 
-    return run(PipeName, OpCount, OpSet, BlockAddress, BlockCount, &RandomSeed);
+    int ExitCode = run(PipeName, OpCount, OpSet, BlockAddress, BlockCount, &RandomSeed);
+    if (0 == ExitCode)
+        info("OK");
+    return ExitCode;
 }
 
 void wmainCRTStartup(void)
