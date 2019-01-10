@@ -95,48 +95,48 @@ if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-stgpipe-x64
+set TestExit=0
 start "" /b rawdisk-x64 -p \\.\pipe\rawdisk -f test.disk
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
 stgpipe-x64 \\.\pipe\rawdisk\0 10000 WRUR * *
-if !ERRORLEVEL! neq 0 goto fail
+if !ERRORLEVEL! neq 0 set TestExit=1
 taskkill /f /im rawdisk-x64.exe
-if !ERRORLEVEL! neq 0 goto fail
 del test.disk 2>nul
-exit /b 0
+exit /b !TestExit!
 
 :rawdisk-stgpipe-x86
+set TestExit=0
 start "" /b rawdisk-x86 -p \\.\pipe\rawdisk -f test.disk
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
 stgpipe-x86 \\.\pipe\rawdisk\0 10000 WRUR * *
-if !ERRORLEVEL! neq 0 goto fail
+if !ERRORLEVEL! neq 0 set TestExit=1
 taskkill /f /im rawdisk-x86.exe
-if !ERRORLEVEL! neq 0 goto fail
 del test.disk 2>nul
-exit /b 0
+exit /b !TestExit!
 
 :rawdisk-stgpipe-raw-x64
+set TestExit=0
 start "" /b rawdisk-x64 -f test.disk
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
 call :diskpart-online 1
 call :diskpart-partition 1
 stgpipe-x64 \\.\R: 10000 WR * *
-if !ERRORLEVEL! neq 0 goto fail
+if !ERRORLEVEL! neq 0 set TestExit=1
 taskkill /f /im rawdisk-x64.exe
-if !ERRORLEVEL! neq 0 goto fail
 del test.disk 2>nul
-exit /b 0
+exit /b !TestExit!
 
 :rawdisk-stgpipe-raw-x86
+set TestExit=0
 start "" /b rawdisk-x86 -f test.disk
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
 call :diskpart-online 1
 call :diskpart-partition 1
 stgpipe-x86 \\.\R: 10000 WR * *
-if !ERRORLEVEL! neq 0 goto fail
+if !ERRORLEVEL! neq 0 set TestExit=1
 taskkill /f /im rawdisk-x86.exe
-if !ERRORLEVEL! neq 0 goto fail
 del test.disk 2>nul
-exit /b 0
+exit /b !TestExit!
 
 :diskpart-online
 echo select disk %1                     >>%TMP%\diskpart.script
