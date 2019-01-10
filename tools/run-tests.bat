@@ -117,6 +117,7 @@ exit /b 0
 :rawdisk-stgpipe-raw-x64
 start "" /b rawdisk-x64 -f test.disk
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
+call :diskpart-online 1
 call :diskpart-partition 1
 stgpipe-x64 \\.\R: 10000 WR * *
 if !ERRORLEVEL! neq 0 goto fail
@@ -128,6 +129,7 @@ exit /b 0
 :rawdisk-stgpipe-raw-x86
 start "" /b rawdisk-x86 -f test.disk
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
+call :diskpart-online 1
 call :diskpart-partition 1
 stgpipe-x86 \\.\R: 10000 WR * *
 if !ERRORLEVEL! neq 0 goto fail
@@ -136,17 +138,22 @@ if !ERRORLEVEL! neq 0 goto fail
 del test.disk 2>nul
 exit /b 0
 
-:diskpart-partition
-echo list disk                          > %TMP%\diskpart.script
+:diskpart-online
 echo select disk %1                     >>%TMP%\diskpart.script
 echo attribute disk clear readonly noerr>>%TMP%\diskpart.script
 echo online disk noerr                  >>%TMP%\diskpart.script
+echo exit                               >>%TMP%\diskpart.script
+diskpart /s %TMP%\diskpart.script
+del %TMP%\diskpart.script 2>nul
+exit /b 0
+
+:diskpart-partition
+echo select disk %1                     >>%TMP%\diskpart.script
 echo clean                              >>%TMP%\diskpart.script
 echo create partition primary           >>%TMP%\diskpart.script
 echo assign letter R                    >>%TMP%\diskpart.script
 echo exit                               >>%TMP%\diskpart.script
 diskpart /s %TMP%\diskpart.script
-if !ERRORLEVEL! neq 0 goto fail
 del %TMP%\diskpart.script 2>nul
 exit /b 0
 
