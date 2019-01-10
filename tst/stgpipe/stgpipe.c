@@ -644,7 +644,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
         Error = StgTransact(Handle, &Req, &Rsp, DataBuffer, &StorageUnitParams);
         if (ERROR_SUCCESS != Error)
         {
-            warn("pipe error: %lu", Error);
+            warn("transact error: %lu", Error);
             goto exit;
         }
 
