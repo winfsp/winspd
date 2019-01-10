@@ -408,7 +408,7 @@ static unsigned __stdcall ioctl_transact_write_test_thread(void *Data)
         goto exit;
 
     if (ScsiStatus != SCSISTAT_GOOD ||
-        0 != DataLength)
+        sizeof DataBuffer != DataLength)
     {
         Error = -'ASRT';
         goto exit;
@@ -655,7 +655,7 @@ static unsigned __stdcall ioctl_transact_unmap_test_thread(void *Data)
         goto exit;
 
     if (ScsiStatus != SCSISTAT_GOOD ||
-        0 != DataLength)
+        sizeof UnmapBuffer != DataLength)
     {
         Error = -'ASRT';
         goto exit;

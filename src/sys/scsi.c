@@ -718,7 +718,6 @@ UCHAR SpdSrbExecuteScsiComplete(PVOID SrbExtension0, PVOID Context, PVOID DataBu
             RtlCopyMemory(SrbExtension->SystemDataBuffer, DataBuffer, SrbExtension->SystemDataLength);
         else
             RtlZeroMemory(SrbExtension->SystemDataBuffer, SrbExtension->SystemDataLength);
-        SrbSetDataTransferLength(Srb, SrbExtension->SystemDataLength);
         return SRB_STATUS_SUCCESS;
 
     case SCSIOP_WRITE6:
@@ -728,7 +727,6 @@ UCHAR SpdSrbExecuteScsiComplete(PVOID SrbExtension0, PVOID Context, PVOID DataBu
     case SCSIOP_SYNCHRONIZE_CACHE:
     case SCSIOP_SYNCHRONIZE_CACHE16:
     case SCSIOP_UNMAP:
-        SrbSetDataTransferLength(Srb, 0);
         return SRB_STATUS_SUCCESS;
 
     default:
