@@ -118,7 +118,7 @@ exit /b 0
 start "" /b rawdisk-x64 -f test.disk
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
 call :diskpart-partition 1
-stgpipe-x64 \\.\R: 10000 WRUR * *
+stgpipe-x64 \\.\R: 10000 WR * *
 if !ERRORLEVEL! neq 0 goto fail
 taskkill /f /im rawdisk-x64.exe
 if !ERRORLEVEL! neq 0 goto fail
