@@ -513,11 +513,9 @@ static UCHAR SpdScsiPostRangeSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
     if (SCSIOP_SYNCHRONIZE_CACHE != Cdb->AsByte[0] &&
         SCSIOP_SYNCHRONIZE_CACHE16 != Cdb->AsByte[0])
     {
-        PUNMAP_LIST_HEADER DataBuffer = SrbGetDataBuffer(Srb);
         ULONG DataTransferLength = SrbGetDataTransferLength(Srb);
 
-        if (0 == DataBuffer ||
-            DataTransferLength < (DataLength = BlockCount * StorageUnit->StorageUnitParams.BlockLength))
+        if (DataTransferLength < (DataLength = BlockCount * StorageUnit->StorageUnitParams.BlockLength))
             return SRB_STATUS_INTERNAL_ERROR;
 
         if (DataLength > StorageUnit->StorageUnitParams.MaxTransferLength)
