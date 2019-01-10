@@ -137,7 +137,8 @@ del test.disk 2>nul
 exit /b 0
 
 :diskpart-partition
-echo select disk %1                     > %TMP%\diskpart.script
+echo list disk                          > %TMP%\diskpart.script
+echo select disk %1                     >>%TMP%\diskpart.script
 echo attribute disk clear readonly noerr>>%TMP%\diskpart.script
 echo online disk noerr                  >>%TMP%\diskpart.script
 echo clean                              >>%TMP%\diskpart.script
