@@ -118,10 +118,10 @@ exit /b !TestExit!
 set TestExit=0
 start "" /b rawdisk-x64 -f test.disk
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
-call :diskpart-online 1
-call :diskpart-partition 1
+call :diskpart-partition 1 R
 stgpipe-x64 \\.\R: 10000 WR * *
 if !ERRORLEVEL! neq 0 set TestExit=1
+call :diskpart-remove 1 R
 taskkill /f /im rawdisk-x64.exe
 del test.disk 2>nul
 exit /b !TestExit!
@@ -130,28 +130,30 @@ exit /b !TestExit!
 set TestExit=0
 start "" /b rawdisk-x86 -f test.disk
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
-call :diskpart-online 1
-call :diskpart-partition 1
+call :diskpart-partition 1 R
 stgpipe-x86 \\.\R: 10000 WR * *
 if !ERRORLEVEL! neq 0 set TestExit=1
+call :diskpart-remove 1 R
 taskkill /f /im rawdisk-x86.exe
 del test.disk 2>nul
 exit /b !TestExit!
 
-:diskpart-online
-echo select disk %1                     >>%TMP%\diskpart.script
+:diskpart-partition
+echo select disk %1                     > %TMP%\diskpart.script
 echo attribute disk clear readonly noerr>>%TMP%\diskpart.script
 echo online disk noerr                  >>%TMP%\diskpart.script
+echo clean                              >>%TMP%\diskpart.script
+echo create partition primary           >>%TMP%\diskpart.script
+echo assign letter %2                   >>%TMP%\diskpart.script
 echo exit                               >>%TMP%\diskpart.script
 diskpart /s %TMP%\diskpart.script
 del %TMP%\diskpart.script 2>nul
 exit /b 0
 
-:diskpart-partition
-echo select disk %1                     >>%TMP%\diskpart.script
-echo clean                              >>%TMP%\diskpart.script
-echo create partition primary           >>%TMP%\diskpart.script
-echo assign letter R                    >>%TMP%\diskpart.script
+:diskpart-remove
+echo select disk %1                     > %TMP%\diskpart.script
+echo select partition 1                 >>%TMP%\diskpart.script
+echo remove letter %2                   >>%TMP%\diskpart.script
 echo exit                               >>%TMP%\diskpart.script
 diskpart /s %TMP%\diskpart.script
 del %TMP%\diskpart.script 2>nul
