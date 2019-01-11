@@ -211,8 +211,6 @@ UCHAR SpdSrbFlush(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbShutdown(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbPnp(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbWmi(PVOID DeviceExtension, PVOID Srb);
-UCHAR SpdSrbDumpPointers(PVOID DeviceExtension, PVOID Srb);
-UCHAR SpdSrbFreeDumpPointers(PVOID DeviceExtension, PVOID Srb);
 NTSTATUS SpdNtStatusFromStorStatus(ULONG StorStatus);
 
 /*

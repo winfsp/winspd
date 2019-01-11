@@ -57,12 +57,6 @@ BOOLEAN SpdHwStartIo(PVOID DeviceExtension, PSCSI_REQUEST_BLOCK Srb0)
     case SRB_FUNCTION_WMI:
         SrbStatus = SpdSrbWmi(DeviceExtension, Srb);
         break;
-    case SRB_FUNCTION_DUMP_POINTERS:
-        SrbStatus = SpdSrbDumpPointers(DeviceExtension, Srb);
-        break;
-    case SRB_FUNCTION_FREE_DUMP_POINTERS:
-        SrbStatus = SpdSrbFreeDumpPointers(DeviceExtension, Srb);
-        break;
     default:
         SrbStatus = SRB_STATUS_INVALID_REQUEST;
         break;
@@ -157,12 +151,14 @@ UCHAR SpdSrbResetLogicalUnit(PVOID DeviceExtension, PVOID Srb)
 
 UCHAR SpdSrbFlush(PVOID DeviceExtension, PVOID Srb)
 {
-    return SRB_STATUS_INVALID_REQUEST;
+    /* must have already received SYNCHRONIZE CACHE; just return SUCCESS */
+    return SRB_STATUS_SUCCESS;
 }
 
 UCHAR SpdSrbShutdown(PVOID DeviceExtension, PVOID Srb)
 {
-    return SRB_STATUS_INVALID_REQUEST;
+    /* our user mode process must be gone; just return SUCCESS */
+    return SRB_STATUS_SUCCESS;
 }
 
 UCHAR SpdSrbPnp(PVOID DeviceExtension, PVOID Srb)
@@ -208,16 +204,6 @@ UCHAR SpdSrbPnp(PVOID DeviceExtension, PVOID Srb)
 }
 
 UCHAR SpdSrbWmi(PVOID DeviceExtension, PVOID Srb)
-{
-    return SRB_STATUS_INVALID_REQUEST;
-}
-
-UCHAR SpdSrbDumpPointers(PVOID DeviceExtension, PVOID Srb)
-{
-    return SRB_STATUS_INVALID_REQUEST;
-}
-
-UCHAR SpdSrbFreeDumpPointers(PVOID DeviceExtension, PVOID Srb)
 {
     return SRB_STATUS_INVALID_REQUEST;
 }
