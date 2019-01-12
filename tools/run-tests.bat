@@ -19,7 +19,9 @@ set dfl_tests=^
     rawdisk-stgpipe-x64 ^
     rawdisk-stgpipe-x86 ^
     rawdisk-stgpipe-raw-x64 ^
-    rawdisk-stgpipe-raw-x86
+    rawdisk-stgpipe-raw-x86 ^
+    rawdisk-format-ntfs-x64 ^
+    rawdisk-format-ntfs-x86
 set opt_tests=
 
 set tests=
@@ -138,6 +140,52 @@ taskkill /f /im rawdisk-x86.exe
 del test.disk 2>nul
 exit /b !TestExit!
 
+:rawdisk-format-ntfs-x64
+set TestExit=0
+start "" /b rawdisk-x64 -f test.disk
+waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
+call :diskpart-format-ntfs 1 R
+pushd >nul
+cd R: >nul 2>nul
+if !ERRORLEVEL! neq 0 set TestExit=1
+if X!TestExit!==X0 (
+    R:
+    echo hello>world
+    if !ERRORLEVEL! neq 0 set TestExit=1
+    type world
+    if !ERRORLEVEL! neq 0 set TestExit=1
+    dir
+    if !ERRORLEVEL! neq 0 set TestExit=1
+)
+popd
+call :diskpart-remove 1 R
+taskkill /f /im rawdisk-x64.exe
+del test.disk 2>nul
+exit /b !TestExit!
+
+:rawdisk-format-ntfs-x86
+set TestExit=0
+start "" /b rawdisk-x86 -f test.disk
+waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
+call :diskpart-format-ntfs 1 R
+pushd >nul
+cd R: >nul 2>nul
+if !ERRORLEVEL! neq 0 set TestExit=1
+if X!TestExit!==X0 (
+    R:
+    echo hello>world
+    if !ERRORLEVEL! neq 0 set TestExit=1
+    type world
+    if !ERRORLEVEL! neq 0 set TestExit=1
+    dir
+    if !ERRORLEVEL! neq 0 set TestExit=1
+)
+popd
+call :diskpart-remove 1 R
+taskkill /f /im rawdisk-x86.exe
+del test.disk 2>nul
+exit /b !TestExit!
+
 :diskpart-partition
 echo rescan                             > %TMP%\diskpart.script
 echo select disk %1                     >>%TMP%\diskpart.script
@@ -145,6 +193,20 @@ echo attribute disk clear readonly noerr>>%TMP%\diskpart.script
 echo online disk noerr                  >>%TMP%\diskpart.script
 echo clean                              >>%TMP%\diskpart.script
 echo create partition primary           >>%TMP%\diskpart.script
+echo assign letter %2                   >>%TMP%\diskpart.script
+echo exit                               >>%TMP%\diskpart.script
+diskpart /s %TMP%\diskpart.script
+del %TMP%\diskpart.script 2>nul
+exit /b 0
+
+:diskpart-format-ntfs
+echo rescan                             > %TMP%\diskpart.script
+echo select disk %1                     >>%TMP%\diskpart.script
+echo attribute disk clear readonly noerr>>%TMP%\diskpart.script
+echo online disk noerr                  >>%TMP%\diskpart.script
+echo clean                              >>%TMP%\diskpart.script
+echo create partition primary           >>%TMP%\diskpart.script
+echo format fs=ntfs quick               >>%TMP%\diskpart.script
 echo assign letter %2                   >>%TMP%\diskpart.script
 echo exit                               >>%TMP%\diskpart.script
 diskpart /s %TMP%\diskpart.script
