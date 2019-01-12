@@ -517,9 +517,6 @@ static UCHAR SpdScsiPostRangeSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
 
         if (DataTransferLength < (DataLength = BlockCount * StorageUnit->StorageUnitParams.BlockLength))
             return SRB_STATUS_INTERNAL_ERROR;
-
-        if (DataLength > StorageUnit->StorageUnitParams.MaxTransferLength)
-            return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_CDB);
     }
 
     if (0 == BlockCount)
@@ -591,6 +588,7 @@ static UCHAR SpdScsiPostSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
 
     SrbExtension = SpdSrbExtension(Srb);
     RtlZeroMemory(SrbExtension, sizeof(SPD_SRB_EXTENSION));
+    SrbExtension->StorageUnit = StorageUnit;
 
     if (0 != DataLength)
     {
@@ -612,10 +610,12 @@ VOID SpdSrbExecuteScsiPrepare(PVOID SrbExtension0, PVOID Context, PVOID DataBuff
     ASSERT(DISPATCH_LEVEL == KeGetCurrentIrql());
 
     SPD_SRB_EXTENSION *SrbExtension = SrbExtension0;
+    SPD_STORAGE_UNIT *StorageUnit = SrbExtension->StorageUnit;
     SPD_IOCTL_TRANSACT_REQ *Req = Context;
     PVOID Srb = SrbExtension->Srb;
     PCDB Cdb;
     UINT32 ForceUnitAccess;
+    ULONG ChunkLength;
 
     Cdb = SrbGetCdb(Srb);
     switch (Cdb->AsByte[0])
@@ -631,6 +631,13 @@ VOID SpdSrbExecuteScsiPrepare(PVOID SrbExtension0, PVOID Context, PVOID DataBuff
             &Req->Op.Read.BlockCount,
             &ForceUnitAccess);
         Req->Op.Read.ForceUnitAccess = ForceUnitAccess;
+        ChunkLength = SrbExtension->SystemDataLength - SrbExtension->ChunkOffset;
+        if (ChunkLength > StorageUnit->StorageUnitParams.MaxTransferLength)
+            ChunkLength = StorageUnit->StorageUnitParams.MaxTransferLength;
+        Req->Op.Read.BlockAddress +=
+            SrbExtension->ChunkOffset / StorageUnit->StorageUnitParams.BlockLength;
+        Req->Op.Read.BlockCount =
+            ChunkLength / StorageUnit->StorageUnitParams.BlockLength;
         return;
 
     case SCSIOP_WRITE6:
@@ -644,7 +651,15 @@ VOID SpdSrbExecuteScsiPrepare(PVOID SrbExtension0, PVOID Context, PVOID DataBuff
             &Req->Op.Write.BlockCount,
             &ForceUnitAccess);
         Req->Op.Write.ForceUnitAccess = ForceUnitAccess;
-        RtlCopyMemory(DataBuffer, SrbExtension->SystemDataBuffer, SrbExtension->SystemDataLength);
+        ChunkLength = SrbExtension->SystemDataLength - SrbExtension->ChunkOffset;
+        if (ChunkLength > StorageUnit->StorageUnitParams.MaxTransferLength)
+            ChunkLength = StorageUnit->StorageUnitParams.MaxTransferLength;
+        Req->Op.Write.BlockAddress +=
+            SrbExtension->ChunkOffset / StorageUnit->StorageUnitParams.BlockLength;
+        Req->Op.Write.BlockCount =
+            ChunkLength / StorageUnit->StorageUnitParams.BlockLength;
+        RtlCopyMemory(DataBuffer,
+            (PUINT8)SrbExtension->SystemDataBuffer + SrbExtension->ChunkOffset, ChunkLength);
         return;
 
     case SCSIOP_SYNCHRONIZE_CACHE:
@@ -694,9 +709,11 @@ UCHAR SpdSrbExecuteScsiComplete(PVOID SrbExtension0, PVOID Context, PVOID DataBu
     ASSERT(DISPATCH_LEVEL == KeGetCurrentIrql());
 
     SPD_SRB_EXTENSION *SrbExtension = SrbExtension0;
+    SPD_STORAGE_UNIT *StorageUnit = SrbExtension->StorageUnit;
     SPD_IOCTL_TRANSACT_RSP *Rsp = Context;
     PVOID Srb = SrbExtension->Srb;
     PCDB Cdb;
+    ULONG ChunkLength;
 
     if (SCSISTAT_GOOD != Rsp->Status.ScsiStatus)
         return SpdScsiErrorEx(Srb,
@@ -712,16 +729,32 @@ UCHAR SpdSrbExecuteScsiComplete(PVOID SrbExtension0, PVOID Context, PVOID DataBu
     case SCSIOP_READ:
     case SCSIOP_READ12:
     case SCSIOP_READ16:
+        ChunkLength = SrbExtension->SystemDataLength - SrbExtension->ChunkOffset;
+        if (ChunkLength > StorageUnit->StorageUnitParams.MaxTransferLength)
+            ChunkLength = StorageUnit->StorageUnitParams.MaxTransferLength;
         if (0 != DataBuffer)
-            RtlCopyMemory(SrbExtension->SystemDataBuffer, DataBuffer, SrbExtension->SystemDataLength);
+            RtlCopyMemory((PUINT8)SrbExtension->SystemDataBuffer + SrbExtension->ChunkOffset,
+                DataBuffer, ChunkLength);
         else
-            RtlZeroMemory(SrbExtension->SystemDataBuffer, SrbExtension->SystemDataLength);
-        return SRB_STATUS_SUCCESS;
+            RtlZeroMemory((PUINT8)SrbExtension->SystemDataBuffer + SrbExtension->ChunkOffset,
+                ChunkLength);
+        SrbExtension->ChunkOffset += ChunkLength;
+        /* if we are done return SUCCESS; if we have more chunks return PENDING */
+        return SrbExtension->ChunkOffset >= SrbExtension->SystemDataLength ?
+            SRB_STATUS_SUCCESS : SRB_STATUS_PENDING;
 
     case SCSIOP_WRITE6:
     case SCSIOP_WRITE:
     case SCSIOP_WRITE12:
     case SCSIOP_WRITE16:
+        ChunkLength = SrbExtension->SystemDataLength - SrbExtension->ChunkOffset;
+        if (ChunkLength > StorageUnit->StorageUnitParams.MaxTransferLength)
+            ChunkLength = StorageUnit->StorageUnitParams.MaxTransferLength;
+        SrbExtension->ChunkOffset += ChunkLength;
+        /* if we are done return SUCCESS; if we have more chunks return PENDING */
+        return SrbExtension->ChunkOffset >= SrbExtension->SystemDataLength ?
+            SRB_STATUS_SUCCESS : SRB_STATUS_PENDING;
+
     case SCSIOP_SYNCHRONIZE_CACHE:
     case SCSIOP_SYNCHRONIZE_CACHE16:
     case SCSIOP_UNMAP:

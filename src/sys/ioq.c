@@ -268,7 +268,24 @@ VOID SpdIoqEndProcessingSrb(SPD_IOQ *Ioq, UINT64 Hint,
                 RemoveEntryList(&SrbExtension->ListEntry);
 
                 UCHAR SrbStatus = Complete(SrbExtension, Context, DataBuffer);
-                SpdSrbComplete(Ioq->DeviceExtension, SrbExtension->Srb, SrbStatus);
+                if (SRB_STATUS_PENDING == SrbStatus)
+                {
+                    /*
+                     * If Complete returns PENDING we need to repost the SRB
+                     * and we will also place it at the queue head, so that it
+                     * gets picked up immediately after.
+                     *
+                     * This functionality supports splitting SRB's into chunks,
+                     * which is required for I/O that exceeds our MaxTransferLength.
+                     * See https://tinyurl.com/ychyv62s
+                     */
+                    InsertHeadList(&Ioq->PendingList, &SrbExtension->ListEntry);
+
+                    /* queue is not empty; wake up a waiter */
+                    SpdQeventSetNoLock(&Ioq->PendingEvent);
+                }
+                else
+                    SpdSrbComplete(Ioq->DeviceExtension, SrbExtension->Srb, SrbStatus);
 
                 break;
             }

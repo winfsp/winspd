@@ -58,7 +58,7 @@ enum
     spd_debug_dp                        = 0xffff0000,
 };
 extern __declspec(selectany) int spd_debug =
-    spd_debug_bp_drvrld;
+    spd_debug_bp_drvrld | spd_debug_dp_srberr;
 const char *AdapterControlSym(ULONG Control);
 const char *SrbFunctionSym(ULONG Function);
 const char *SrbStatusSym(ULONG Status);
@@ -316,11 +316,13 @@ VOID SpdIoqEndProcessingSrb(SPD_IOQ *Ioq, UINT64 Hint,
     PVOID Context, PVOID DataBuffer);
 typedef struct _SPD_SRB_EXTENSION
 {
+    struct _SPD_STORAGE_UNIT *StorageUnit;
     LIST_ENTRY ListEntry;
     PVOID HashNext;
     PVOID Srb;
     PVOID SystemDataBuffer;
     ULONG SystemDataLength;
+    ULONG ChunkOffset;
 } SPD_SRB_EXTENSION;
 #define SpdSrbExtension(Srb)            ((SPD_SRB_EXTENSION *)SrbGetMiniportContext(Srb))
 

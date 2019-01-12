@@ -241,6 +241,44 @@ static void ioctl_list_test(void)
     ASSERT(Success);
 }
 
+/* begin: from stgpipe.c */
+static inline UINT64 HashMix64(UINT64 k)
+{
+    k ^= k >> 33;
+    k *= 0xff51afd7ed558ccdULL;
+    k ^= k >> 33;
+    k *= 0xc4ceb9fe1a85ec53ULL;
+    k ^= k >> 33;
+    return k;
+}
+static int FillOrTest(PVOID DataBuffer, UINT32 BlockLength, UINT64 BlockAddress, UINT32 BlockCount,
+    UINT8 FillOrTestOpKind)
+{
+    for (ULONG I = 0, N = BlockCount; N > I; I++)
+    {
+        PUINT64 Buffer = (PVOID)((PUINT8)DataBuffer + I * BlockLength);
+        UINT64 HashAddress = HashMix64(BlockAddress + I + 1);
+        for (ULONG J = 0, M = BlockLength / 8; M > J; J++)
+            if (SpdIoctlTransactReservedKind == FillOrTestOpKind)
+                /* fill buffer */
+                Buffer[J] = HashAddress;
+            else if (SpdIoctlTransactWriteKind == FillOrTestOpKind)
+            {
+                /* test buffer for Write */
+                if (Buffer[J] != HashAddress)
+                    return 0;
+            }
+            else if (SpdIoctlTransactUnmapKind == FillOrTestOpKind)
+            {
+                /* test buffer for Unmap */
+                if (Buffer[J] != 0)
+                    return 0;
+            }
+    }
+    return 1;
+}
+/* end: from stgpipe.c */
+
 static unsigned __stdcall ioctl_transact_read_test_thread(void *Data)
 {
     UINT32 Btl = (UINT32)(UINT_PTR)Data;
@@ -284,12 +322,11 @@ static unsigned __stdcall ioctl_transact_read_test_thread(void *Data)
         goto exit;
     }
 
-    for (ULONG I = 0, N = sizeof DataBuffer; N > I; I++)
-        if (((PUINT8)DataBuffer)[I] != (UINT8)I)
-        {
-            Error = -'ASR2';
-            goto exit;
-        }
+    if (!FillOrTest(DataBuffer, 512, 7, 5, SpdIoctlTransactWriteKind))
+    {
+        Error = -'ASR2';
+        goto exit;
+    }
 
     Error = ERROR_SUCCESS;
 
@@ -299,7 +336,7 @@ exit:
     return Error;
 }
 
-static void ioctl_transact_read_test(void)
+static void ioctl_transact_read_dotest(ULONG MaxBlockCount)
 {
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
     SPD_IOCTL_TRANSACT_REQ Req;
@@ -312,7 +349,7 @@ static void ioctl_transact_read_test(void)
     HANDLE Thread;
     DWORD ExitCode;
 
-    DataBuffer = malloc(5 * 512);
+    DataBuffer = malloc(MaxBlockCount * 512);
     ASSERT(0 != DataBuffer);
 
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
@@ -322,7 +359,7 @@ static void ioctl_transact_read_test(void)
     memcpy(&StorageUnitParams.Guid, &TestGuid, sizeof TestGuid);
     StorageUnitParams.BlockCount = 16;
     StorageUnitParams.BlockLength = 512;
-    StorageUnitParams.MaxTransferLength = 5 * 512;
+    StorageUnitParams.MaxTransferLength = MaxBlockCount * 512;
     Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
     ASSERT(ERROR_SUCCESS == Error);
     ASSERT(0 == Btl);
@@ -340,12 +377,11 @@ static void ioctl_transact_read_test(void)
     ASSERT(0 != Req.Hint);
     ASSERT(SpdIoctlTransactReadKind == Req.Kind);
     ASSERT(7 == Req.Op.Read.BlockAddress);
-    ASSERT(5 == Req.Op.Read.BlockCount);
+    ASSERT(MaxBlockCount == Req.Op.Read.BlockCount);
     ASSERT(0 == Req.Op.Read.ForceUnitAccess);
     ASSERT(0 == Req.Op.Read.Reserved);
 
-    for (ULONG I = 0, N = Req.Op.Read.BlockCount * StorageUnitParams.BlockLength; N > I; I++)
-        ((PUINT8)DataBuffer)[I] = (UINT8)I;
+    FillOrTest(DataBuffer, 512, 7, MaxBlockCount, SpdIoctlTransactReservedKind);
 
     memset(&Rsp, 0, sizeof Rsp);
     Rsp.Hint = Req.Hint;
@@ -353,6 +389,29 @@ static void ioctl_transact_read_test(void)
 
     Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer);
     ASSERT(ERROR_SUCCESS == Error);
+
+    if (5 > MaxBlockCount)
+    {
+        memset(DataBuffer, 0, sizeof DataBuffer);
+        Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer);
+        ASSERT(ERROR_SUCCESS == Error);
+
+        ASSERT(0 != Req.Hint);
+        ASSERT(SpdIoctlTransactReadKind == Req.Kind);
+        ASSERT(7 + MaxBlockCount == Req.Op.Read.BlockAddress);
+        ASSERT(5 - MaxBlockCount == Req.Op.Read.BlockCount);
+        ASSERT(0 == Req.Op.Read.ForceUnitAccess);
+        ASSERT(0 == Req.Op.Read.Reserved);
+
+        FillOrTest(DataBuffer, 512, 7 + MaxBlockCount, 5 - MaxBlockCount, SpdIoctlTransactReservedKind);
+
+        memset(&Rsp, 0, sizeof Rsp);
+        Rsp.Hint = Req.Hint;
+        Rsp.Kind = Req.Kind;
+
+        Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer);
+        ASSERT(ERROR_SUCCESS == Error);
+    }
 
     Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
     ASSERT(ERROR_SUCCESS == Error);
@@ -367,6 +426,16 @@ static void ioctl_transact_read_test(void)
     CloseHandle(Thread);
 
     ASSERT(ERROR_SUCCESS == ExitCode);
+}
+
+static void ioctl_transact_read_test(void)
+{
+    ioctl_transact_read_dotest(5);
+}
+
+static void ioctl_transact_read_chunked_test(void)
+{
+    ioctl_transact_read_dotest(3);
 }
 
 static unsigned __stdcall ioctl_transact_write_test_thread(void *Data)
@@ -395,8 +464,7 @@ static unsigned __stdcall ioctl_transact_write_test_thread(void *Data)
     Cdb.WRITE16.LogicalBlock[7] = 7;
     Cdb.WRITE16.TransferLength[3] = 5;
 
-    for (ULONG I = 0, N = sizeof DataBuffer; N > I; I++)
-        ((PUINT8)DataBuffer)[I] = (UINT8)I;
+    FillOrTest(DataBuffer, 512, 7, 5, SpdIoctlTransactReservedKind);
 
     DataLength = sizeof DataBuffer;
     Error = SpdIoctlScsiExecute(DeviceHandle, Btl, &Cdb, -1, DataBuffer, &DataLength,
@@ -422,7 +490,7 @@ exit:
     return Error;
 }
 
-static void ioctl_transact_write_test(void)
+static void ioctl_transact_write_dotest(ULONG MaxBlockCount)
 {
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
     SPD_IOCTL_TRANSACT_REQ Req;
@@ -435,7 +503,7 @@ static void ioctl_transact_write_test(void)
     HANDLE Thread;
     DWORD ExitCode;
 
-    DataBuffer = malloc(5 * 512);
+    DataBuffer = malloc(MaxBlockCount * 512);
     ASSERT(0 != DataBuffer);
 
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
@@ -445,7 +513,7 @@ static void ioctl_transact_write_test(void)
     memcpy(&StorageUnitParams.Guid, &TestGuid, sizeof TestGuid);
     StorageUnitParams.BlockCount = 16;
     StorageUnitParams.BlockLength = 512;
-    StorageUnitParams.MaxTransferLength = 5 * 512;
+    StorageUnitParams.MaxTransferLength = MaxBlockCount * 512;
     Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
     ASSERT(ERROR_SUCCESS == Error);
     ASSERT(0 == Btl);
@@ -463,12 +531,11 @@ static void ioctl_transact_write_test(void)
     ASSERT(0 != Req.Hint);
     ASSERT(SpdIoctlTransactWriteKind == Req.Kind);
     ASSERT(7 == Req.Op.Write.BlockAddress);
-    ASSERT(5 == Req.Op.Write.BlockCount);
+    ASSERT(MaxBlockCount == Req.Op.Write.BlockCount);
     ASSERT(0 == Req.Op.Write.ForceUnitAccess);
     ASSERT(0 == Req.Op.Write.Reserved);
 
-    for (ULONG I = 0, N = Req.Op.Write.BlockCount * StorageUnitParams.BlockLength; N > I; I++)
-        ASSERT(((PUINT8)DataBuffer)[I] == (UINT8)I);
+    ASSERT(FillOrTest(DataBuffer, 512, 7, MaxBlockCount, SpdIoctlTransactWriteKind));
 
     memset(&Rsp, 0, sizeof Rsp);
     Rsp.Hint = Req.Hint;
@@ -476,6 +543,29 @@ static void ioctl_transact_write_test(void)
 
     Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer);
     ASSERT(ERROR_SUCCESS == Error);
+
+    if (5 > MaxBlockCount)
+    {
+        memset(DataBuffer, 0, sizeof DataBuffer);
+        Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer);
+        ASSERT(ERROR_SUCCESS == Error);
+
+        ASSERT(0 != Req.Hint);
+        ASSERT(SpdIoctlTransactWriteKind == Req.Kind);
+        ASSERT(7 + MaxBlockCount == Req.Op.Write.BlockAddress);
+        ASSERT(5 - MaxBlockCount == Req.Op.Write.BlockCount);
+        ASSERT(0 == Req.Op.Write.ForceUnitAccess);
+        ASSERT(0 == Req.Op.Write.Reserved);
+
+        ASSERT(FillOrTest(DataBuffer, 512, 7 + MaxBlockCount, 5 - MaxBlockCount, SpdIoctlTransactWriteKind));
+
+        memset(&Rsp, 0, sizeof Rsp);
+        Rsp.Hint = Req.Hint;
+        Rsp.Kind = Req.Kind;
+
+        Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer);
+        ASSERT(ERROR_SUCCESS == Error);
+    }
 
     Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
     ASSERT(ERROR_SUCCESS == Error);
@@ -490,6 +580,16 @@ static void ioctl_transact_write_test(void)
     CloseHandle(Thread);
 
     ASSERT(ERROR_SUCCESS == ExitCode);
+}
+
+static void ioctl_transact_write_test(void)
+{
+    ioctl_transact_write_dotest(5);
+}
+
+static void ioctl_transact_write_chunked_test(void)
+{
+    ioctl_transact_write_dotest(3);
 }
 
 static unsigned __stdcall ioctl_transact_flush_test_thread(void *Data)
@@ -1062,7 +1162,9 @@ void ioctl_tests(void)
     TEST(ioctl_provision_toomany_test);
     TEST(ioctl_list_test);
     TEST(ioctl_transact_read_test);
+    TEST(ioctl_transact_read_chunked_test);
     TEST(ioctl_transact_write_test);
+    TEST(ioctl_transact_write_chunked_test);
     TEST(ioctl_transact_flush_test);
     TEST(ioctl_transact_unmap_test);
     TEST(ioctl_transact_error_test);
