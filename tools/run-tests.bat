@@ -139,7 +139,8 @@ del test.disk 2>nul
 exit /b !TestExit!
 
 :diskpart-partition
-echo select disk %1                     > %TMP%\diskpart.script
+echo rescan                             > %TMP%\diskpart.script
+echo select disk %1                     >>%TMP%\diskpart.script
 echo attribute disk clear readonly noerr>>%TMP%\diskpart.script
 echo online disk noerr                  >>%TMP%\diskpart.script
 echo clean                              >>%TMP%\diskpart.script
@@ -151,7 +152,8 @@ del %TMP%\diskpart.script 2>nul
 exit /b 0
 
 :diskpart-remove
-echo select disk %1                     > %TMP%\diskpart.script
+echo rescan                             > %TMP%\diskpart.script
+echo select disk %1                     >>%TMP%\diskpart.script
 echo select partition 1                 >>%TMP%\diskpart.script
 echo remove letter %2                   >>%TMP%\diskpart.script
 echo exit                               >>%TMP%\diskpart.script
