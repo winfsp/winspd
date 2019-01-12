@@ -337,6 +337,12 @@ static DWORD StgOpenRaw(PWSTR Name, ULONG Timeout,
     if (0 == StorageUnitParams->MaxTransferLength)
         StorageUnitParams->MaxTransferLength = 64 * 1024;
 
+    /*
+     * To test our driver's chunking method we allow up to 3 * MaxTransferLength,
+     * when using the RAW file system.
+     */
+    StorageUnitParams->MaxTransferLength *= 3;
+
     if (0 == StorageUnitParams->BlockCount ||
         0 == StorageUnitParams->BlockLength)
     {
