@@ -22,7 +22,7 @@
 
 ## Storage Units
 
-A WinSpd storage unit is a SCSI "direct-access block device" (as per the definition in the SCSI SBC standards). It is used to store data in logical blocks; each block contains the same amount of data (the Block Length) and has a Logical Block Address (LBA), which is a 64-bit number in a single contiguous address space. In particular WinSpd (and the SCSI standard) do not assume the traditional geometry of cylinder-head-sector (CHS) for how blocks are laid out.
+A WinSpd storage unit is a SCSI "direct-access block device" (as per the definition in the SCSI SBC standard). It is used to store data in logical blocks; each block contains the same amount of data (the Block Length) and has a Logical Block Address (LBA), which is a 64-bit number in a single contiguous address space. In particular WinSpd (and the SCSI standard) do not assume the traditional geometry of cylinder-head-sector (CHS) for how blocks are laid out.
 
 Storage units support two primary operations: read and write, and two secondary operations: flush and unmap:
 
@@ -46,6 +46,22 @@ The WinSpd virtual miniport implements the following SCSI commands:
 - **WRITE(6), WRITE(10), WRITE(12), WRITE(16)**
 - **SYNCHRONIZE CACHE(10), SYNCHRONIZE CACHE(16)**
 - **UNMAP**
+
+## Project Organization
+
+The project source code is organized as follows:
+
+* :file_folder: [build/VStudio](build/VStudio): WinSpd solution and project files.
+* :file_folder: [ext](ext): External dependencies.
+    * :file_folder: [ext/tlib](ext/tlib): A small test library originally from the secfs (Secure Cloud File System) project.
+* :file_folder: [inc](inc): Public headers.
+    * :file_folder: [inc/winspd](inc/winspd): Public headers for the WinSpd API.
+* :file_folder: [src](src): WinSpd source code.
+    * :file_folder: [src/dll](src/dll): Source code to the WinSpd DLL.
+    * :file_folder: [src/scsitool](src/fsptool): Source code to scsitool command line utility.
+    * :file_folder: [src/sys](src/sys): Source code to the WinSpd kernel driver.
+* :file_folder: [tst](tst): Source code to example storage units and test tools.
+* :file_folder: [tools](tools): Various tools for building and testing WinSpd.
 
 ## License
 
