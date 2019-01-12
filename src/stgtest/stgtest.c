@@ -1,5 +1,5 @@
 /**
- * @file stgpipe.c
+ * @file stgtest.c
  *
  * @copyright 2018 Bill Zissimopoulos
  */
@@ -22,7 +22,7 @@
 #include <winspd/winspd.h>
 #include <shared/minimal.h>
 
-#define PROGNAME                        "stgpipe"
+#define PROGNAME                        "stgtest"
 
 #define info(format, ...)               printlog(GetStdHandle(STD_OUTPUT_HANDLE), format, __VA_ARGS__)
 #define warn(format, ...)               printlog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__)

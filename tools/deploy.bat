@@ -10,7 +10,7 @@ set TARGET=\\%TARGET_MACHINE%%TARGET_ACCOUNT%
 
 cd %~dp0..
 mkdir %TARGET% 2>nul
-for %%f in (winspd-%SUFFIX%.inf winspd-%SUFFIX%.cat winspd-%SUFFIX%.cer winspd-%SUFFIX%.sys winspd-%SUFFIX%.dll scsitool-%SUFFIX%.exe stgpipe-%SUFFIX%.exe rawdisk-%SUFFIX%.exe winspd-tests-%SUFFIX%.exe) do (
+for %%f in (winspd-%SUFFIX%.inf winspd-%SUFFIX%.cat winspd-%SUFFIX%.cer winspd-%SUFFIX%.sys winspd-%SUFFIX%.dll scsitool-%SUFFIX%.exe stgtest-%SUFFIX%.exe rawdisk-%SUFFIX%.exe winspd-tests-%SUFFIX%.exe) do (
 	copy build\VStudio\build\%CONFIG%\%%f %TARGET% >nul
 )
 

@@ -16,10 +16,10 @@ cd build\%Configuration%
 set dfl_tests=^
     winspd-tests-x64 ^
     winspd-tests-x86 ^
-    rawdisk-stgpipe-x64 ^
-    rawdisk-stgpipe-x86 ^
-    rawdisk-stgpipe-raw-x64 ^
-    rawdisk-stgpipe-raw-x86 ^
+    rawdisk-stgtest-x64 ^
+    rawdisk-stgtest-x86 ^
+    rawdisk-stgtest-raw-x64 ^
+    rawdisk-stgtest-raw-x86 ^
     rawdisk-format-ntfs-x64 ^
     rawdisk-format-ntfs-x86
 set opt_tests=
@@ -96,44 +96,44 @@ winspd-tests-x86 *
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
-:rawdisk-stgpipe-x64
+:rawdisk-stgtest-x64
 set TestExit=0
 start "" /b rawdisk-x64 -p \\.\pipe\rawdisk -f test.disk
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
-stgpipe-x64 \\.\pipe\rawdisk\0 10000 WRUR * *
+stgtest-x64 \\.\pipe\rawdisk\0 10000 WRUR * *
 if !ERRORLEVEL! neq 0 set TestExit=1
 taskkill /f /im rawdisk-x64.exe
 del test.disk 2>nul
 exit /b !TestExit!
 
-:rawdisk-stgpipe-x86
+:rawdisk-stgtest-x86
 set TestExit=0
 start "" /b rawdisk-x86 -p \\.\pipe\rawdisk -f test.disk
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
-stgpipe-x86 \\.\pipe\rawdisk\0 10000 WRUR * *
+stgtest-x86 \\.\pipe\rawdisk\0 10000 WRUR * *
 if !ERRORLEVEL! neq 0 set TestExit=1
 taskkill /f /im rawdisk-x86.exe
 del test.disk 2>nul
 exit /b !TestExit!
 
-:rawdisk-stgpipe-raw-x64
+:rawdisk-stgtest-raw-x64
 set TestExit=0
 start "" /b rawdisk-x64 -f test.disk
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
 call :diskpart-partition 1 R
-stgpipe-x64 \\.\R: 10000 WR * *
+stgtest-x64 \\.\R: 10000 WR * *
 if !ERRORLEVEL! neq 0 set TestExit=1
 call :diskpart-remove 1 R
 taskkill /f /im rawdisk-x64.exe
 del test.disk 2>nul
 exit /b !TestExit!
 
-:rawdisk-stgpipe-raw-x86
+:rawdisk-stgtest-raw-x86
 set TestExit=0
 start "" /b rawdisk-x86 -f test.disk
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
 call :diskpart-partition 1 R
-stgpipe-x86 \\.\R: 10000 WR * *
+stgtest-x86 \\.\R: 10000 WR * *
 if !ERRORLEVEL! neq 0 set TestExit=1
 call :diskpart-remove 1 R
 taskkill /f /im rawdisk-x86.exe
