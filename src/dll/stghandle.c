@@ -289,14 +289,13 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
     DWORD BytesTransferred;
     DWORD Error;
 
-    memset(&Overlapped, 0, sizeof Overlapped);
-
     if ((0 == Req && 0 == Rsp) ||
         (0 != Req && 0 == DataBuffer))
-    {
-        Error = ERROR_INVALID_PARAMETER;
+        return ERROR_INVALID_PARAMETER;
+
+    Error = SpdOverlappedInit(&Overlapped);
+    if (ERROR_SUCCESS != Error)
         goto exit;
-    }
 
     AcquireSRWLockShared(&StorageUnitLock);
     Error = StorageUnit == StorageUnits[SPD_INDEX_FROM_BTL(Btl)] ?
@@ -304,13 +303,6 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
     ReleaseSRWLockShared(&StorageUnitLock);
     if (ERROR_SUCCESS != Error)
         goto exit;
-
-    Overlapped.hEvent = CreateEventW(0, TRUE, TRUE, 0);
-    if (0 == Overlapped.hEvent)
-    {
-        Error = GetLastError();
-        goto exit;
-    }
 
     Msg = MemAlloc(sizeof(TRANSACT_MSG) + StorageUnit->StorageUnitParams.MaxTransferLength);
     if (0 == Msg)
@@ -427,8 +419,7 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
 exit:
     MemFree(Msg);
 
-    if (0 != Overlapped.hEvent)
-        CloseHandle(Overlapped.hEvent);
+    SpdOverlappedFini(&Overlapped);
 
     return Error;
 

@@ -164,4 +164,32 @@ BOOLEAN RemoveEntryList(PLIST_ENTRY Entry)
     return Flink == Blink;
 }
 
+/*
+ * Overlapped
+ */
+static inline DWORD SpdOverlappedInit(OVERLAPPED *Overlapped)
+{
+    memset(Overlapped, 0, sizeof *Overlapped);
+    Overlapped->hEvent = CreateEventW(0, TRUE, TRUE, 0);
+    return 0 != Overlapped->hEvent ? ERROR_SUCCESS : GetLastError();
+}
+static inline VOID SpdOverlappedFini(OVERLAPPED *Overlapped)
+{
+    if (0 != Overlapped->hEvent)
+        CloseHandle(Overlapped->hEvent);
+}
+static inline DWORD SpdOverlappedWaitResult(BOOL Success,
+    HANDLE Handle, OVERLAPPED *Overlapped, PDWORD PBytesTransferred)
+{
+    DWORD Error = ERROR_SUCCESS;
+    if (!Success)
+    {
+        Error = GetLastError();
+        if (ERROR_IO_PENDING == Error)
+            Error = GetOverlappedResult(Handle, Overlapped, PBytesTransferred, TRUE) ?
+                ERROR_SUCCESS : GetLastError();
+    }
+    return Error;
+}
+
 #endif
