@@ -20,6 +20,33 @@
     <img src="doc/cap.gif"/>
 </p>
 
+## Storage Units
+
+A WinSpd storage unit is a SCSI "direct-access block device" (as per the definition in the SCSI SBC standards). It is used to store data in logical blocks; each block contains the same amount of data (the Block Length) and has a Logical Block Address (LBA), which is a 64-bit number in a single contiguous address space. In particular WinSpd (and the SCSI standard) do not assume the traditional geometry of cylinder-head-sector (CHS) for how blocks are laid out.
+
+Storage units support two primary operations: read and write, and two secondary operations: flush and unmap:
+
+- **Read**: read blocks at the specified LBA.
+- **Write**: write blocks at the specified LBA.
+- **Flush**: flush any cached block data at the specified LBA.
+- **Unmap**: unmap (deallocate) blocks at the specified LBA. This is like the well known TRIM command.
+
+## Design
+
+WinSpd is implemented as a StorPort virtual miniport (a kernel driver) and a user mode DLL. User mode storage units use the DLL to communicate with the driver via special IOCTL's. The driver creates a virtual SCSI device, which it adds to the Windows storage stack. At that point the device can be partitioned and formatted with any of the Windows file systems.
+
+The WinSpd virtual miniport implements the following SCSI commands:
+
+- **REPORT LUNS**
+- **TEST UNIT READY**
+- **INQUIRY**: Standard, Supported Pages VPD, Serial Number VPD, Device Identifiers VPD, Block Limits VPD, Logical Block Provisioning VPD
+- **MODE SENSE(6), MODE SENSE(10)**: All Pages, Mode Caching Page
+- **READ CAPACITY(10), READ CAPACITY(16)**
+- **READ(6), READ(10), READ(12), READ(16)**
+- **WRITE(6), WRITE(10), WRITE(12), WRITE(16)**
+- **SYNCHRONIZE CACHE(10), SYNCHRONIZE CACHE(16)**
+- **UNMAP**
+
 ## License
 
 WinSpd is available under the [GPLv3](License.txt) license with a special exception for Free/Libre and Open Source Software. A commercial license is also available. Please contact Bill Zissimopoulos \<billziss at navimatics.com> for more details.
