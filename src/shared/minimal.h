@@ -181,15 +181,11 @@ static inline VOID SpdOverlappedFini(OVERLAPPED *Overlapped)
 static inline DWORD SpdOverlappedWaitResult(BOOL Success,
     HANDLE Handle, OVERLAPPED *Overlapped, PDWORD PBytesTransferred)
 {
-    DWORD Error = ERROR_SUCCESS;
-    if (!Success)
-    {
-        Error = GetLastError();
-        if (ERROR_IO_PENDING == Error)
-            Error = GetOverlappedResult(Handle, Overlapped, PBytesTransferred, TRUE) ?
-                ERROR_SUCCESS : GetLastError();
-    }
-    return Error;
+    if (!Success && ERROR_IO_PENDING != GetLastError())
+        return GetLastError();
+    if (!GetOverlappedResult(Handle, Overlapped, PBytesTransferred, TRUE))
+        return GetLastError();
+    return ERROR_SUCCESS;
 }
 
 #endif
