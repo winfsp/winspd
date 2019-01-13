@@ -59,6 +59,7 @@ The project source code is organized as follows:
 * :file_folder: [src](src): WinSpd source code.
     * :file_folder: [src/dll](src/dll): Source code to the WinSpd DLL.
     * :file_folder: [src/scsitool](src/scsitool): Source code to scsitool command line utility.
+    * :file_folder: [src/stgtest](src/stgtest): Source code to the stgtest storage testing tool.
     * :file_folder: [src/sys](src/sys): Source code to the WinSpd kernel driver.
 * :file_folder: [tst](tst): Source code to example storage units and test tools.
 * :file_folder: [tools](tools): Various tools for building and testing WinSpd.
