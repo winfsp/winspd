@@ -10,7 +10,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\tst\stgpipe\stgpipe.c">
+    <ClCompile Include="..\..\..\tst\stgtest\stgtest.c">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\shared\strtoint.c">

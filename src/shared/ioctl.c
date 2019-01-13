@@ -30,18 +30,6 @@
 #define GLOBAL                          L"\\\\?\\"
 #define GLOBALROOT                      L"\\\\?\\GLOBALROOT"
 
-static inline DWORD WaitOverlappedResult(BOOL Success,
-    HANDLE Handle, OVERLAPPED *Overlapped, PDWORD PBytesTransferred)
-{
-    if (!Success && ERROR_IO_PENDING != GetLastError())
-        return GetLastError();
-
-    if (!GetOverlappedResult(Handle, Overlapped, PBytesTransferred, TRUE))
-        return GetLastError();
-
-    return ERROR_SUCCESS;
-}
-
 static DWORD GetDevicePathByHardwareId(GUID *ClassGuid, PWSTR HardwareId,
     PWCHAR PathBuf, UINT32 PathBufSize)
 {
@@ -219,8 +207,6 @@ DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
     DWORD BytesTransferred;
     DWORD Error;
 
-    memset(&Overlapped, 0, sizeof Overlapped);
-
     memset(&Scsi, 0, sizeof Scsi);
     Scsi.Base.Length = sizeof Scsi.Base;
     Scsi.Base.PathId = (Btl >> 16) & 0xff;
@@ -242,8 +228,7 @@ DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
         Scsi.Base.CdbLength = 12;
         break;
     default:
-        Error = ERROR_INVALID_PARAMETER;
-        goto exit;
+        return ERROR_INVALID_PARAMETER;
     }
     Scsi.Base.SenseInfoLength = sizeof(Scsi.SenseInfoBuffer);
     Scsi.Base.DataIn = 0 < DataDirection ?
@@ -257,14 +242,11 @@ DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
     Scsi.Base.SenseInfoOffset = FIELD_OFFSET(SCSI_PASS_THROUGH_DIRECT_DATA, SenseInfoBuffer);
     memcpy(Scsi.Base.Cdb, Cdb, sizeof Scsi.Base.Cdb);
 
-    Overlapped.hEvent = CreateEventW(0, TRUE, TRUE, 0);
-    if (0 == Overlapped.hEvent)
-    {
-        Error = GetLastError();
+    Error = SpdOverlappedInit(&Overlapped);
+    if (ERROR_SUCCESS != Error)
         goto exit;
-    }
 
-    Error = WaitOverlappedResult(
+    Error = SpdOverlappedWaitResult(
         DeviceIoControl(DeviceHandle, IOCTL_SCSI_PASS_THROUGH_DIRECT,
             &Scsi, sizeof Scsi,
             &Scsi, sizeof Scsi,
@@ -285,8 +267,7 @@ DWORD SpdIoctlScsiExecute(HANDLE DeviceHandle,
     Error = ERROR_SUCCESS;
 
 exit:
-    if (0 != Overlapped.hEvent)
-        CloseHandle(Overlapped.hEvent);
+    SpdOverlappedFini(&Overlapped);
 
     return Error;
 }

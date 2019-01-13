@@ -241,7 +241,7 @@ static void ioctl_list_test(void)
     ASSERT(Success);
 }
 
-/* begin: from stgpipe.c */
+/* begin: from stgtest.c */
 static inline UINT64 HashMix64(UINT64 k)
 {
     k ^= k >> 33;
@@ -277,7 +277,7 @@ static int FillOrTest(PVOID DataBuffer, UINT32 BlockLength, UINT64 BlockAddress,
     }
     return 1;
 }
-/* end: from stgpipe.c */
+/* end: from stgtest.c */
 
 static unsigned __stdcall ioctl_transact_read_test_thread(void *Data)
 {

@@ -1,5 +1,5 @@
 /**
- * @file stgpipe.c
+ * @file stgtest.c
  *
  * @copyright 2018 Bill Zissimopoulos
  */
@@ -22,7 +22,7 @@
 #include <winspd/winspd.h>
 #include <shared/minimal.h>
 
-#define PROGNAME                        "stgpipe"
+#define PROGNAME                        "stgtest"
 
 #define info(format, ...)               printlog(GetStdHandle(STD_OUTPUT_HANDLE), format, __VA_ARGS__)
 #define warn(format, ...)               printlog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__)
@@ -63,18 +63,6 @@ typedef union
     SPD_IOCTL_TRANSACT_REQ Req;
     SPD_IOCTL_TRANSACT_RSP Rsp;
 } TRANSACT_MSG;
-
-static inline DWORD WaitOverlappedResult(BOOL Success,
-    HANDLE Handle, OVERLAPPED *Overlapped, PDWORD PBytesTransferred)
-{
-    if (!Success && ERROR_IO_PENDING != GetLastError())
-        return GetLastError();
-
-    if (!GetOverlappedResult(Handle, Overlapped, PBytesTransferred, TRUE))
-        return GetLastError();
-
-    return ERROR_SUCCESS;
-}
 
 static DWORD StgOpenPipe(PWSTR PipeName, ULONG Timeout,
     PHANDLE PHandle, SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams)
@@ -160,20 +148,12 @@ static DWORD StgTransactPipe(HANDLE Handle,
     DWORD BytesTransferred;
     DWORD Error;
 
-    memset(&Overlapped, 0, sizeof Overlapped);
-
     if (0 == Req || 0 == Rsp)
-    {
-        Error = ERROR_INVALID_PARAMETER;
-        goto exit;
-    }
+        return ERROR_INVALID_PARAMETER;
 
-    Overlapped.hEvent = CreateEventW(0, TRUE, TRUE, 0);
-    if (0 == Overlapped.hEvent)
-    {
-        Error = GetLastError();
+    Error = SpdOverlappedInit(&Overlapped);
+    if (ERROR_SUCCESS != Error)
         goto exit;
-    }
 
     Msg = MemAlloc(
         sizeof(TRANSACT_MSG) + StorageUnitParams->MaxTransferLength);
@@ -199,13 +179,13 @@ static DWORD StgTransactPipe(HANDLE Handle,
     memcpy(Msg, Req, sizeof *Req);
     if (0 != DataLength)
         memcpy(Msg + 1, DataBuffer, DataLength);
-    Error = WaitOverlappedResult(
+    Error = SpdOverlappedWaitResult(
         WriteFile(Handle, Msg, sizeof(TRANSACT_MSG) + DataLength, 0, &Overlapped),
         Handle, &Overlapped, &BytesTransferred);
     if (ERROR_SUCCESS != Error)
         goto exit;
 
-    Error = WaitOverlappedResult(
+    Error = SpdOverlappedWaitResult(
         ReadFile(Handle,
             Msg, sizeof(TRANSACT_MSG) + StorageUnitParams->MaxTransferLength, 0, &Overlapped),
         Handle, &Overlapped, &BytesTransferred);
@@ -237,8 +217,7 @@ static DWORD StgTransactPipe(HANDLE Handle,
 exit:
     MemFree(Msg);
 
-    if (0 != Overlapped.hEvent)
-        CloseHandle(Overlapped.hEvent);
+    SpdOverlappedFini(&Overlapped);
 
     return Error;
 }
@@ -376,22 +355,14 @@ static DWORD StgTransactRaw(HANDLE Handle,
     DWORD BytesTransferred;
     DWORD Error;
 
-    memset(&Overlapped, 0, sizeof Overlapped);
-
     if (0 == Req || 0 == Rsp ||
         (SpdIoctlTransactReadKind != Req->Kind && SpdIoctlTransactWriteKind != Req->Kind) ||
         0 == DataBuffer)
-    {
-        Error = ERROR_INVALID_PARAMETER;
-        goto exit;
-    }
+        return ERROR_INVALID_PARAMETER;
 
-    Overlapped.hEvent = CreateEventW(0, TRUE, TRUE, 0);
-    if (0 == Overlapped.hEvent)
-    {
-        Error = GetLastError();
+    Error = SpdOverlappedInit(&Overlapped);
+    if (ERROR_SUCCESS != Error)
         goto exit;
-    }
 
     DataLength = 0;
     switch (Req->Kind)
@@ -401,7 +372,7 @@ static DWORD StgTransactRaw(HANDLE Handle,
         DataLength = Req->Op.Write.BlockCount * StorageUnitParams->BlockLength;
         Overlapped.Offset = Offset.LowPart;
         Overlapped.OffsetHigh = Offset.HighPart;
-        Error = WaitOverlappedResult(
+        Error = SpdOverlappedWaitResult(
             WriteFile(Handle, DataBuffer, DataLength, 0, &Overlapped),
             Handle, &Overlapped, &BytesTransferred);
         break;
@@ -410,7 +381,7 @@ static DWORD StgTransactRaw(HANDLE Handle,
         DataLength = Req->Op.Read.BlockCount * StorageUnitParams->BlockLength;
         Overlapped.Offset = Offset.LowPart;
         Overlapped.OffsetHigh = Offset.HighPart;
-        Error = WaitOverlappedResult(
+        Error = SpdOverlappedWaitResult(
             ReadFile(Handle, DataBuffer, DataLength, 0, &Overlapped),
             Handle, &Overlapped, &BytesTransferred);
         break;
@@ -431,8 +402,7 @@ static DWORD StgTransactRaw(HANDLE Handle,
     Error = ERROR_SUCCESS;
 
 exit:
-    if (0 != Overlapped.hEvent)
-        CloseHandle(Overlapped.hEvent);
+    SpdOverlappedFini(&Overlapped);
 
     return Error;
 }
