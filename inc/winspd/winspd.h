@@ -75,6 +75,7 @@ typedef struct _SPD_STORAGE_UNIT
     HANDLE Handle;
     UINT32 Btl;
     const SPD_STORAGE_UNIT_INTERFACE *Interface;
+    DWORD DispatcherThreadId;
     HANDLE DispatcherThread;
     ULONG DispatcherThreadCount;
     DWORD DispatcherError;

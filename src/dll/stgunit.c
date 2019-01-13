@@ -132,6 +132,11 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
         goto exit;
     }
 
+    OperationContext.Request = &RequestBuf;
+    OperationContext.Response = &ResponseBuf;
+    OperationContext.DataBuffer = DataBuffer;
+    TlsSetValue(SpdStorageUnitTlsKey, &OperationContext);
+
     if (1 < StorageUnit->DispatcherThreadCount)
     {
         StorageUnit->DispatcherThreadCount--;
@@ -142,11 +147,6 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
             goto exit;
         }
     }
-
-    OperationContext.Request = &RequestBuf;
-    OperationContext.Response = &ResponseBuf;
-    OperationContext.DataBuffer = DataBuffer;
-    TlsSetValue(SpdStorageUnitTlsKey, &OperationContext);
 
     Response = 0;
     for (;;)
@@ -236,10 +236,6 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
     }
 
 exit:
-    TlsSetValue(SpdStorageUnitTlsKey, 0);
-
-    MemFree(DataBuffer);
-
     SpdStorageUnitSetDispatcherError(StorageUnit, Error);
 
     SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->Guid);
@@ -249,6 +245,24 @@ exit:
         WaitForSingleObject(DispatcherThread, INFINITE);
         CloseHandle(DispatcherThread);
     }
+
+    if (GetCurrentThreadId() == StorageUnit->DispatcherThreadId)
+    {
+        if (0 != StorageUnit->Interface->Flush)
+        {
+            memset(Request, 0, sizeof *Request);
+            memset(Response, 0, sizeof *Response);
+            StorageUnit->Interface->Flush(
+                StorageUnit,
+                0,
+                0,
+                &Response->Status);
+        }
+    }
+
+    TlsSetValue(SpdStorageUnitTlsKey, 0);
+
+    MemFree(DataBuffer);
 
     return Error;
 }
@@ -271,9 +285,15 @@ DWORD SpdStorageUnitStartDispatcher(SPD_STORAGE_UNIT *StorageUnit, ULONG ThreadC
 
     StorageUnit->DispatcherThreadCount = ThreadCount;
     StorageUnit->DispatcherThread = CreateThread(0, 0,
-        SpdStorageUnitDispatcherThread, StorageUnit, 0, 0);
+        SpdStorageUnitDispatcherThread, StorageUnit, CREATE_SUSPENDED,
+        &StorageUnit->DispatcherThreadId);
     if (0 == StorageUnit->DispatcherThread)
         return GetLastError();
+    if (!ResumeThread(StorageUnit->DispatcherThread))
+    {
+        CloseHandle(StorageUnit->DispatcherThread);
+        return GetLastError();
+    }
 
     return ERROR_SUCCESS;
 }
