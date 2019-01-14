@@ -1,5 +1,5 @@
 /**
- * @file rawdisk.h
+ * @file shared/strtoint.h
  *
  * @copyright 2018 Bill Zissimopoulos
  */
@@ -19,21 +19,10 @@
  * associated repository.
  */
 
-#ifndef RAWDISK_H_INCLUDED
-#define RAWDISK_H_INCLUDED
+#ifndef WINSPD_SHARED_STRTOINT_H_INCLUDED
+#define WINSPD_SHARED_STRTOINT_H_INCLUDED
 
-#include <winspd/winspd.h>
-#include <shared/minimal.h>
-#include <shared/printlog.h>
-#include <shared/strtoint.h>
-
-typedef struct _RAWDISK RAWDISK;
-
-DWORD RawDiskCreate(PWSTR RawDiskFile,
-    UINT64 BlockCount, UINT32 BlockLength, PWSTR ProductId, PWSTR ProductRevision,
-    PWSTR PipeName,
-    RAWDISK **PRawDisk);
-VOID RawDiskDelete(RAWDISK *RawDisk);
-SPD_STORAGE_UNIT *RawDiskStorageUnit(RAWDISK *RawDisk);
+long long strtoint(const char *p, int base, int is_signed, const char **endp);
+long long wcstoint(const wchar_t *p, int base, int is_signed, const wchar_t **endp);
 
 #endif

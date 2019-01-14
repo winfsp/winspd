@@ -21,36 +21,7 @@
 
 #include <scsitool/scsitool.h>
 
-#define info(format, ...)               printlog(GetStdHandle(STD_OUTPUT_HANDLE), format, __VA_ARGS__)
-#define warn(format, ...)               printlog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__)
-#define fail(ExitCode, format, ...)     (warn(format, __VA_ARGS__), ExitProcess(ExitCode))
-
 static void usage(void);
-
-static void vprintlog(HANDLE h, const char *format, va_list ap)
-{
-    char buf[1024];
-        /* wvsprintf is only safe with a 1024 byte buffer */
-    size_t len;
-    DWORD BytesTransferred;
-
-    wvsprintfA(buf, format, ap);
-    buf[sizeof buf - 1] = '\0';
-
-    len = lstrlenA(buf);
-    buf[len++] = '\n';
-
-    WriteFile(h, buf, (DWORD)len, &BytesTransferred, 0);
-}
-
-static void printlog(HANDLE h, const char *format, ...)
-{
-    va_list ap;
-
-    va_start(ap, format);
-    vprintlog(h, format, ap);
-    va_end(ap);
-}
 
 static void ScsiPrint(const char *format, void *buf, size_t len)
 {

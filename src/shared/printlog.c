@@ -1,5 +1,5 @@
 /**
- * @file rawdisk.h
+ * @file shared/printlog.c
  *
  * @copyright 2018 Bill Zissimopoulos
  */
@@ -19,21 +19,30 @@
  * associated repository.
  */
 
-#ifndef RAWDISK_H_INCLUDED
-#define RAWDISK_H_INCLUDED
-
 #include <winspd/winspd.h>
 #include <shared/minimal.h>
-#include <shared/printlog.h>
-#include <shared/strtoint.h>
 
-typedef struct _RAWDISK RAWDISK;
+void vprintlog(HANDLE h, const char *format, va_list ap)
+{
+    char buf[1024];
+        /* wvsprintf is only safe with a 1024 byte buffer */
+    size_t len;
+    DWORD BytesTransferred;
 
-DWORD RawDiskCreate(PWSTR RawDiskFile,
-    UINT64 BlockCount, UINT32 BlockLength, PWSTR ProductId, PWSTR ProductRevision,
-    PWSTR PipeName,
-    RAWDISK **PRawDisk);
-VOID RawDiskDelete(RAWDISK *RawDisk);
-SPD_STORAGE_UNIT *RawDiskStorageUnit(RAWDISK *RawDisk);
+    wvsprintfA(buf, format, ap);
+    buf[sizeof buf - 1] = '\0';
 
-#endif
+    len = lstrlenA(buf);
+    buf[len++] = '\n';
+
+    WriteFile(h, buf, (DWORD)len, &BytesTransferred, 0);
+}
+
+void printlog(HANDLE h, const char *format, ...)
+{
+    va_list ap;
+
+    va_start(ap, format);
+    vprintlog(h, format, ap);
+    va_end(ap);
+}

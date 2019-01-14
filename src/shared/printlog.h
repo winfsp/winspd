@@ -1,5 +1,5 @@
 /**
- * @file rawdisk.h
+ * @file shared/printlog.h
  *
  * @copyright 2018 Bill Zissimopoulos
  */
@@ -19,21 +19,14 @@
  * associated repository.
  */
 
-#ifndef RAWDISK_H_INCLUDED
-#define RAWDISK_H_INCLUDED
+#ifndef WINSPD_SHARED_PRINTLOG_H_INCLUDED
+#define WINSPD_SHARED_PRINTLOG_H_INCLUDED
 
-#include <winspd/winspd.h>
-#include <shared/minimal.h>
-#include <shared/printlog.h>
-#include <shared/strtoint.h>
+#define info(format, ...)               printlog(GetStdHandle(STD_OUTPUT_HANDLE), format, __VA_ARGS__)
+#define warn(format, ...)               printlog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__)
+#define fail(ExitCode, format, ...)     (warn(format, __VA_ARGS__), ExitProcess(ExitCode))
 
-typedef struct _RAWDISK RAWDISK;
-
-DWORD RawDiskCreate(PWSTR RawDiskFile,
-    UINT64 BlockCount, UINT32 BlockLength, PWSTR ProductId, PWSTR ProductRevision,
-    PWSTR PipeName,
-    RAWDISK **PRawDisk);
-VOID RawDiskDelete(RAWDISK *RawDisk);
-SPD_STORAGE_UNIT *RawDiskStorageUnit(RAWDISK *RawDisk);
+void vprintlog(HANDLE h, const char *format, va_list ap);
+void printlog(HANDLE h, const char *format, ...);
 
 #endif

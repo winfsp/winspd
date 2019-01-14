@@ -19,12 +19,21 @@
     <ClCompile Include="..\..\..\src\shared\strtoint.c">
       <Filter>Source\shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\shared\printlog.c">
+      <Filter>Source\shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\tst\rawdisk\rawdisk.h">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\shared\minimal.h">
+      <Filter>Source\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\shared\printlog.h">
+      <Filter>Source\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\shared\strtoint.h">
       <Filter>Source\shared</Filter>
     </ClInclude>
   </ItemGroup>

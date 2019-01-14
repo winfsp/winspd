@@ -24,11 +24,10 @@
 
 #include <winspd/winspd.h>
 #include <shared/minimal.h>
+#include <shared/printlog.h>
+#include <shared/strtoint.h>
 
 #define PROGNAME                        "scsitool"
-
-long long strtoint(const char *p, int base, int is_signed, const char **endp);
-long long wcstoint(const wchar_t *p, int base, int is_signed, const wchar_t **endp);
 
 void ScsiLineText(HANDLE h, const char *format, void *buf, size_t len);
 
