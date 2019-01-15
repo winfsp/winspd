@@ -508,17 +508,35 @@ static UCHAR SpdScsiPostRangeSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
 {
     UINT64 BlockAddress, EndBlockAddress;
     UINT32 BlockCount;
-    ULONG DataLength = 0;
+    ULONG DataLength;
 
-    SpdCdbGetRange(Cdb, &BlockAddress, &BlockCount, 0);
-
-    if (SCSIOP_SYNCHRONIZE_CACHE != Cdb->AsByte[0] &&
-        SCSIOP_SYNCHRONIZE_CACHE16 != Cdb->AsByte[0])
+    switch (Cdb->AsByte[0])
     {
-        ULONG DataTransferLength = SrbGetDataTransferLength(Srb);
-
-        if (DataTransferLength < (DataLength = BlockCount * StorageUnit->StorageUnitParams.BlockLength))
+    case SCSIOP_READ6:
+    case SCSIOP_READ:
+    case SCSIOP_READ12:
+    case SCSIOP_READ16:
+    case SCSIOP_WRITE6:
+    case SCSIOP_WRITE:
+    case SCSIOP_WRITE12:
+    case SCSIOP_WRITE16:
+        SpdCdbGetRange(Cdb, &BlockAddress, &BlockCount, 0);
+        DataLength = BlockCount * StorageUnit->StorageUnitParams.BlockLength;
+        if (SrbGetDataTransferLength(Srb) < DataLength)
             return SRB_STATUS_INTERNAL_ERROR;
+        break;
+
+    case SCSIOP_SYNCHRONIZE_CACHE:
+    case SCSIOP_SYNCHRONIZE_CACHE16:
+        if (!StorageUnit->StorageUnitParams.CacheSupported)
+            return SRB_STATUS_INVALID_REQUEST;
+        SpdCdbGetRange(Cdb, &BlockAddress, &BlockCount, 0);
+        DataLength = 0;
+        break;
+
+    default:
+        ASSERT(FALSE);
+        return SRB_STATUS_INVALID_REQUEST;
     }
 
     if (0 == BlockCount)
