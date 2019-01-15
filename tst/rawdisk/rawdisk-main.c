@@ -167,11 +167,13 @@ int wmain(int argc, wchar_t **argv)
 
     SpdStorageUnitSetDebugLog(RawDiskStorageUnit(RawDisk), DebugFlags);
 
-    warn("%s%s%S -c %lu -l %lu -i %S -r %S -f %S",
+    warn("%s -f %S -c %lu -l %lu -i %S -r %S -C %u%s%S",
         PROGNAME,
+        RawDiskFile,
+        BlockCount, BlockLength, ProductId, ProductRevision,
+        !!CacheSupported,
         0 != PipeName ? " -p " : "",
-        0 != PipeName ? PipeName : L"",
-        BlockCount, BlockLength, ProductId, ProductRevision, RawDiskFile);
+        0 != PipeName ? PipeName : L"");
 
     SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
     if (WAIT_OBJECT_0 != WaitForSingleObject(MainEvent, INFINITE))

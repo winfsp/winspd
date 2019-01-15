@@ -120,8 +120,6 @@ static BOOLEAN Flush(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddress, UINT32 BlockCount,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
-    WARNONCE(!StorageUnit->CacheSupported);
-
     RAWDISK *RawDisk = StorageUnit->UserContext;
     PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
 
