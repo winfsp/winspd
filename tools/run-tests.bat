@@ -106,29 +106,29 @@ exit /b 0
 set TestExit=0
 start "" /b rawdisk-%1 -p \\.\pipe\rawdisk -f test.disk -C %2
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
-stgtest-%1 \\.\pipe\rawdisk\0 10000 WRUR * *
+stgtest-%1 \\.\pipe\rawdisk\0 %3 WRUR * *
 if !ERRORLEVEL! neq 0 set TestExit=1
 taskkill /f /im rawdisk-%1.exe
 del test.disk 2>nul
 exit /b !TestExit!
 
 :rawdisk-cc-stgtest-pipe-x64
-call :rawdisk-stgtest-pipe-common x64 1
+call :rawdisk-stgtest-pipe-common x64 1 10000
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-cc-stgtest-pipe-x86
-call :rawdisk-stgtest-pipe-common x86 1
+call :rawdisk-stgtest-pipe-common x86 1 10000
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-nc-stgtest-pipe-x64
-call :rawdisk-stgtest-pipe-common x64 0
+call :rawdisk-stgtest-pipe-common x64 0 1000
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-nc-stgtest-pipe-x86
-call :rawdisk-stgtest-pipe-common x86 0
+call :rawdisk-stgtest-pipe-common x86 0 1000
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
@@ -137,7 +137,7 @@ set TestExit=0
 start "" /b rawdisk-%1 -f test.disk -C %2
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
 call :diskpart-partition 1 R
-stgtest-%1 \\.\R: 10000 WR * *
+stgtest-%1 \\.\R: %3 WR * *
 if !ERRORLEVEL! neq 0 set TestExit=1
 call :diskpart-remove 1 R
 taskkill /f /im rawdisk-%1.exe
@@ -145,22 +145,22 @@ del test.disk 2>nul
 exit /b !TestExit!
 
 :rawdisk-cc-stgtest-raw-x64
-call :rawdisk-stgtest-raw-common x64 1
+call :rawdisk-stgtest-raw-common x64 1 10000
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-cc-stgtest-raw-x86
-call :rawdisk-stgtest-raw-common x86 1
+call :rawdisk-stgtest-raw-common x86 1 10000
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-nc-stgtest-raw-x64
-call :rawdisk-stgtest-raw-common x64 0
+call :rawdisk-stgtest-raw-common x64 0 1000
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-nc-stgtest-raw-x86
-call :rawdisk-stgtest-raw-common x86 0
+call :rawdisk-stgtest-raw-common x86 0 1000
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
@@ -187,23 +187,23 @@ taskkill /f /im rawdisk-%1.exe
 del test.disk 2>nul
 exit /b !TestExit!
 
-:rawdisk-cc-stgtest-ntfs-x64
-call :rawdisk-stgtest-ntfs-common x64 1
+:rawdisk-cc-format-ntfs-x64
+call :rawdisk-format-ntfs-common x64 1
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
-:rawdisk-cc-stgtest-ntfs-x86
-call :rawdisk-stgtest-ntfs-common x86 1
+:rawdisk-cc-format-ntfs-x86
+call :rawdisk-format-ntfs-common x86 1
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
-:rawdisk-nc-stgtest-ntfs-x64
-call :rawdisk-stgtest-ntfs-common x64 0
+:rawdisk-nc-format-ntfs-x64
+call :rawdisk-format-ntfs-common x64 0
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
-:rawdisk-nc-stgtest-ntfs-x86
-call :rawdisk-stgtest-ntfs-common x86 0
+:rawdisk-nc-format-ntfs-x86
+call :rawdisk-format-ntfs-common x86 0
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
