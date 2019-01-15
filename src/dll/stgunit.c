@@ -251,6 +251,7 @@ exit:
     {
         if (StorageUnit->CacheSupported && 0 != StorageUnit->Interface->Flush)
         {
+            Response = &ResponseBuf;
             memset(Request, 0, sizeof *Request);
             memset(Response, 0, sizeof *Response);
             StorageUnit->Interface->Flush(
