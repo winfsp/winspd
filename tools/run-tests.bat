@@ -14,8 +14,6 @@ if not exist build\%Configuration% echo === No tests found >&2 & goto fail
 cd build\%Configuration%
 
 set dfl_tests=^
-    winspd-tests-x64 ^
-    winspd-tests-x86 ^
     rawdisk-cc-stgtest-pipe-x64 ^
     rawdisk-cc-stgtest-pipe-x86 ^
     rawdisk-nc-stgtest-pipe-x64 ^
@@ -28,7 +26,9 @@ set dfl_tests=^
     rawdisk-cc-format-ntfs-x86 ^
     rawdisk-nc-format-ntfs-x64 ^
     rawdisk-nc-format-ntfs-x86
-set opt_tests=
+set opt_tests=^
+    winspd-tests-x64 ^
+    winspd-tests-x86
 
 set tests=
 for %%f in (%dfl_tests%) do (
