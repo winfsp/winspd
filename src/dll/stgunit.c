@@ -91,6 +91,7 @@ DWORD SpdStorageUnitCreate(
         goto exit;
 
     memcpy(&StorageUnit->Guid, &StorageUnitParams->Guid, sizeof StorageUnitParams->Guid);
+    StorageUnit->CacheSupported = !!StorageUnitParams->CacheSupported;
     StorageUnit->MaxTransferLength = StorageUnitParams->MaxTransferLength;
     StorageUnit->Handle = Handle;
     StorageUnit->Btl = Btl;
@@ -248,7 +249,7 @@ exit:
 
     if (GetCurrentThreadId() == StorageUnit->DispatcherThreadId)
     {
-        if (0 != StorageUnit->Interface->Flush)
+        if (StorageUnit->CacheSupported && 0 != StorageUnit->Interface->Flush)
         {
             memset(Request, 0, sizeof *Request);
             memset(Response, 0, sizeof *Response);

@@ -605,12 +605,12 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
         case SpdIoctlTransactReadKind:
             Req.Op.Read.BlockAddress = BlockAddress;
             Req.Op.Read.BlockCount = OpBlockCount;
-            Req.Op.Read.ForceUnitAccess = 0;
+            Req.Op.Read.ForceUnitAccess = !StorageUnitParams.CacheSupported;
             break;
         case SpdIoctlTransactWriteKind:
             Req.Op.Write.BlockAddress = BlockAddress;
             Req.Op.Write.BlockCount = OpBlockCount;
-            Req.Op.Write.ForceUnitAccess = 0;
+            Req.Op.Write.ForceUnitAccess = !StorageUnitParams.CacheSupported;
             FillOrTest(DataBuffer, StorageUnitParams.BlockLength, BlockAddress, OpBlockCount, 0);
             TestOpKind = SpdIoctlTransactWriteKind;
             break;

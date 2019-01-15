@@ -21,6 +21,15 @@
 
 #include "rawdisk.h"
 
+#define WARNONCE(expr)                  \
+    do                                  \
+    {                                   \
+        static LONG Once;               \
+        if (!(expr) &&                  \
+            0 == InterlockedCompareExchange(&Once, 1, 0))\
+            warn("WARNONCE(%s) failed at %s:%d", #expr, __func__, __LINE__);\
+    } while (0,0)
+
 typedef struct _RAWDISK
 {
     SPD_STORAGE_UNIT *StorageUnit;
@@ -51,6 +60,8 @@ static BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
     PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN FlushFlag,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
+    WARNONCE(StorageUnit->CacheSupported || FlushFlag);
+
     if (FlushFlag)
     {
         Flush(StorageUnit, BlockAddress, BlockCount, Status);
@@ -81,6 +92,8 @@ static BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
     PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN FlushFlag,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
+    WARNONCE(StorageUnit->CacheSupported || FlushFlag);
+
     RAWDISK *RawDisk = StorageUnit->UserContext;
     PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
     UINT_PTR ExceptionDataAddress;
@@ -107,6 +120,8 @@ static BOOLEAN Flush(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddress, UINT32 BlockCount,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
+    WARNONCE(!StorageUnit->CacheSupported);
+
     RAWDISK *RawDisk = StorageUnit->UserContext;
     PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
 
@@ -173,7 +188,9 @@ static SPD_STORAGE_UNIT_INTERFACE RawDiskInterface =
 };
 
 DWORD RawDiskCreate(PWSTR RawDiskFile,
-    UINT64 BlockCount, UINT32 BlockLength, PWSTR ProductId, PWSTR ProductRevision,
+    UINT64 BlockCount, UINT32 BlockLength,
+    PWSTR ProductId, PWSTR ProductRevision,
+    BOOLEAN CacheSupported,
     PWSTR PipeName,
     RAWDISK **PRawDisk)
 {
@@ -211,6 +228,7 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
         Error = ERROR_INVALID_PARAMETER;
         goto exit;
     }
+    StorageUnitParams.CacheSupported = CacheSupported;
 
     RawDisk = MemAlloc(sizeof *RawDisk);
     if (0 == RawDisk)

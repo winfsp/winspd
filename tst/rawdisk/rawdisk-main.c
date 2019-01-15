@@ -29,12 +29,16 @@ static void usage(void)
         "usage: %s OPTIONS\n"
         "\n"
         "options:\n"
-        "    -p \\\\.\\pipe\\PipeName\n"
-        "    -c BlockCount\n"
-        "    -l BlockLength\n"
-        "    -i ProductId        [1-16 chars]\n"
-        "    -r ProductRevision  [1-4 chars]\n"
-        "    -f RawDiskFile\n";
+        "    -f RawDiskFile                      Storage unit data file\n"
+        "    -c BlockCount                       Storage unit size in blocks\n"
+        "    -l BlockLength                      Storage unit block length\n"
+        "    -i ProductId                        1-16 chars\n"
+        "    -r ProductRevision                  1-4 chars\n"
+        "    -C 0|1                              Disable/enable cache\n"
+        "    -d -1                               Debug flags\n"
+        "    -D DebugLogFile                     Debug log file; - for stderr\n"
+        "    -p \\\\.\\pipe\\PipeName                Listen on pipe; omit to use driver\n"
+        "";
 
     fail(ERROR_INVALID_PARAMETER, usage, PROGNAME);
 }
@@ -68,16 +72,17 @@ static BOOL WINAPI ConsoleCtrlHandler(DWORD CtrlType)
 int wmain(int argc, wchar_t **argv)
 {
     wchar_t **argp;
-    PWSTR PipeName = 0;
+    PWSTR RawDiskFile = 0;
     ULONG BlockCount = 1024 * 1024;
     ULONG BlockLength = 512;
     PWSTR ProductId = L"RawDisk";
     PWSTR ProductRevision = L"1.0";
-    PWSTR RawDiskFile = 0;
-    RAWDISK *RawDisk = 0;
+    ULONG CacheSupported = 1;
     ULONG DebugFlags = 0;
     PWSTR DebugLogFile = 0;
     HANDLE DebugLogHandle = INVALID_HANDLE_VALUE;
+    PWSTR PipeName = 0;
+    RAWDISK *RawDisk = 0;
     DWORD Error;
 
     for (argp = argv + 1; 0 != argp[0]; argp++)
@@ -89,29 +94,32 @@ int wmain(int argc, wchar_t **argv)
         case L'?':
             usage();
             break;
-        case L'p':
-            PipeName = argtos(++argp);
-            break;
         case L'c':
             BlockCount = argtol(++argp, BlockCount);
             break;
-        case L'l':
-            BlockLength = argtol(++argp, BlockLength);
-            break;
-        case L'i':
-            ProductId = argtos(++argp);
-            break;
-        case L'r':
-            ProductRevision = argtos(++argp);
-            break;
-        case L'f':
-            RawDiskFile = argtos(++argp);
+        case L'C':
+            CacheSupported = argtol(++argp, CacheSupported);
             break;
         case L'd':
             DebugFlags = argtol(++argp, DebugFlags);
             break;
         case L'D':
             DebugLogFile = argtos(++argp);
+            break;
+        case L'f':
+            RawDiskFile = argtos(++argp);
+            break;
+        case L'i':
+            ProductId = argtos(++argp);
+            break;
+        case L'l':
+            BlockLength = argtol(++argp, BlockLength);
+            break;
+        case L'p':
+            PipeName = argtos(++argp);
+            break;
+        case L'r':
+            ProductRevision = argtos(++argp);
             break;
         default:
             usage();
@@ -145,7 +153,11 @@ int wmain(int argc, wchar_t **argv)
     if (0 == MainEvent)
         fail(GetLastError(), "error: cannot create MainEvent: error %lu", GetLastError());
 
-    Error = RawDiskCreate(RawDiskFile, BlockCount, BlockLength, ProductId, ProductRevision, PipeName,
+    Error = RawDiskCreate(RawDiskFile,
+        BlockCount, BlockLength,
+        ProductId, ProductRevision,
+        !!CacheSupported,
+        PipeName,
         &RawDisk);
     if (0 != Error)
         fail(Error, "error: cannot create RawDisk: error %lu", Error);

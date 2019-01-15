@@ -396,7 +396,8 @@ static UCHAR SpdScsiModeSense(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUn
         ModeParameterHeader->ModeDataLength = (UCHAR)(DataLength -
             RTL_SIZEOF_THROUGH_FIELD(MODE_PARAMETER_HEADER, ModeDataLength));
         ModeParameterHeader->MediumType = 0;
-        ModeParameterHeader->DeviceSpecificParameter = MODE_DSP_FUA_SUPPORTED;
+        ModeParameterHeader->DeviceSpecificParameter =
+            StorageUnit->StorageUnitParams.CacheSupported ? MODE_DSP_FUA_SUPPORTED : 0;
         ModeParameterHeader->BlockDescriptorLength = 0;
     }
     else
@@ -418,7 +419,8 @@ static UCHAR SpdScsiModeSense(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUn
         ModeParameterHeader->ModeDataLength[1] = (UCHAR)(DataLength -
             RTL_SIZEOF_THROUGH_FIELD(MODE_PARAMETER_HEADER10, ModeDataLength));
         ModeParameterHeader->MediumType = 0;
-        ModeParameterHeader->DeviceSpecificParameter = MODE_DSP_FUA_SUPPORTED;
+        ModeParameterHeader->DeviceSpecificParameter =
+            StorageUnit->StorageUnitParams.CacheSupported ? MODE_DSP_FUA_SUPPORTED : 0;
         ModeParameterHeader->BlockDescriptorLength[0] = 0;
         ModeParameterHeader->BlockDescriptorLength[1] = 0;
     }
@@ -427,8 +429,8 @@ static UCHAR SpdScsiModeSense(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUn
     ModeCachingPage->PageSavable = 0;
     ModeCachingPage->PageLength = sizeof(MODE_CACHING_PAGE) -
         RTL_SIZEOF_THROUGH_FIELD(MODE_CACHING_PAGE, PageLength);
-    ModeCachingPage->ReadDisableCache = 0;
-    ModeCachingPage->WriteCacheEnable = 1;
+    ModeCachingPage->ReadDisableCache = !StorageUnit->StorageUnitParams.CacheSupported;
+    ModeCachingPage->WriteCacheEnable = !!StorageUnit->StorageUnitParams.CacheSupported;
 
     SrbSetDataTransferLength(Srb, DataLength);
 
@@ -630,7 +632,8 @@ VOID SpdSrbExecuteScsiPrepare(PVOID SrbExtension0, PVOID Context, PVOID DataBuff
             &Req->Op.Read.BlockAddress,
             &Req->Op.Read.BlockCount,
             &ForceUnitAccess);
-        Req->Op.Read.ForceUnitAccess = ForceUnitAccess;
+        Req->Op.Read.ForceUnitAccess =
+            StorageUnit->StorageUnitParams.CacheSupported ? ForceUnitAccess : 1;
         ChunkLength = SrbExtension->SystemDataLength - SrbExtension->ChunkOffset;
         if (ChunkLength > StorageUnit->StorageUnitParams.MaxTransferLength)
             ChunkLength = StorageUnit->StorageUnitParams.MaxTransferLength;
@@ -650,7 +653,8 @@ VOID SpdSrbExecuteScsiPrepare(PVOID SrbExtension0, PVOID Context, PVOID DataBuff
             &Req->Op.Write.BlockAddress,
             &Req->Op.Write.BlockCount,
             &ForceUnitAccess);
-        Req->Op.Write.ForceUnitAccess = ForceUnitAccess;
+        Req->Op.Write.ForceUnitAccess =
+            StorageUnit->StorageUnitParams.CacheSupported ? ForceUnitAccess : 1;
         ChunkLength = SrbExtension->SystemDataLength - SrbExtension->ChunkOffset;
         if (ChunkLength > StorageUnit->StorageUnitParams.MaxTransferLength)
             ChunkLength = StorageUnit->StorageUnitParams.MaxTransferLength;
