@@ -16,12 +16,18 @@ cd build\%Configuration%
 set dfl_tests=^
     winspd-tests-x64 ^
     winspd-tests-x86 ^
-    rawdisk-stgtest-x64 ^
-    rawdisk-stgtest-x86 ^
-    rawdisk-stgtest-raw-x64 ^
-    rawdisk-stgtest-raw-x86 ^
-    rawdisk-format-ntfs-x64 ^
-    rawdisk-format-ntfs-x86
+    rawdisk-cc-stgtest-pipe-x64 ^
+    rawdisk-cc-stgtest-pipe-x86 ^
+    rawdisk-nc-stgtest-pipe-x64 ^
+    rawdisk-nc-stgtest-pipe-x86 ^
+    rawdisk-cc-stgtest-raw-x64 ^
+    rawdisk-cc-stgtest-raw-x86 ^
+    rawdisk-nc-stgtest-raw-x64 ^
+    rawdisk-nc-stgtest-raw-x86 ^
+    rawdisk-cc-format-ntfs-x64 ^
+    rawdisk-cc-format-ntfs-x86 ^
+    rawdisk-nc-format-ntfs-x64 ^
+    rawdisk-nc-format-ntfs-x86
 set opt_tests=
 
 set tests=
@@ -96,53 +102,71 @@ winspd-tests-x86 *
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
-:rawdisk-stgtest-x64
+:rawdisk-stgtest-pipe-common
 set TestExit=0
-start "" /b rawdisk-x64 -p \\.\pipe\rawdisk -f test.disk
+start "" /b rawdisk-%1 -p \\.\pipe\rawdisk -f test.disk -C %2
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
-stgtest-x64 \\.\pipe\rawdisk\0 10000 WRUR * *
+stgtest-%1 \\.\pipe\rawdisk\0 10000 WRUR * *
 if !ERRORLEVEL! neq 0 set TestExit=1
-taskkill /f /im rawdisk-x64.exe
+taskkill /f /im rawdisk-%1.exe
 del test.disk 2>nul
 exit /b !TestExit!
 
-:rawdisk-stgtest-x86
-set TestExit=0
-start "" /b rawdisk-x86 -p \\.\pipe\rawdisk -f test.disk
-waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
-stgtest-x86 \\.\pipe\rawdisk\0 10000 WRUR * *
-if !ERRORLEVEL! neq 0 set TestExit=1
-taskkill /f /im rawdisk-x86.exe
-del test.disk 2>nul
-exit /b !TestExit!
+:rawdisk-cc-stgtest-pipe-x64
+call :rawdisk-stgtest-pipe-common x64 1
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
 
-:rawdisk-stgtest-raw-x64
-set TestExit=0
-start "" /b rawdisk-x64 -f test.disk
-waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
-call :diskpart-partition 1 R
-stgtest-x64 \\.\R: 10000 WR * *
-if !ERRORLEVEL! neq 0 set TestExit=1
-call :diskpart-remove 1 R
-taskkill /f /im rawdisk-x64.exe
-del test.disk 2>nul
-exit /b !TestExit!
+:rawdisk-cc-stgtest-pipe-x86
+call :rawdisk-stgtest-pipe-common x86 1
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
 
-:rawdisk-stgtest-raw-x86
+:rawdisk-nc-stgtest-pipe-x64
+call :rawdisk-stgtest-pipe-common x64 0
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-nc-stgtest-pipe-x86
+call :rawdisk-stgtest-pipe-common x86 0
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-stgtest-raw-common
 set TestExit=0
-start "" /b rawdisk-x86 -f test.disk
+start "" /b rawdisk-%1 -f test.disk -C %2
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
 call :diskpart-partition 1 R
-stgtest-x86 \\.\R: 10000 WR * *
+stgtest-%1 \\.\R: 10000 WR * *
 if !ERRORLEVEL! neq 0 set TestExit=1
 call :diskpart-remove 1 R
-taskkill /f /im rawdisk-x86.exe
+taskkill /f /im rawdisk-%1.exe
 del test.disk 2>nul
 exit /b !TestExit!
 
-:rawdisk-format-ntfs-x64
+:rawdisk-cc-stgtest-raw-x64
+call :rawdisk-stgtest-raw-common x64 1
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-cc-stgtest-raw-x86
+call :rawdisk-stgtest-raw-common x86 1
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-nc-stgtest-raw-x64
+call :rawdisk-stgtest-raw-common x64 0
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-nc-stgtest-raw-x86
+call :rawdisk-stgtest-raw-common x86 0
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-format-ntfs-common
 set TestExit=0
-start "" /b rawdisk-x64 -f test.disk
+start "" /b rawdisk-%1 -f test.disk -C %2
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
 call :diskpart-format-ntfs 1 R
 pushd >nul
@@ -159,32 +183,29 @@ if X!TestExit!==X0 (
 )
 popd
 call :diskpart-remove 1 R
-taskkill /f /im rawdisk-x64.exe
+taskkill /f /im rawdisk-%1.exe
 del test.disk 2>nul
 exit /b !TestExit!
 
-:rawdisk-format-ntfs-x86
-set TestExit=0
-start "" /b rawdisk-x86 -f test.disk
-waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
-call :diskpart-format-ntfs 1 R
-pushd >nul
-cd R: >nul 2>nul
-if !ERRORLEVEL! neq 0 set TestExit=1
-if X!TestExit!==X0 (
-    R:
-    echo hello>world
-    if !ERRORLEVEL! neq 0 set TestExit=1
-    type world
-    if !ERRORLEVEL! neq 0 set TestExit=1
-    dir
-    if !ERRORLEVEL! neq 0 set TestExit=1
-)
-popd
-call :diskpart-remove 1 R
-taskkill /f /im rawdisk-x86.exe
-del test.disk 2>nul
-exit /b !TestExit!
+:rawdisk-cc-stgtest-ntfs-x64
+call :rawdisk-stgtest-ntfs-common x64 1
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-cc-stgtest-ntfs-x86
+call :rawdisk-stgtest-ntfs-common x86 1
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-nc-stgtest-ntfs-x64
+call :rawdisk-stgtest-ntfs-common x64 0
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-nc-stgtest-ntfs-x86
+call :rawdisk-stgtest-ntfs-common x86 0
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
 
 :diskpart-partition
 echo rescan                             > %TMP%\diskpart.script
