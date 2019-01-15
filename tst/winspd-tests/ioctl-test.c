@@ -378,7 +378,7 @@ static void ioctl_transact_read_dotest(ULONG MaxBlockCount)
     ASSERT(SpdIoctlTransactReadKind == Req.Kind);
     ASSERT(7 == Req.Op.Read.BlockAddress);
     ASSERT(MaxBlockCount == Req.Op.Read.BlockCount);
-    ASSERT(0 == Req.Op.Read.ForceUnitAccess);
+    ASSERT(1 == Req.Op.Read.ForceUnitAccess);
     ASSERT(0 == Req.Op.Read.Reserved);
 
     FillOrTest(DataBuffer, 512, 7, MaxBlockCount, SpdIoctlTransactReservedKind);
@@ -400,7 +400,7 @@ static void ioctl_transact_read_dotest(ULONG MaxBlockCount)
         ASSERT(SpdIoctlTransactReadKind == Req.Kind);
         ASSERT(7 + MaxBlockCount == Req.Op.Read.BlockAddress);
         ASSERT(5 - MaxBlockCount == Req.Op.Read.BlockCount);
-        ASSERT(0 == Req.Op.Read.ForceUnitAccess);
+        ASSERT(1 == Req.Op.Read.ForceUnitAccess);
         ASSERT(0 == Req.Op.Read.Reserved);
 
         FillOrTest(DataBuffer, 512, 7 + MaxBlockCount, 5 - MaxBlockCount, SpdIoctlTransactReservedKind);
@@ -532,7 +532,7 @@ static void ioctl_transact_write_dotest(ULONG MaxBlockCount)
     ASSERT(SpdIoctlTransactWriteKind == Req.Kind);
     ASSERT(7 == Req.Op.Write.BlockAddress);
     ASSERT(MaxBlockCount == Req.Op.Write.BlockCount);
-    ASSERT(0 == Req.Op.Write.ForceUnitAccess);
+    ASSERT(1 == Req.Op.Write.ForceUnitAccess);
     ASSERT(0 == Req.Op.Write.Reserved);
 
     ASSERT(FillOrTest(DataBuffer, 512, 7, MaxBlockCount, SpdIoctlTransactWriteKind));
@@ -554,7 +554,7 @@ static void ioctl_transact_write_dotest(ULONG MaxBlockCount)
         ASSERT(SpdIoctlTransactWriteKind == Req.Kind);
         ASSERT(7 + MaxBlockCount == Req.Op.Write.BlockAddress);
         ASSERT(5 - MaxBlockCount == Req.Op.Write.BlockCount);
-        ASSERT(0 == Req.Op.Write.ForceUnitAccess);
+        ASSERT(1 == Req.Op.Write.ForceUnitAccess);
         ASSERT(0 == Req.Op.Write.Reserved);
 
         ASSERT(FillOrTest(DataBuffer, 512, 7 + MaxBlockCount, 5 - MaxBlockCount, SpdIoctlTransactWriteKind));
@@ -938,7 +938,7 @@ static void ioctl_transact_error_test(void)
     ASSERT(SpdIoctlTransactReadKind == Req.Kind);
     ASSERT(7 == Req.Op.Read.BlockAddress);
     ASSERT(5 == Req.Op.Read.BlockCount);
-    ASSERT(0 == Req.Op.Read.ForceUnitAccess);
+    ASSERT(1 == Req.Op.Read.ForceUnitAccess);
     ASSERT(0 == Req.Op.Read.Reserved);
 
     memset(&Rsp, 0, sizeof Rsp);
@@ -1047,7 +1047,7 @@ static void ioctl_transact_cancel_test(void)
     ASSERT(SpdIoctlTransactReadKind == Req.Kind);
     ASSERT(7 == Req.Op.Read.BlockAddress);
     ASSERT(5 == Req.Op.Read.BlockCount);
-    ASSERT(0 == Req.Op.Read.ForceUnitAccess);
+    ASSERT(1 == Req.Op.Read.ForceUnitAccess);
     ASSERT(0 == Req.Op.Read.Reserved);
 
     Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
