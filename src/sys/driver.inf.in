@@ -44,6 +44,7 @@ ServiceType = %SERVICE_KERNEL_DRIVER%
 StartType = %SERVICE_DEMAND_START%
 ErrorControl = %SERVICE_ERROR_NORMAL%
 ServiceBinary = %12%\!BaseName!-x86.sys
+AddReg = reg.services
 
 [services.x64]
 DisplayName = !MyProductName!
@@ -52,6 +53,10 @@ ServiceType = %SERVICE_KERNEL_DRIVER%
 StartType = %SERVICE_DEMAND_START%
 ErrorControl = %SERVICE_ERROR_NORMAL%
 ServiceBinary = %12%\!BaseName!-x64.sys
+AddReg = reg.services
+
+[reg.services]
+HKR,"Parameters","BusType",%REG_DWORD%,%BusTypeVirtual%
 
 [SourceDisksFiles]
 !BaseName!-x86.sys = 1
@@ -80,3 +85,5 @@ SPSVCINST_ASSOCSERVICE = 0x00000002
 SERVICE_KERNEL_DRIVER = 0x00000001
 SERVICE_DEMAND_START = 0x3
 SERVICE_ERROR_NORMAL = 0x1
+REG_DWORD=0x00010001
+BusTypeVirtual=0xe
