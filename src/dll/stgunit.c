@@ -90,12 +90,10 @@ DWORD SpdStorageUnitCreate(
     if (ERROR_SUCCESS != Error)
         goto exit;
 
-    memcpy(&StorageUnit->Guid, &StorageUnitParams->Guid, sizeof StorageUnitParams->Guid);
-    StorageUnit->CacheSupported = !!StorageUnitParams->CacheSupported;
-    StorageUnit->MaxTransferLength = StorageUnitParams->MaxTransferLength;
+    memcpy(&StorageUnit->StorageUnitParams, StorageUnitParams, sizeof *StorageUnitParams);
+    StorageUnit->Interface = Interface;
     StorageUnit->Handle = Handle;
     StorageUnit->Btl = Btl;
-    StorageUnit->Interface = Interface;
 
     *PStorageUnit = StorageUnit;
 
@@ -110,7 +108,7 @@ exit:
 
 VOID SpdStorageUnitDelete(SPD_STORAGE_UNIT *StorageUnit)
 {
-    SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->Guid);
+    SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->StorageUnitParams.Guid);
     SpdStorageUnitHandleClose(StorageUnit->Handle);
     MemFree(StorageUnit);
 }
@@ -126,7 +124,7 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
     BOOLEAN Complete;
     DWORD Error;
 
-    DataBuffer = MemAlloc(StorageUnit->MaxTransferLength);
+    DataBuffer = MemAlloc(StorageUnit->StorageUnitParams.MaxTransferLength);
     if (0 == DataBuffer)
     {
         Error = ERROR_NO_SYSTEM_RESOURCES;
@@ -239,7 +237,7 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
 exit:
     SpdStorageUnitSetDispatcherError(StorageUnit, Error);
 
-    SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->Guid);
+    SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->StorageUnitParams.Guid);
 
     if (0 != DispatcherThread)
     {
@@ -249,7 +247,7 @@ exit:
 
     if (GetCurrentThreadId() == StorageUnit->DispatcherThreadId)
     {
-        if (StorageUnit->CacheSupported && 0 != StorageUnit->Interface->Flush)
+        if (StorageUnit->StorageUnitParams.CacheSupported && 0 != StorageUnit->Interface->Flush)
         {
             Response = &ResponseBuf;
             memset(Request, 0, sizeof *Request);
@@ -305,7 +303,7 @@ VOID SpdStorageUnitStopDispatcher(SPD_STORAGE_UNIT *StorageUnit)
     if (0 == StorageUnit->DispatcherThread)
         return;
 
-    SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->Guid);
+    SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->StorageUnitParams.Guid);
 
     WaitForSingleObject(StorageUnit->DispatcherThread, INFINITE);
     CloseHandle(StorageUnit->DispatcherThread);
@@ -330,7 +328,7 @@ VOID SpdStorageUnitSendResponse(SPD_STORAGE_UNIT *StorageUnit,
     {
         SpdStorageUnitSetDispatcherError(StorageUnit, Error);
 
-        SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->Guid);
+        SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->StorageUnitParams.Guid);
     }
 }
 

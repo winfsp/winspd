@@ -70,12 +70,10 @@ typedef struct _SPD_STORAGE_UNIT
 {
     UINT16 Version;
     PVOID UserContext;
-    GUID Guid;
-    UINT32 CacheSupported:1;
-    UINT32 MaxTransferLength;
+    SPD_STORAGE_UNIT_PARAMS StorageUnitParams;
+    const SPD_STORAGE_UNIT_INTERFACE *Interface;
     HANDLE Handle;
     UINT32 Btl;
-    const SPD_STORAGE_UNIT_INTERFACE *Interface;
     DWORD DispatcherThreadId;
     HANDLE DispatcherThread;
     ULONG DispatcherThreadCount;

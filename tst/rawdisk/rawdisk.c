@@ -77,7 +77,7 @@ static BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
     PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN FlushFlag,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
-    WARNONCE(StorageUnit->CacheSupported || FlushFlag);
+    WARNONCE(StorageUnit->StorageUnitParams.CacheSupported || FlushFlag);
 
     if (FlushFlag)
     {
@@ -109,7 +109,7 @@ static BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
     PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN FlushFlag,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
-    WARNONCE(StorageUnit->CacheSupported || FlushFlag);
+    WARNONCE(StorageUnit->StorageUnitParams.CacheSupported || FlushFlag);
 
     RAWDISK *RawDisk = StorageUnit->UserContext;
     PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
@@ -137,7 +137,7 @@ static BOOLEAN Flush(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddress, UINT32 BlockCount,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
-    WARNONCE(StorageUnit->CacheSupported);
+    WARNONCE(StorageUnit->StorageUnitParams.CacheSupported);
 
     return FlushInternal(StorageUnit, BlockAddress, BlockCount, Status);
 }
