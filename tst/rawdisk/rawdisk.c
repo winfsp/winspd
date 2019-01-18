@@ -146,6 +146,8 @@ static BOOLEAN Unmap(SPD_STORAGE_UNIT *StorageUnit,
     SPD_UNMAP_DESCRIPTOR Descriptors[], UINT32 Count,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
+    WARNONCE(StorageUnit->StorageUnitParams.UnmapSupported);
+
     RAWDISK *RawDisk = StorageUnit->UserContext;
     FILE_ZERO_DATA_INFORMATION Zero;
     DWORD BytesTransferred;
@@ -194,6 +196,7 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
     UINT64 BlockCount, UINT32 BlockLength,
     PWSTR ProductId, PWSTR ProductRevision,
     BOOLEAN CacheSupported,
+    BOOLEAN UnmapSupported,
     PWSTR PipeName,
     RAWDISK **PRawDisk)
 {

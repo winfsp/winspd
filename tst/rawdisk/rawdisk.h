@@ -33,6 +33,7 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
     UINT64 BlockCount, UINT32 BlockLength,
     PWSTR ProductId, PWSTR ProductRevision,
     BOOLEAN CacheSupported,
+    BOOLEAN UnmapSupported,
     PWSTR PipeName,
     RAWDISK **PRawDisk);
 VOID RawDiskDelete(RAWDISK *RawDisk);

@@ -71,6 +71,7 @@ typedef struct
     UINT8 DeviceType;                   /* must be 0: direct access block device */
     UINT32 RemovableMedia:1;            /* must be 0: no removable media */
     UINT32 CacheSupported:1;
+    UINT32 UnmapSupported:1;
     UINT32 MaxTransferLength;
     UINT64 Reserved[8];
 } SPD_IOCTL_STORAGE_UNIT_PARAMS;

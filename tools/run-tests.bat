@@ -22,10 +22,14 @@ set dfl_tests=^
     rawdisk-cc-stgtest-raw-x86 ^
     rawdisk-nc-stgtest-raw-x64 ^
     rawdisk-nc-stgtest-raw-x86 ^
+    rawdisk-nu-stgtest-raw-x64 ^
+    rawdisk-nu-stgtest-raw-x86 ^
     rawdisk-cc-format-ntfs-x64 ^
     rawdisk-cc-format-ntfs-x86 ^
     rawdisk-nc-format-ntfs-x64 ^
-    rawdisk-nc-format-ntfs-x86
+    rawdisk-nc-format-ntfs-x86 ^
+    rawdisk-nu-format-ntfs-x64 ^
+    rawdisk-nu-format-ntfs-x86
 set opt_tests=^
     winspd-tests-x64 ^
     winspd-tests-x86
@@ -104,40 +108,40 @@ exit /b 0
 
 :rawdisk-stgtest-pipe-common
 set TestExit=0
-start "" /b rawdisk-%1 -p \\.\pipe\rawdisk -f test.disk -C %2
+start "" /b rawdisk-%1 -p \\.\pipe\rawdisk -f test.disk %~3
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
-stgtest-%1 \\.\pipe\rawdisk\0 %3 WRUR * *
+stgtest-%1 \\.\pipe\rawdisk\0 %2 WRUR * *
 if !ERRORLEVEL! neq 0 set TestExit=1
 taskkill /f /im rawdisk-%1.exe
 del test.disk 2>nul
 exit /b !TestExit!
 
 :rawdisk-cc-stgtest-pipe-x64
-call :rawdisk-stgtest-pipe-common x64 1 10000
+call :rawdisk-stgtest-pipe-common x64 10000 "-C 1 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-cc-stgtest-pipe-x86
-call :rawdisk-stgtest-pipe-common x86 1 10000
+call :rawdisk-stgtest-pipe-common x86 10000 "-C 1 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-nc-stgtest-pipe-x64
-call :rawdisk-stgtest-pipe-common x64 0 1000
+call :rawdisk-stgtest-pipe-common x64 1000 "-C 0 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-nc-stgtest-pipe-x86
-call :rawdisk-stgtest-pipe-common x86 0 1000
+call :rawdisk-stgtest-pipe-common x86 1000 "-C 0 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-stgtest-raw-common
 set TestExit=0
-start "" /b rawdisk-%1 -f test.disk -C %2
+start "" /b rawdisk-%1 -f test.disk %~3
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
 call :diskpart-partition 1 R
-stgtest-%1 \\.\R: %3 WR * *
+stgtest-%1 \\.\R: %2 WR * *
 if !ERRORLEVEL! neq 0 set TestExit=1
 call :diskpart-remove 1 R
 taskkill /f /im rawdisk-%1.exe
@@ -145,28 +149,38 @@ del test.disk 2>nul
 exit /b !TestExit!
 
 :rawdisk-cc-stgtest-raw-x64
-call :rawdisk-stgtest-raw-common x64 1 10000
+call :rawdisk-stgtest-raw-common x64 10000 "-C 1 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-cc-stgtest-raw-x86
-call :rawdisk-stgtest-raw-common x86 1 10000
+call :rawdisk-stgtest-raw-common x86 10000 "-C 1 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-nc-stgtest-raw-x64
-call :rawdisk-stgtest-raw-common x64 0 1000
+call :rawdisk-stgtest-raw-common x64 1000 "-C 0 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-nc-stgtest-raw-x86
-call :rawdisk-stgtest-raw-common x86 0 1000
+call :rawdisk-stgtest-raw-common x86 1000 "-C 0 -U 1"
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-nu-stgtest-raw-x64
+call :rawdisk-stgtest-raw-common x64 1000 "-C 1 -U 0"
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-nu-stgtest-raw-x86
+call :rawdisk-stgtest-raw-common x86 1000 "-C 1 -U 0"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-format-ntfs-common
 set TestExit=0
-start "" /b rawdisk-%1 -f test.disk -C %2
+start "" /b rawdisk-%1 -f test.disk %~2
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
 call :diskpart-format-ntfs 1 R
 pushd >nul
@@ -188,22 +202,32 @@ del test.disk 2>nul
 exit /b !TestExit!
 
 :rawdisk-cc-format-ntfs-x64
-call :rawdisk-format-ntfs-common x64 1
+call :rawdisk-format-ntfs-common x64 "-C 1 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-cc-format-ntfs-x86
-call :rawdisk-format-ntfs-common x86 1
+call :rawdisk-format-ntfs-common x86 "-C 1 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-nc-format-ntfs-x64
-call :rawdisk-format-ntfs-common x64 0
+call :rawdisk-format-ntfs-common x64 "-C 0 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
 :rawdisk-nc-format-ntfs-x86
-call :rawdisk-format-ntfs-common x86 0
+call :rawdisk-format-ntfs-common x86 "-C 0 -U 1"
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-nu-format-ntfs-x64
+call :rawdisk-format-ntfs-common x64 "-C 1 -U 0"
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-nu-format-ntfs-x86
+call :rawdisk-format-ntfs-common x86 "-C 1 -U 0"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 

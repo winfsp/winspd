@@ -793,6 +793,7 @@ static void ioctl_transact_unmap_test(void)
     memcpy(&StorageUnitParams.Guid, &TestGuid, sizeof TestGuid);
     StorageUnitParams.BlockCount = 16;
     StorageUnitParams.BlockLength = 512;
+    StorageUnitParams.UnmapSupported = 1;
     StorageUnitParams.MaxTransferLength = 5 * 512;
     Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
     ASSERT(ERROR_SUCCESS == Error);

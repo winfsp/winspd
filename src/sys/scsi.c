@@ -326,16 +326,19 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
             BlockLimits->MaximumTransferLength[1] = (U32 >> 16) & 0xff;
             BlockLimits->MaximumTransferLength[2] = (U32 >> 8) & 0xff;
             BlockLimits->MaximumTransferLength[3] = U32 & 0xff;
-            BlockLimits->MaximumUnmapLBACount[0] = 0xff;
-            BlockLimits->MaximumUnmapLBACount[1] = 0xff;
-            BlockLimits->MaximumUnmapLBACount[2] = 0xff;
-            BlockLimits->MaximumUnmapLBACount[3] = 0xff;
-            U32 = StorageUnit->StorageUnitParams.MaxTransferLength /
-                sizeof(UNMAP_BLOCK_DESCRIPTOR);
-            BlockLimits->MaximumUnmapBlockDescriptorCount[0] = (U32 >> 24) & 0xff;
-            BlockLimits->MaximumUnmapBlockDescriptorCount[1] = (U32 >> 16) & 0xff;
-            BlockLimits->MaximumUnmapBlockDescriptorCount[2] = (U32 >> 8) & 0xff;
-            BlockLimits->MaximumUnmapBlockDescriptorCount[3] = U32 & 0xff;
+            if (StorageUnit->StorageUnitParams.UnmapSupported)
+            {
+                BlockLimits->MaximumUnmapLBACount[0] = 0xff;
+                BlockLimits->MaximumUnmapLBACount[1] = 0xff;
+                BlockLimits->MaximumUnmapLBACount[2] = 0xff;
+                BlockLimits->MaximumUnmapLBACount[3] = 0xff;
+                U32 = StorageUnit->StorageUnitParams.MaxTransferLength /
+                    sizeof(UNMAP_BLOCK_DESCRIPTOR);
+                BlockLimits->MaximumUnmapBlockDescriptorCount[0] = (U32 >> 24) & 0xff;
+                BlockLimits->MaximumUnmapBlockDescriptorCount[1] = (U32 >> 16) & 0xff;
+                BlockLimits->MaximumUnmapBlockDescriptorCount[2] = (U32 >> 8) & 0xff;
+                BlockLimits->MaximumUnmapBlockDescriptorCount[3] = U32 & 0xff;
+            }
 
             SrbSetDataTransferLength(Srb, sizeof(VPD_BLOCK_LIMITS_PAGE));
 
@@ -351,9 +354,11 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
             LogicalBlockProvisioning->PageCode = VPD_LOGICAL_BLOCK_PROVISIONING;
             LogicalBlockProvisioning->PageLength[1] = sizeof(VPD_LOGICAL_BLOCK_PROVISIONING_PAGE) -
                 RTL_SIZEOF_THROUGH_FIELD(VPD_LOGICAL_BLOCK_PROVISIONING_PAGE, PageLength);
-            LogicalBlockProvisioning->ANC_SUP = 0;
-            LogicalBlockProvisioning->LBPU = 1;
-            LogicalBlockProvisioning->ProvisioningType = PROVISIONING_TYPE_THIN;
+            if (StorageUnit->StorageUnitParams.UnmapSupported)
+            {
+                LogicalBlockProvisioning->LBPU = 1;
+                LogicalBlockProvisioning->ProvisioningType = PROVISIONING_TYPE_THIN;
+            }
 
             SrbSetDataTransferLength(Srb, sizeof(VPD_LOGICAL_BLOCK_PROVISIONING_PAGE));
 
@@ -495,7 +500,8 @@ static UCHAR SpdScsiReadCapacity(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
         ((PUINT8)&ReadCapacityData->BytesPerBlock)[1] = (U32 >> 16) & 0xff;
         ((PUINT8)&ReadCapacityData->BytesPerBlock)[2] = (U32 >> 8) & 0xff;
         ((PUINT8)&ReadCapacityData->BytesPerBlock)[3] = U32 & 0xff;
-        ReadCapacityData->LBPME = 1;
+        if (StorageUnit->StorageUnitParams.UnmapSupported)
+            ReadCapacityData->LBPME = 1;
 
         SrbSetDataTransferLength(Srb, sizeof(READ_CAPACITY16_DATA));
 
@@ -553,6 +559,9 @@ static UCHAR SpdScsiPostRangeSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
 static UCHAR SpdScsiPostUnmapSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit,
     PVOID Srb, PCDB Cdb)
 {
+    if (!StorageUnit->StorageUnitParams.UnmapSupported)
+        return SRB_STATUS_INVALID_REQUEST;
+
     PUNMAP_LIST_HEADER DataBuffer = SrbGetDataBuffer(Srb);
     ULONG DataTransferLength = SrbGetDataTransferLength(Srb);
     ULONG DataLength;

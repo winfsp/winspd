@@ -28,7 +28,7 @@ static const GUID TestGuid =
 static const char *TestGuidString =
     "4112a9a1-f079-4f3d-ba53-2d5df27d28b5";
 
-static void scsi_inquiry_test(void)
+static void scsi_inquiry_dotest(BOOLEAN UnmapSupported)
 {
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
     HANDLE DeviceHandle;
@@ -53,6 +53,7 @@ static void scsi_inquiry_test(void)
     StorageUnitParams.BlockCount = 16;
     StorageUnitParams.BlockLength = 512;
     StorageUnitParams.MaxTransferLength = 512;
+    StorageUnitParams.UnmapSupported = !!UnmapSupported;
     Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
     ASSERT(ERROR_SUCCESS == Error);
     ASSERT(0 == Btl);
@@ -169,12 +170,12 @@ static void scsi_inquiry_test(void)
             (BlockLimits->MaximumTransferLength[1] << 16) |
             (BlockLimits->MaximumTransferLength[2] << 8) |
             (BlockLimits->MaximumTransferLength[3])));
-        ASSERT(0xffffffff == (
+        ASSERT((UnmapSupported ? 0xffffffff : 0) == (
             (BlockLimits->MaximumUnmapLBACount[0] << 24) |
             (BlockLimits->MaximumUnmapLBACount[1] << 16) |
             (BlockLimits->MaximumUnmapLBACount[2] << 8) |
             (BlockLimits->MaximumUnmapLBACount[3])));
-        ASSERT(StorageUnitParams.MaxTransferLength / 16 == (
+        ASSERT((UnmapSupported ? StorageUnitParams.MaxTransferLength / 16 : 0) == (
             (BlockLimits->MaximumUnmapBlockDescriptorCount[0] << 24) |
             (BlockLimits->MaximumUnmapBlockDescriptorCount[1] << 16) |
             (BlockLimits->MaximumUnmapBlockDescriptorCount[2] << 8) |
@@ -194,8 +195,8 @@ static void scsi_inquiry_test(void)
         ASSERT(ERROR_SUCCESS == Error);
 
         PVPD_LOGICAL_BLOCK_PROVISIONING_PAGE LogicalBlockProvisioning = (PVOID)DataBuffer;
-        ASSERT(PROVISIONING_TYPE_THIN == LogicalBlockProvisioning->ProvisioningType);
-        ASSERT(LogicalBlockProvisioning->LBPU);
+        ASSERT((UnmapSupported ? PROVISIONING_TYPE_THIN : 0) == LogicalBlockProvisioning->ProvisioningType);
+        ASSERT((UnmapSupported ? 1 : 0) == LogicalBlockProvisioning->LBPU);
         ASSERT(!LogicalBlockProvisioning->ANC_SUP);
     }
 
@@ -206,7 +207,13 @@ static void scsi_inquiry_test(void)
     ASSERT(Success);
 }
 
-static void scsi_read_capacity_test(void)
+static void scsi_inquiry_test(void)
+{
+    scsi_inquiry_dotest(FALSE);
+    scsi_inquiry_dotest(TRUE);
+}
+
+static void scsi_read_capacity_dotest(BOOLEAN UnmapSupported)
 {
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
     HANDLE DeviceHandle;
@@ -231,6 +238,7 @@ static void scsi_read_capacity_test(void)
     StorageUnitParams.BlockCount = 16;
     StorageUnitParams.BlockLength = 512;
     StorageUnitParams.MaxTransferLength = 512;
+    StorageUnitParams.UnmapSupported = !!UnmapSupported;
     Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
     ASSERT(ERROR_SUCCESS == Error);
     ASSERT(0 == Btl);
@@ -296,7 +304,7 @@ static void scsi_read_capacity_test(void)
             (((PUINT8)&ReadCapacityData->BytesPerBlock)[1] << 16) |
             (((PUINT8)&ReadCapacityData->BytesPerBlock)[2] << 8) |
             (((PUINT8)&ReadCapacityData->BytesPerBlock)[3])));
-        ASSERT(ReadCapacityData->LBPME);
+        ASSERT((UnmapSupported ? 1 : 0) == ReadCapacityData->LBPME);
     }
 
     Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
@@ -304,6 +312,12 @@ static void scsi_read_capacity_test(void)
 
     Success = CloseHandle(DeviceHandle);
     ASSERT(Success);
+}
+
+static void scsi_read_capacity_test(void)
+{
+    scsi_read_capacity_dotest(FALSE);
+    scsi_read_capacity_dotest(TRUE);
 }
 
 void scsi_tests(void)
