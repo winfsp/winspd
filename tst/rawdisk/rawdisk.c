@@ -41,10 +41,6 @@ typedef struct _RAWDISK
     BOOLEAN Sparse;
 } RAWDISK;
 
-static BOOLEAN Flush(SPD_STORAGE_UNIT *StorageUnit,
-    UINT64 BlockAddress, UINT32 BlockCount,
-    SPD_STORAGE_UNIT_STATUS *Status);
-
 static inline BOOLEAN ExceptionFilter(ULONG Code, PEXCEPTION_POINTERS Pointers,
     PUINT_PTR PDataAddress)
 {
@@ -56,6 +52,27 @@ static inline BOOLEAN ExceptionFilter(ULONG Code, PEXCEPTION_POINTERS Pointers,
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
+static BOOLEAN FlushInternal(SPD_STORAGE_UNIT *StorageUnit,
+    UINT64 BlockAddress, UINT32 BlockCount,
+    SPD_STORAGE_UNIT_STATUS *Status)
+{
+    RAWDISK *RawDisk = StorageUnit->UserContext;
+    PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
+
+    if (!FlushViewOfFile(FileBuffer, BlockCount * RawDisk->BlockLength))
+        goto error;
+    if (!FlushFileBuffers(RawDisk->Handle))
+        goto error;
+
+    return TRUE;
+
+error:
+    SpdStorageUnitStatusSetSense(Status,
+        SCSI_SENSE_MEDIUM_ERROR, SCSI_ADSENSE_WRITE_ERROR, 0);
+
+    return TRUE;
+}
+
 static BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
     PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN FlushFlag,
     SPD_STORAGE_UNIT_STATUS *Status)
@@ -64,7 +81,7 @@ static BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
 
     if (FlushFlag)
     {
-        Flush(StorageUnit, BlockAddress, BlockCount, Status);
+        FlushInternal(StorageUnit, BlockAddress, BlockCount, Status);
         if (SCSISTAT_GOOD != Status->ScsiStatus)
             return TRUE;
     }
@@ -111,7 +128,7 @@ static BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
     }
 
     if (SCSISTAT_GOOD == Status->ScsiStatus && FlushFlag)
-        Flush(StorageUnit, BlockAddress, BlockCount, Status);
+        FlushInternal(StorageUnit, BlockAddress, BlockCount, Status);
 
     return TRUE;
 }
@@ -120,21 +137,9 @@ static BOOLEAN Flush(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddress, UINT32 BlockCount,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
-    RAWDISK *RawDisk = StorageUnit->UserContext;
-    PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
+    WARNONCE(StorageUnit->CacheSupported);
 
-    if (!FlushViewOfFile(FileBuffer, BlockCount * RawDisk->BlockLength))
-        goto error;
-    if (!FlushFileBuffers(RawDisk->Handle))
-        goto error;
-
-    return TRUE;
-
-error:
-    SpdStorageUnitStatusSetSense(Status,
-        SCSI_SENSE_MEDIUM_ERROR, SCSI_ADSENSE_WRITE_ERROR, 0);
-
-    return TRUE;
+    return FlushInternal(StorageUnit, BlockAddress, BlockCount, Status);
 }
 
 static BOOLEAN Unmap(SPD_STORAGE_UNIT *StorageUnit,
