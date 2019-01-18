@@ -235,6 +235,7 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
         goto exit;
     }
     StorageUnitParams.CacheSupported = CacheSupported;
+    StorageUnitParams.UnmapSupported = UnmapSupported;
 
     RawDisk = MemAlloc(sizeof *RawDisk);
     if (0 == RawDisk)
