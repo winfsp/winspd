@@ -32,6 +32,7 @@ typedef struct _RAWDISK RAWDISK;
 DWORD RawDiskCreate(PWSTR RawDiskFile,
     UINT64 BlockCount, UINT32 BlockLength,
     PWSTR ProductId, PWSTR ProductRevision,
+    BOOLEAN WriteProtected,
     BOOLEAN CacheSupported,
     BOOLEAN UnmapSupported,
     PWSTR PipeName,

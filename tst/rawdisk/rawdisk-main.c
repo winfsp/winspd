@@ -34,8 +34,9 @@ static void usage(void)
         "    -l BlockLength                      Storage unit block length\n"
         "    -i ProductId                        1-16 chars\n"
         "    -r ProductRevision                  1-4 chars\n"
-        "    -C 0|1                              Disable/enable cache (default: enable)\n"
-        "    -U 0|1                              Disable/enable unmap (default: enable)\n"
+        "    -W 0|1                              Disable/enable writes (deflt: enable)\n"
+        "    -C 0|1                              Disable/enable cache (deflt: enable)\n"
+        "    -U 0|1                              Disable/enable unmap (deflt: enable)\n"
         "    -d -1                               Debug flags\n"
         "    -D DebugLogFile                     Debug log file; - for stderr\n"
         "    -p \\\\.\\pipe\\PipeName                Listen on pipe; omit to use driver\n"
@@ -78,6 +79,7 @@ int wmain(int argc, wchar_t **argv)
     ULONG BlockLength = 512;
     PWSTR ProductId = L"RawDisk";
     PWSTR ProductRevision = L"1.0";
+    ULONG WriteAllowed = 1;
     ULONG CacheSupported = 1;
     ULONG UnmapSupported = 1;
     ULONG DebugFlags = 0;
@@ -126,6 +128,9 @@ int wmain(int argc, wchar_t **argv)
         case L'U':
             UnmapSupported = argtol(++argp, UnmapSupported);
             break;
+        case L'W':
+            WriteAllowed = argtol(++argp, WriteAllowed);
+            break;
         default:
             usage();
             break;
@@ -161,6 +166,7 @@ int wmain(int argc, wchar_t **argv)
     Error = RawDiskCreate(RawDiskFile,
         BlockCount, BlockLength,
         ProductId, ProductRevision,
+        !WriteAllowed,
         !!CacheSupported,
         !!UnmapSupported,
         PipeName,
@@ -173,10 +179,11 @@ int wmain(int argc, wchar_t **argv)
 
     SpdStorageUnitSetDebugLog(RawDiskStorageUnit(RawDisk), DebugFlags);
 
-    warn("%s -f %S -c %lu -l %lu -i %S -r %S -C %u -U %u%s%S",
+    warn("%s -f %S -c %lu -l %lu -i %S -r %S -W %u -C %u -U %u%s%S",
         PROGNAME,
         RawDiskFile,
         BlockCount, BlockLength, ProductId, ProductRevision,
+        !!WriteAllowed,
         !!CacheSupported,
         !!UnmapSupported,
         0 != PipeName ? " -p " : "",

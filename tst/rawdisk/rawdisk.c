@@ -109,6 +109,7 @@ static BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
     PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN FlushFlag,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
+    WARNONCE(!StorageUnit->StorageUnitParams.WriteProtected);
     WARNONCE(StorageUnit->StorageUnitParams.CacheSupported || FlushFlag);
 
     RAWDISK *RawDisk = StorageUnit->UserContext;
@@ -137,6 +138,7 @@ static BOOLEAN Flush(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddress, UINT32 BlockCount,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
+    WARNONCE(!StorageUnit->StorageUnitParams.WriteProtected);
     WARNONCE(StorageUnit->StorageUnitParams.CacheSupported);
 
     return FlushInternal(StorageUnit, BlockAddress, BlockCount, Status);
@@ -146,6 +148,7 @@ static BOOLEAN Unmap(SPD_STORAGE_UNIT *StorageUnit,
     SPD_UNMAP_DESCRIPTOR Descriptors[], UINT32 Count,
     SPD_STORAGE_UNIT_STATUS *Status)
 {
+    WARNONCE(!StorageUnit->StorageUnitParams.WriteProtected);
     WARNONCE(StorageUnit->StorageUnitParams.UnmapSupported);
 
     RAWDISK *RawDisk = StorageUnit->UserContext;
@@ -195,6 +198,7 @@ static SPD_STORAGE_UNIT_INTERFACE RawDiskInterface =
 DWORD RawDiskCreate(PWSTR RawDiskFile,
     UINT64 BlockCount, UINT32 BlockLength,
     PWSTR ProductId, PWSTR ProductRevision,
+    BOOLEAN WriteProtected,
     BOOLEAN CacheSupported,
     BOOLEAN UnmapSupported,
     PWSTR PipeName,
@@ -234,6 +238,7 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
         Error = ERROR_INVALID_PARAMETER;
         goto exit;
     }
+    StorageUnitParams.WriteProtected = WriteProtected;
     StorageUnitParams.CacheSupported = CacheSupported;
     StorageUnitParams.UnmapSupported = UnmapSupported;
 

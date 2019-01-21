@@ -213,6 +213,118 @@ static void scsi_inquiry_test(void)
     scsi_inquiry_dotest(TRUE);
 }
 
+static void scsi_mode_sense_dotest(BOOLEAN WriteProtected, BOOLEAN CacheSupported)
+{
+    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
+    HANDLE DeviceHandle;
+    UINT32 Btl;
+    DWORD Error;
+    BOOL Success;
+
+    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    memset(&StorageUnitParams, 0, sizeof StorageUnitParams);
+    memcpy(&StorageUnitParams.Guid, &TestGuid, sizeof TestGuid);
+    /* NOTE:
+     * Comment the following 2 lines out. If we do not do this, then the partmgr(?)
+     * sends us a READ_CAPACITY and a READ command for block 0 (MBR). This causes 2 problems:
+     *
+     * - Because we do not execute SpdIoctlTransact we never complete the READ SRB.
+     * - For some reason our SCSI ioctls fail with ERROR_INVALID_FUNCTION.
+     */
+    //memcpy(StorageUnitParams.ProductId, "TestDisk        ", 16);
+    //memcpy(StorageUnitParams.ProductRevisionLevel, "0.1 ", 4);
+    StorageUnitParams.BlockCount = 16;
+    StorageUnitParams.BlockLength = 512;
+    StorageUnitParams.MaxTransferLength = 512;
+    StorageUnitParams.WriteProtected = !!WriteProtected;
+    StorageUnitParams.CacheSupported = !!CacheSupported;
+    Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
+    ASSERT(ERROR_SUCCESS == Error);
+    ASSERT(0 == Btl);
+
+    Error = SpdIoctlScsiInquiry(DeviceHandle, Btl, 0, 3000);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    CDB Cdb;
+    UINT8 DataBuffer[255];
+    UINT32 DataLength;
+    UCHAR ScsiStatus;
+    union
+    {
+        SENSE_DATA Data;
+        UCHAR Buffer[32];
+    } Sense;
+
+    {
+        memset(&Cdb, 0, sizeof Cdb);
+        Cdb.MODE_SENSE.OperationCode = SCSIOP_MODE_SENSE;
+        Cdb.MODE_SENSE.Pc = MODE_SENSE_CURRENT_VALUES;
+        Cdb.MODE_SENSE.PageCode = MODE_SENSE_RETURN_ALL;
+        Cdb.MODE_SENSE.AllocationLength = 255;
+
+        DataLength = sizeof DataBuffer;
+        Error = SpdIoctlScsiExecute(DeviceHandle, Btl, &Cdb, +1, DataBuffer, &DataLength,
+            &ScsiStatus, Sense.Buffer);
+        ASSERT(ERROR_SUCCESS == Error);
+
+        PMODE_PARAMETER_HEADER ModeParameterHeader = (PVOID)DataBuffer;
+        ASSERT(0 == ModeParameterHeader->MediumType);
+        ASSERT(
+            ((WriteProtected ? MODE_DSP_WRITE_PROTECT : 0) | (CacheSupported ? MODE_DSP_FUA_SUPPORTED : 0)) ==
+            ModeParameterHeader->DeviceSpecificParameter);
+        ASSERT(0 == ModeParameterHeader->BlockDescriptorLength);
+
+        PMODE_CACHING_PAGE ModeCachingPage = (PVOID)(ModeParameterHeader + 1);
+        ASSERT(MODE_PAGE_CACHING == ModeCachingPage->PageCode);
+        ASSERT(0 == ModeCachingPage->PageSavable);
+        ASSERT(!CacheSupported == ModeCachingPage->ReadDisableCache);
+        ASSERT(!!CacheSupported == ModeCachingPage->WriteCacheEnable);
+    }
+
+    {
+        memset(&Cdb, 0, sizeof Cdb);
+        Cdb.MODE_SENSE10.OperationCode = SCSIOP_MODE_SENSE10;
+        Cdb.MODE_SENSE10.Pc = MODE_SENSE_CURRENT_VALUES;
+        Cdb.MODE_SENSE10.PageCode = MODE_SENSE_RETURN_ALL;
+        Cdb.MODE_SENSE10.AllocationLength[1] = 255;
+
+        DataLength = sizeof DataBuffer;
+        Error = SpdIoctlScsiExecute(DeviceHandle, Btl, &Cdb, +1, DataBuffer, &DataLength,
+            &ScsiStatus, Sense.Buffer);
+        ASSERT(ERROR_SUCCESS == Error);
+
+        PMODE_PARAMETER_HEADER10 ModeParameterHeader = (PVOID)DataBuffer;
+        ASSERT(0 == ModeParameterHeader->MediumType);
+        ASSERT(
+            ((WriteProtected ? MODE_DSP_WRITE_PROTECT : 0) | (CacheSupported ? MODE_DSP_FUA_SUPPORTED : 0)) ==
+            ModeParameterHeader->DeviceSpecificParameter);
+        ASSERT(
+            0 == ModeParameterHeader->BlockDescriptorLength[0] &&
+            0 == ModeParameterHeader->BlockDescriptorLength[1]);
+
+        PMODE_CACHING_PAGE ModeCachingPage = (PVOID)(ModeParameterHeader + 1);
+        ASSERT(MODE_PAGE_CACHING == ModeCachingPage->PageCode);
+        ASSERT(0 == ModeCachingPage->PageSavable);
+        ASSERT(!CacheSupported == ModeCachingPage->ReadDisableCache);
+        ASSERT(!!CacheSupported == ModeCachingPage->WriteCacheEnable);
+    }
+
+    Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Success = CloseHandle(DeviceHandle);
+    ASSERT(Success);
+}
+
+static void scsi_mode_sense_test(void)
+{
+    scsi_mode_sense_dotest(FALSE, FALSE);
+    scsi_mode_sense_dotest(FALSE, TRUE);
+    scsi_mode_sense_dotest(TRUE, FALSE);
+}
+
 static void scsi_read_capacity_dotest(BOOLEAN UnmapSupported)
 {
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
@@ -323,5 +435,6 @@ static void scsi_read_capacity_test(void)
 void scsi_tests(void)
 {
     TEST(scsi_inquiry_test);
+    TEST(scsi_mode_sense_test);
     TEST(scsi_read_capacity_test);
 }

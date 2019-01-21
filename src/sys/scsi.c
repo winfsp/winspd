@@ -402,7 +402,8 @@ static UCHAR SpdScsiModeSense(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUn
             RTL_SIZEOF_THROUGH_FIELD(MODE_PARAMETER_HEADER, ModeDataLength));
         ModeParameterHeader->MediumType = 0;
         ModeParameterHeader->DeviceSpecificParameter =
-            StorageUnit->StorageUnitParams.CacheSupported ? MODE_DSP_FUA_SUPPORTED : 0;
+            (StorageUnit->StorageUnitParams.WriteProtected ? MODE_DSP_WRITE_PROTECT : 0) |
+            (StorageUnit->StorageUnitParams.CacheSupported ? MODE_DSP_FUA_SUPPORTED : 0);
         ModeParameterHeader->BlockDescriptorLength = 0;
     }
     else
@@ -413,7 +414,7 @@ static UCHAR SpdScsiModeSense(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUn
             MODE_SENSE_RETURN_ALL != Cdb->MODE_SENSE10.PageCode))
             return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_CDB);
 
-        DataLength = sizeof(MODE_PARAMETER_HEADER) + sizeof(MODE_CACHING_PAGE);
+        DataLength = sizeof(MODE_PARAMETER_HEADER10) + sizeof(MODE_CACHING_PAGE);
         if (DataLength > DataTransferLength)
             return SRB_STATUS_DATA_OVERRUN;
 
@@ -425,7 +426,8 @@ static UCHAR SpdScsiModeSense(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUn
             RTL_SIZEOF_THROUGH_FIELD(MODE_PARAMETER_HEADER10, ModeDataLength));
         ModeParameterHeader->MediumType = 0;
         ModeParameterHeader->DeviceSpecificParameter =
-            StorageUnit->StorageUnitParams.CacheSupported ? MODE_DSP_FUA_SUPPORTED : 0;
+            (StorageUnit->StorageUnitParams.WriteProtected ? MODE_DSP_WRITE_PROTECT : 0) |
+            (StorageUnit->StorageUnitParams.CacheSupported ? MODE_DSP_FUA_SUPPORTED : 0);
         ModeParameterHeader->BlockDescriptorLength[0] = 0;
         ModeParameterHeader->BlockDescriptorLength[1] = 0;
     }
@@ -522,10 +524,18 @@ static UCHAR SpdScsiPostRangeSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
     case SCSIOP_READ:
     case SCSIOP_READ12:
     case SCSIOP_READ16:
+        SpdCdbGetRange(Cdb, &BlockAddress, &BlockCount, 0);
+        DataLength = BlockCount * StorageUnit->StorageUnitParams.BlockLength;
+        if (SrbGetDataTransferLength(Srb) < DataLength)
+            return SRB_STATUS_INTERNAL_ERROR;
+        break;
+
     case SCSIOP_WRITE6:
     case SCSIOP_WRITE:
     case SCSIOP_WRITE12:
     case SCSIOP_WRITE16:
+        if (StorageUnit->StorageUnitParams.WriteProtected)
+            return SpdScsiError(Srb, SCSI_SENSE_DATA_PROTECT, SCSI_ADSENSE_WRITE_PROTECT);
         SpdCdbGetRange(Cdb, &BlockAddress, &BlockCount, 0);
         DataLength = BlockCount * StorageUnit->StorageUnitParams.BlockLength;
         if (SrbGetDataTransferLength(Srb) < DataLength)
@@ -536,6 +546,8 @@ static UCHAR SpdScsiPostRangeSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
     case SCSIOP_SYNCHRONIZE_CACHE16:
         if (!StorageUnit->StorageUnitParams.CacheSupported)
             return SRB_STATUS_INVALID_REQUEST;
+        if (StorageUnit->StorageUnitParams.WriteProtected)
+            return SpdScsiError(Srb, SCSI_SENSE_DATA_PROTECT, SCSI_ADSENSE_WRITE_PROTECT);
         SpdCdbGetRange(Cdb, &BlockAddress, &BlockCount, 0);
         DataLength = 0;
         break;
@@ -561,6 +573,8 @@ static UCHAR SpdScsiPostUnmapSrb(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
 {
     if (!StorageUnit->StorageUnitParams.UnmapSupported)
         return SRB_STATUS_INVALID_REQUEST;
+    if (StorageUnit->StorageUnitParams.WriteProtected)
+        return SpdScsiError(Srb, SCSI_SENSE_DATA_PROTECT, SCSI_ADSENSE_WRITE_PROTECT);
 
     PUNMAP_LIST_HEADER DataBuffer = SrbGetDataBuffer(Srb);
     ULONG DataTransferLength = SrbGetDataTransferLength(Srb);
