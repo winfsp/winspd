@@ -298,12 +298,18 @@ DWORD SpdStorageUnitStartDispatcher(SPD_STORAGE_UNIT *StorageUnit, ULONG ThreadC
     return ERROR_SUCCESS;
 }
 
-VOID SpdStorageUnitStopDispatcher(SPD_STORAGE_UNIT *StorageUnit)
+VOID SpdStorageUnitShutdownDispatcher(SPD_STORAGE_UNIT *StorageUnit)
 {
     if (0 == StorageUnit->DispatcherThread)
         return;
 
     SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->StorageUnitParams.Guid);
+}
+
+VOID SpdStorageUnitWaitDispatcher(SPD_STORAGE_UNIT *StorageUnit)
+{
+    if (0 == StorageUnit->DispatcherThread)
+        return;
 
     WaitForSingleObject(StorageUnit->DispatcherThread, INFINITE);
     CloseHandle(StorageUnit->DispatcherThread);

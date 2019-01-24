@@ -184,16 +184,7 @@ UCHAR SpdSrbPnp(PVOID DeviceExtension, PVOID Srb)
                 break;
 
             PSTOR_DEVICE_CAPABILITIES DeviceCapabilities = DataBuffer;
-            DeviceCapabilities->DeviceD1 = 0;
-            DeviceCapabilities->DeviceD2 = 0;
-            DeviceCapabilities->LockSupported = 0;
-            DeviceCapabilities->EjectSupported = 0;
-            DeviceCapabilities->Removable = 0;
-            DeviceCapabilities->DockDevice = 0;
-            DeviceCapabilities->UniqueID = 0;
-            DeviceCapabilities->SilentInstall = 1;
-            DeviceCapabilities->SurpriseRemovalOK = 0;
-            DeviceCapabilities->NoDisplayInUI = 0;
+            SpdPnpSetDeviceCapabilities(DeviceCapabilities);
 
             SrbStatus = SRB_STATUS_SUCCESS;
         }

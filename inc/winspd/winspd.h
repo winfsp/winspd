@@ -127,12 +127,19 @@ VOID SpdStorageUnitDelete(SPD_STORAGE_UNIT *StorageUnit);
  */
 DWORD SpdStorageUnitStartDispatcher(SPD_STORAGE_UNIT *StorageUnit, ULONG ThreadCount);
 /**
- * Stop the storage unit dispatcher.
+ * Shutdown the storage unit dispatcher.
  *
  * @param StorageUnit
  *     The storage unit object.
  */
-VOID SpdStorageUnitStopDispatcher(SPD_STORAGE_UNIT *StorageUnit);
+VOID SpdStorageUnitShutdownDispatcher(SPD_STORAGE_UNIT *StorageUnit);
+/**
+ * Wait for the storage unit dispatcher to stop.
+ *
+ * @param StorageUnit
+ *     The storage unit object.
+ */
+VOID SpdStorageUnitWaitDispatcher(SPD_STORAGE_UNIT *StorageUnit);
 /**
  * Send a response to the kernel.
  *

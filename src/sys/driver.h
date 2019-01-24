@@ -28,6 +28,7 @@
 #include <ntifs.h>
 #include <ntstrsafe.h>
 #include <storport.h>
+#include <ntddscsi.h>
 #include <winspd/ioctl.h>
 #include "srbcompat.h"
 
@@ -47,12 +48,14 @@ enum
     spd_debug_bp_adapter                = 0x00000008,   /* adapter functions breakpoint switch */
     spd_debug_bp_ioctl                  = 0x00000010,   /* ioctl functions breakpoint switch */
     spd_debug_bp_io                     = 0x00000020,   /* io functions breakpoint switch */
+    spd_debug_bp_irp                    = 0x00000040,   /* irp breakpoint switch */
     spd_debug_dp_generic                = 0x00010000,   /* generic DbgPrint switch */
     spd_debug_dp_drvrld                 = 0x00020000,   /* DriverEntry DbgPrint switch */
     spd_debug_dp_tracing                = 0x00040000,   /* tracing functions DbgPrint switch */
     spd_debug_dp_adapter                = 0x00080000,   /* adapter functions DbgPrint switch */
     spd_debug_dp_ioctl                  = 0x00100000,   /* ioctl functions DbgPrint switch */
     spd_debug_dp_io                     = 0x00200000,   /* io functions DbgPrint switch */
+    spd_debug_dp_irp                    = 0x00400000,   /* irp DbgPrint switch */
     spd_debug_dp_srb                    = 0x80000000,   /* srb completion DbgPrint switch */
     spd_debug_dp_srberr                 = 0x40000000,   /* srb error completion DbgPrint switch */
     spd_debug_dp                        = 0xffff0000,
@@ -172,6 +175,10 @@ ULONG SpdHashMixPointer(PVOID Pointer)
 #endif
 }
 
+/* IRP dispatch */
+DRIVER_DISPATCH SpdDispatchPnp;
+extern PDRIVER_DISPATCH StorPortDispatchPnp;
+
 /* virtual miniport functions */
 HW_INITIALIZE_TRACING SpdHwInitializeTracing;
 HW_CLEANUP_TRACING SpdHwCleanupTracing;
@@ -212,6 +219,14 @@ UCHAR SpdSrbShutdown(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbPnp(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbWmi(PVOID DeviceExtension, PVOID Srb);
 NTSTATUS SpdNtStatusFromStorStatus(ULONG StorStatus);
+#define SpdPnpSetDeviceCapabilities(D)  \
+    do                                  \
+    {                                   \
+        (D)->EjectSupported = 1;        \
+        (D)->Removable = 1;             \
+        (D)->SilentInstall = 1;         \
+        (D)->SurpriseRemovalOK = 0;     \
+    } while (0,0)
 
 /*
  * Queued Events
@@ -337,6 +352,7 @@ typedef struct _SPD_DEVICE_EXTENSION
 typedef struct _SPD_STORAGE_UNIT
 {
     ULONG RefCount;                     /* protected by SPD_DEVICE_EXTENSION::SpinLock */
+    PDEVICE_OBJECT DeviceObject;
     /* fields below are read-only after construction */
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
     CHAR SerialNumber[36];
@@ -345,6 +361,8 @@ typedef struct _SPD_STORAGE_UNIT
 } SPD_STORAGE_UNIT;
 NTSTATUS SpdDeviceExtensionInit(SPD_DEVICE_EXTENSION *DeviceExtension);
 VOID SpdDeviceExtensionFini(SPD_DEVICE_EXTENSION *DeviceExtension);
+SPD_DEVICE_EXTENSION *SpdDeviceExtensionAcquire(VOID);
+VOID SpdDeviceExtensionRelease(SPD_DEVICE_EXTENSION *DeviceExtension);
 NTSTATUS SpdStorageUnitProvision(
     SPD_DEVICE_EXTENSION *DeviceExtension,
     SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams,
@@ -364,6 +382,12 @@ ULONG SpdStorageUnitGetUseBitmap(
     SPD_DEVICE_EXTENSION *DeviceExtension,
     PULONG PProcessId,
     UINT8 Bitmap[32]);
+NTSTATUS SpdStorageUnitGlobalSetDevice(
+    PDEVICE_OBJECT DeviceObject);
+SPD_STORAGE_UNIT *SpdStorageUnitGlobalReferenceByDevice(
+    PDEVICE_OBJECT DeviceObject);
+VOID SpdStorageUnitGlobalDereference(
+    SPD_STORAGE_UNIT *StorageUnit);
 static inline
 SPD_STORAGE_UNIT *SpdStorageUnitReference(PVOID DeviceExtension, PVOID Srb)
 {
@@ -377,6 +401,21 @@ extern SPD_DEVICE_EXTENSION *SpdGlobalDeviceExtension;  /* protected by SpdGloba
 extern ULONG SpdStorageUnitCapacity;                    /* read-only after DriverLoad */
 #define SPD_INDEX_FROM_BTL(Btl)         SPD_IOCTL_BTL_T(Btl)
 #define SPD_BTL_FROM_INDEX(Idx)         SPD_IOCTL_BTL(0, Idx, 0)
+
+/* utility */
+NTSTATUS SpdRegistryGetValue(PUNICODE_STRING Path, PUNICODE_STRING ValueName,
+    PKEY_VALUE_PARTIAL_INFORMATION ValueInformation, PULONG PValueInformationLength);
+VOID SpdMakeDeviceIoControlRequest(
+    ULONG ControlCode,
+    PDEVICE_OBJECT DeviceObject,
+    PVOID InputBuffer,
+    ULONG InputBufferLength,
+    PVOID OutputBuffer,
+    ULONG OutputBufferLength,
+    PIO_STATUS_BLOCK IoStatus);
+NTSTATUS SpdGetScsiAddress(
+    PDEVICE_OBJECT DeviceObject,
+    PSCSI_ADDRESS ScsiAddress);
 
 /*
  * Fixes

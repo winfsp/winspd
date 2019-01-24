@@ -27,35 +27,6 @@ DRIVER_INITIALIZE DriverEntry;
 #pragma alloc_text(INIT, DriverEntry)
 #endif
 
-static NTSTATUS RegistryGetValue(PUNICODE_STRING Path, PUNICODE_STRING ValueName,
-    PKEY_VALUE_PARTIAL_INFORMATION ValueInformation, PULONG PValueInformationLength)
-{
-    OBJECT_ATTRIBUTES ObjectAttributes;
-    HANDLE Handle = 0;
-    NTSTATUS Result;
-
-    InitializeObjectAttributes(&ObjectAttributes,
-        Path, OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE, 0, 0);
-
-    Result = ZwOpenKey(&Handle, KEY_QUERY_VALUE, &ObjectAttributes);
-    if (!NT_SUCCESS(Result))
-        goto exit;
-
-    Result = ZwQueryValueKey(Handle, ValueName,
-        KeyValuePartialInformation, ValueInformation,
-        *PValueInformationLength, PValueInformationLength);
-    if (!NT_SUCCESS(Result))
-        goto exit;
-
-    Result = STATUS_SUCCESS;
-
-exit:
-    if (0 != Handle)
-        ZwClose(Handle);
-
-    return Result;
-}
-
 static DRIVER_UNLOAD DriverUnload;
 static PDRIVER_UNLOAD StorPortDriverUnload;
 
@@ -77,7 +48,7 @@ NTSTATUS DriverEntry(
     ULONG RegistryValueLength;
     RtlInitUnicodeString(&RegistryValueName, L"StorageUnitCapacity");
     RegistryValueLength = sizeof RegistryValue;
-    Result = RegistryGetValue(RegistryPath, &RegistryValueName,
+    Result = SpdRegistryGetValue(RegistryPath, &RegistryValueName,
         &RegistryValue.Information, &RegistryValueLength);
     if (NT_SUCCESS(Result) && REG_DWORD == RegistryValue.Information.Type)
     {
@@ -119,7 +90,9 @@ NTSTATUS DriverEntry(
         SPD_RETURN(ExDeleteResourceLite(&SpdGlobalDeviceResource));
 
     StorPortDriverUnload = DriverObject->DriverUnload;
+    StorPortDispatchPnp = DriverObject->MajorFunction[IRP_MJ_PNP];
     DriverObject->DriverUnload = DriverUnload;
+    DriverObject->MajorFunction[IRP_MJ_PNP] = 0 != StorPortDispatchPnp ? SpdDispatchPnp : 0;
 
 #pragma prefast(suppress:28175, "We are in DriverEntry: ok to access DriverName")
     SPD_LEAVE(drvrld,

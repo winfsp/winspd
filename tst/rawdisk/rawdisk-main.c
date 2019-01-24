@@ -63,11 +63,11 @@ static wchar_t *argtos(wchar_t **argp)
     return argp[0];
 }
 
-static HANDLE MainEvent;
+static RAWDISK *RawDisk;
 
 static BOOL WINAPI ConsoleCtrlHandler(DWORD CtrlType)
 {
-    SetEvent(MainEvent);
+    SpdStorageUnitShutdownDispatcher(RawDiskStorageUnit(RawDisk));
     return TRUE;
 }
 
@@ -86,7 +86,6 @@ int wmain(int argc, wchar_t **argv)
     PWSTR DebugLogFile = 0;
     HANDLE DebugLogHandle = INVALID_HANDLE_VALUE;
     PWSTR PipeName = 0;
-    RAWDISK *RawDisk = 0;
     DWORD Error;
 
     for (argp = argv + 1; 0 != argp[0]; argp++)
@@ -159,10 +158,6 @@ int wmain(int argc, wchar_t **argv)
         SpdDebugLogSetHandle(DebugLogHandle);
     }
 
-    MainEvent = CreateEvent(0, TRUE, FALSE, 0);
-    if (0 == MainEvent)
-        fail(GetLastError(), "error: cannot create MainEvent: error %lu", GetLastError());
-
     Error = RawDiskCreate(RawDiskFile,
         BlockCount, BlockLength,
         ProductId, ProductRevision,
@@ -190,15 +185,10 @@ int wmain(int argc, wchar_t **argv)
         0 != PipeName ? PipeName : L"");
 
     SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
-    if (WAIT_OBJECT_0 != WaitForSingleObject(MainEvent, INFINITE))
-        fail(GetLastError(), "error: cannot wait on MainEvent: error %lu", GetLastError());
 
-    SpdStorageUnitStopDispatcher(RawDiskStorageUnit(RawDisk));
+    SpdStorageUnitWaitDispatcher(RawDiskStorageUnit(RawDisk));
     RawDiskDelete(RawDisk);
-
-    /* the OS will handle this! */
-    // CloseHandle(MainEvent);
-    // MainEvent = 0;
+    RawDisk = 0;
 
     return 0;
 }

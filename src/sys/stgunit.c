@@ -93,6 +93,8 @@ static VOID SpdDeviceExtensionNotifyRoutine(HANDLE ParentId, HANDLE ProcessId0, 
     KeEnterCriticalRegion();
     ExAcquireResourceSharedLite(&SpdGlobalDeviceResource, TRUE);
 
+    ASSERT(0 != SpdGlobalDeviceExtension);
+
     Count = SpdStorageUnitGetUseBitmap(SpdGlobalDeviceExtension, &ProcessId, Bitmap);
 
     for (ULONG I = 0; 0 < Count && sizeof Bitmap * 8 > I; I++)
@@ -102,6 +104,24 @@ static VOID SpdDeviceExtensionNotifyRoutine(HANDLE ParentId, HANDLE ProcessId0, 
             Count--;
         }
 
+    ExReleaseResourceLite(&SpdGlobalDeviceResource);
+    KeLeaveCriticalRegion();
+}
+
+SPD_DEVICE_EXTENSION *SpdDeviceExtensionAcquire(VOID)
+{
+    KeEnterCriticalRegion();
+    ExAcquireResourceSharedLite(&SpdGlobalDeviceResource, TRUE);
+    if (0 != SpdGlobalDeviceExtension)
+        return SpdGlobalDeviceExtension;
+
+    ExReleaseResourceLite(&SpdGlobalDeviceResource);
+    KeLeaveCriticalRegion();
+    return 0;
+}
+
+VOID SpdDeviceExtensionRelease(SPD_DEVICE_EXTENSION *DeviceExtension)
+{
     ExReleaseResourceLite(&SpdGlobalDeviceResource);
     KeLeaveCriticalRegion();
 }
@@ -236,8 +256,8 @@ NTSTATUS SpdStorageUnitUnprovision(
     }
     else
     {
-        ASSERT(DeviceExtension->StorageUnitCapacity > Index);
-        StorageUnit = DeviceExtension->StorageUnits[Index];
+        if (DeviceExtension->StorageUnitCapacity > Index)
+            StorageUnit = DeviceExtension->StorageUnits[Index];
     }
     if (0 != StorageUnit && ProcessId == StorageUnit->ProcessId)
     {
@@ -291,6 +311,34 @@ SPD_STORAGE_UNIT *SpdStorageUnitReferenceByBtl(
     return StorageUnit;
 }
 
+static SPD_STORAGE_UNIT *SpdStorageUnitReferenceByDevice(
+    SPD_DEVICE_EXTENSION *DeviceExtension,
+    PDEVICE_OBJECT DeviceObject)
+{
+    SPD_STORAGE_UNIT *StorageUnit;
+    KIRQL Irql;
+
+    KeAcquireSpinLock(&DeviceExtension->SpinLock, &Irql);
+    StorageUnit = 0;
+    for (ULONG I = 0; DeviceExtension->StorageUnitCapacity > I; I++)
+    {
+        SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
+        if (0 == Unit)
+            continue;
+
+        if (DeviceObject == Unit->DeviceObject)
+        {
+            StorageUnit = Unit;
+            break;
+        }
+    }
+    if (0 != StorageUnit)
+        StorageUnit->RefCount++;
+    KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
+
+    return StorageUnit;
+}
+
 VOID SpdStorageUnitDereference(
     SPD_DEVICE_EXTENSION *DeviceExtension,
     SPD_STORAGE_UNIT *StorageUnit)
@@ -335,4 +383,52 @@ ULONG SpdStorageUnitGetUseBitmap(
     KeReleaseSpinLock(&DeviceExtension->SpinLock, Irql);
 
     return Count;
+}
+
+NTSTATUS SpdStorageUnitGlobalSetDevice(
+    PDEVICE_OBJECT DeviceObject)
+{
+    SPD_STORAGE_UNIT *StorageUnit;
+    SCSI_ADDRESS ScsiAddress;
+    NTSTATUS Result;
+
+    Result = SpdGetScsiAddress(DeviceObject, &ScsiAddress);
+    if (!NT_SUCCESS(Result))
+        return Result;
+
+    Result = STATUS_OBJECT_NAME_NOT_FOUND;
+    if (0 != SpdDeviceExtensionAcquire())
+    {
+        StorageUnit = SpdStorageUnitReferenceByBtl(SpdGlobalDeviceExtension,
+            SPD_IOCTL_BTL(ScsiAddress.PathId, ScsiAddress.TargetId, ScsiAddress.Lun));
+        if (0 != StorageUnit)
+            Result = 0 == InterlockedCompareExchangePointer(&StorageUnit->DeviceObject, DeviceObject, 0) ?
+                STATUS_SUCCESS : STATUS_OBJECT_NAME_COLLISION;
+        SpdDeviceExtensionRelease(SpdGlobalDeviceExtension);
+    }
+
+    return Result;
+}
+
+SPD_STORAGE_UNIT *SpdStorageUnitGlobalReferenceByDevice(
+    PDEVICE_OBJECT DeviceObject)
+{
+    SPD_STORAGE_UNIT *StorageUnit = 0;
+
+    if (0 != SpdDeviceExtensionAcquire())
+    {
+        StorageUnit = SpdStorageUnitReferenceByDevice(SpdGlobalDeviceExtension,
+            DeviceObject);
+        if (0 == StorageUnit)
+            SpdDeviceExtensionRelease(SpdGlobalDeviceExtension);
+    }
+
+    return StorageUnit;
+}
+
+VOID SpdStorageUnitGlobalDereference(
+    SPD_STORAGE_UNIT *StorageUnit)
+{
+    SpdStorageUnitDereference(SpdGlobalDeviceExtension, StorageUnit);
+    SpdDeviceExtensionRelease(SpdGlobalDeviceExtension);
 }

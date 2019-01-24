@@ -16,7 +16,8 @@ EXPORTS
 	SpdStorageUnitCreate
 	SpdStorageUnitDelete
 	SpdStorageUnitStartDispatcher
-	SpdStorageUnitStopDispatcher
+	SpdStorageUnitShutdownDispatcher
+	SpdStorageUnitWaitDispatcher
 	SpdStorageUnitSendResponse
 	SpdStorageUnitGetOperationContext
 	SpdDebugLogSetHandle
