@@ -402,8 +402,11 @@ NTSTATUS SpdStorageUnitGlobalSetDevice(
         StorageUnit = SpdStorageUnitReferenceByBtl(SpdGlobalDeviceExtension,
             SPD_IOCTL_BTL(ScsiAddress.PathId, ScsiAddress.TargetId, ScsiAddress.Lun));
         if (0 != StorageUnit)
+        {
             Result = 0 == InterlockedCompareExchangePointer(&StorageUnit->DeviceObject, DeviceObject, 0) ?
                 STATUS_SUCCESS : STATUS_OBJECT_NAME_COLLISION;
+            SpdStorageUnitDereference(SpdGlobalDeviceExtension, StorageUnit);
+        }
         SpdDeviceExtensionRelease(SpdGlobalDeviceExtension);
     }
 
