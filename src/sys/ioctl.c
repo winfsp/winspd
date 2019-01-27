@@ -38,7 +38,6 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
         0 == Params->Dir.Par.StorageUnitParams.BlockCount ||
         sizeof(SPD_IOCTL_UNMAP_DESCRIPTOR) > Params->Dir.Par.StorageUnitParams.BlockLength ||
         DIRECT_ACCESS_DEVICE != Params->Dir.Par.StorageUnitParams.DeviceType ||
-        0 != Params->Dir.Par.StorageUnitParams.RemovableMedia ||
         0 == Params->Dir.Par.StorageUnitParams.MaxTransferLength ||
         0 != Params->Dir.Par.StorageUnitParams.MaxTransferLength %
             Params->Dir.Par.StorageUnitParams.BlockLength)

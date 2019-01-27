@@ -193,7 +193,7 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
         PINQUIRYDATA InquiryData = DataBuffer;
         InquiryData->DeviceType = StorageUnit->StorageUnitParams.DeviceType;
         InquiryData->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
-        InquiryData->RemovableMedia = !!StorageUnit->StorageUnitParams.RemovableMedia;
+        InquiryData->RemovableMedia = 0;
         InquiryData->Versions = 5; /* "The device complies to the standard." */
         InquiryData->ResponseDataFormat = 2;
         InquiryData->CommandQueue = 1;
