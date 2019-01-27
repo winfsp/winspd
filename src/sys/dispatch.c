@@ -39,7 +39,6 @@ NTSTATUS SpdDispatchPnp(PDEVICE_OBJECT DeviceObject, PIRP Irp)
 
     switch (MinorFunction)
     {
-#if 0
     case IRP_MN_QUERY_CAPABILITIES:
         {
             PDEVICE_CAPABILITIES DeviceCapabilities =
@@ -47,7 +46,6 @@ NTSTATUS SpdDispatchPnp(PDEVICE_OBJECT DeviceObject, PIRP Irp)
             SpdPnpSetDeviceCapabilities(DeviceCapabilities);
         }
         break;
-#endif
 
     case IRP_MN_START_DEVICE:
         SpdStorageUnitGlobalSetDevice(DeviceObject);

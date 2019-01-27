@@ -225,7 +225,7 @@ NTSTATUS SpdNtStatusFromStorStatus(ULONG StorStatus);
         (D)->EjectSupported = 1;        \
         (D)->Removable = 1;             \
         (D)->SilentInstall = 1;         \
-        (D)->SurpriseRemovalOK = 0;     \
+        (D)->SurpriseRemovalOK = 1;     \
     } while (0,0)
 
 /*
