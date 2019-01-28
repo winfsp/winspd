@@ -113,6 +113,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <AdditionalDependencies>rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <StripPrivateSymbols>$(OutDir)$(TargetName).public.pdb</StripPrivateSymbols>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -135,6 +136,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <AdditionalDependencies>rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <StripPrivateSymbols>$(OutDir)$(TargetName).public.pdb</StripPrivateSymbols>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -159,6 +161,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <AdditionalDependencies>rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <StripPrivateSymbols>$(OutDir)$(TargetName).public.pdb</StripPrivateSymbols>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -183,6 +186,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <AdditionalDependencies>rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <StripPrivateSymbols>$(OutDir)$(TargetName).public.pdb</StripPrivateSymbols>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

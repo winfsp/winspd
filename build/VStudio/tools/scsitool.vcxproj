@@ -111,11 +111,8 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
-      <ProgramDatabaseFile>$(OutDir)$(TargetFileName).pdb</ProgramDatabaseFile>
-      <StripPrivateSymbols>$(OutDir)$(TargetFileName).public.pdb</StripPrivateSymbols>
-      <GenerateMapFile>true</GenerateMapFile>
-      <MapFileName>$(OutDir)$(TargetFileName).map</MapFileName>
       <AdditionalDependencies>setupapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <StripPrivateSymbols>$(OutDir)$(TargetName).public.pdb</StripPrivateSymbols>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -135,11 +132,8 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
-      <ProgramDatabaseFile>$(OutDir)$(TargetFileName).pdb</ProgramDatabaseFile>
-      <StripPrivateSymbols>$(OutDir)$(TargetFileName).public.pdb</StripPrivateSymbols>
-      <GenerateMapFile>true</GenerateMapFile>
-      <MapFileName>$(OutDir)$(TargetFileName).map</MapFileName>
       <AdditionalDependencies>setupapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <StripPrivateSymbols>$(OutDir)$(TargetName).public.pdb</StripPrivateSymbols>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -161,11 +155,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
-      <ProgramDatabaseFile>$(OutDir)$(TargetFileName).pdb</ProgramDatabaseFile>
-      <StripPrivateSymbols>$(OutDir)$(TargetFileName).public.pdb</StripPrivateSymbols>
-      <GenerateMapFile>true</GenerateMapFile>
-      <MapFileName>$(OutDir)$(TargetFileName).map</MapFileName>
       <AdditionalDependencies>setupapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <StripPrivateSymbols>$(OutDir)$(TargetName).public.pdb</StripPrivateSymbols>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -187,11 +178,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
-      <ProgramDatabaseFile>$(OutDir)$(TargetFileName).pdb</ProgramDatabaseFile>
-      <StripPrivateSymbols>$(OutDir)$(TargetFileName).public.pdb</StripPrivateSymbols>
-      <GenerateMapFile>true</GenerateMapFile>
-      <MapFileName>$(OutDir)$(TargetFileName).map</MapFileName>
       <AdditionalDependencies>setupapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <StripPrivateSymbols>$(OutDir)$(TargetName).public.pdb</StripPrivateSymbols>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
