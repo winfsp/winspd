@@ -48,6 +48,7 @@ extern "C" {
 #define SPD_IOCTL_UNPROVISION           ('u')
 #define SPD_IOCTL_LIST                  ('l')
 #define SPD_IOCTL_TRANSACT              ('t')
+#define SPD_IOCTL_SET_TRANSACT_PID      ('i')
 
 /* IOCTL_MINIPORT_PROCESS_SERVICE_IRP marshalling */
 #pragma warning(push)
@@ -186,6 +187,12 @@ typedef struct
         SPD_IOCTL_TRANSACT_RSP Rsp;
     } Dir;
 } SPD_IOCTL_TRANSACT_PARAMS;
+typedef struct
+{
+    SPD_IOCTL_BASE_PARAMS Base;
+    UINT32 Btl;
+    UINT32 ProcessId;
+} SPD_IOCTL_SET_TRANSACT_PID_PARAMS;
 #pragma warning(pop)
 
 #if !defined(WINSPD_SYS_INTERNAL)
@@ -208,6 +215,9 @@ DWORD SpdIoctlTransact(HANDLE DeviceHandle,
     SPD_IOCTL_TRANSACT_RSP *Rsp,
     SPD_IOCTL_TRANSACT_REQ *Req,
     PVOID DataBuffer);
+DWORD SpdIoctlSetTransactProcessId(HANDLE DeviceHandle,
+    UINT32 Btl,
+    ULONG ProcessId);
 DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP);
 VOID SpdIoctlMemAlignFree(PVOID P);
 #endif

@@ -351,13 +351,16 @@ typedef struct _SPD_DEVICE_EXTENSION
 } SPD_DEVICE_EXTENSION;
 typedef struct _SPD_STORAGE_UNIT
 {
-    ULONG RefCount;                     /* protected by SPD_DEVICE_EXTENSION::SpinLock */
-    PDEVICE_OBJECT DeviceObject;
+    /* fields protected by SPD_DEVICE_EXTENSION::SpinLock */
+    ULONG RefCount;
     /* fields below are read-only after construction */
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
     CHAR SerialNumber[36];
-    ULONG ProcessId;
+    ULONG OwnerProcessId;
     SPD_IOQ *Ioq;
+    /* fields not protected */
+    PDEVICE_OBJECT DeviceObject;
+    ULONG TransactProcessId;
 } SPD_STORAGE_UNIT;
 NTSTATUS SpdDeviceExtensionInit(SPD_DEVICE_EXTENSION *DeviceExtension);
 VOID SpdDeviceExtensionFini(SPD_DEVICE_EXTENSION *DeviceExtension);

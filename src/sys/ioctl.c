@@ -159,7 +159,7 @@ static VOID SpdIoctlTransact(SPD_DEVICE_EXTENSION *DeviceExtension,
         goto exit;
     }
 
-    if (IoGetRequestorProcessId(Irp) != StorageUnit->ProcessId)
+    if (IoGetRequestorProcessId(Irp) != StorageUnit->TransactProcessId)
     {
         Irp->IoStatus.Status = STATUS_ACCESS_DENIED;
         goto exit;
@@ -244,6 +244,36 @@ exit:;
         SpdStorageUnitDereference(DeviceExtension, StorageUnit);
 }
 
+static VOID SpdIoctlSetTransactProcessId(SPD_DEVICE_EXTENSION *DeviceExtension,
+    ULONG InputBufferLength, ULONG OutputBufferLength, SPD_IOCTL_SET_TRANSACT_PID_PARAMS *Params,
+    PIRP Irp)
+{
+    SPD_STORAGE_UNIT *StorageUnit = 0;
+
+    if (sizeof *Params > InputBufferLength)
+    {
+        Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+        goto exit;
+    }
+
+    StorageUnit = SpdStorageUnitReferenceByBtl(DeviceExtension, Params->Btl);
+    if (0 == StorageUnit)
+    {
+        Irp->IoStatus.Status = STATUS_CANCELLED;
+        goto exit;
+    }
+
+    /* 32-bit store is atomic */
+    StorageUnit->TransactProcessId = Params->ProcessId;
+
+    Irp->IoStatus.Status = STATUS_SUCCESS;
+    Irp->IoStatus.Information = 0;
+
+exit:;
+    if (0 != StorageUnit)
+        SpdStorageUnitDereference(DeviceExtension, StorageUnit);
+}
+
 VOID SpdHwProcessServiceRequest(PVOID DeviceExtension, PVOID Irp0)
 {
     SPD_ENTER(ioctl,
@@ -276,6 +306,9 @@ VOID SpdHwProcessServiceRequest(PVOID DeviceExtension, PVOID Irp0)
         break;
     case SPD_IOCTL_TRANSACT:
         SpdIoctlTransact(DeviceExtension, InputBufferLength, OutputBufferLength, Params, Irp);
+        break;
+    case SPD_IOCTL_SET_TRANSACT_PID:
+        SpdIoctlSetTransactProcessId(DeviceExtension, InputBufferLength, OutputBufferLength, Params, Irp);
         break;
     default:
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;

@@ -57,7 +57,7 @@ NTSTATUS SpdDispatchPnp(PDEVICE_OBJECT DeviceObject, PIRP Irp)
             if (0 != StorageUnit)
             {
                 RtlCopyMemory(&ProvisionGuid, &StorageUnit->StorageUnitParams.Guid, sizeof ProvisionGuid);
-                ProvisionPid = StorageUnit->ProcessId;
+                ProvisionPid = StorageUnit->OwnerProcessId;
                 SpdStorageUnitGlobalDereference(StorageUnit);
             }
         }

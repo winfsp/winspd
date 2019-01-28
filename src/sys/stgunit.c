@@ -163,7 +163,8 @@ NTSTATUS SpdStorageUnitProvision(
         Guid.Data4[4], Guid.Data4[5], Guid.Data4[6], Guid.Data4[7]);
 #undef Guid
     RtlCopyMemory(StorageUnit->SerialNumber, SerialNumber, sizeof StorageUnit->SerialNumber);
-    StorageUnit->ProcessId = ProcessId;
+    StorageUnit->OwnerProcessId = ProcessId;
+    StorageUnit->TransactProcessId = ProcessId;
 
     Result = SpdIoqCreate(DeviceExtension, &StorageUnit->Ioq);
     if (!NT_SUCCESS(Result))
@@ -259,7 +260,7 @@ NTSTATUS SpdStorageUnitUnprovision(
         if (DeviceExtension->StorageUnitCapacity > Index)
             StorageUnit = DeviceExtension->StorageUnits[Index];
     }
-    if (0 != StorageUnit && ProcessId == StorageUnit->ProcessId)
+    if (0 != StorageUnit && ProcessId == StorageUnit->OwnerProcessId)
     {
         DeviceExtension->StorageUnitCount--;
         DeviceExtension->StorageUnits[Index] = 0;
@@ -271,7 +272,7 @@ NTSTATUS SpdStorageUnitUnprovision(
         Result = STATUS_OBJECT_NAME_NOT_FOUND;
         goto exit;
     }
-    if (ProcessId != StorageUnit->ProcessId)
+    if (ProcessId != StorageUnit->OwnerProcessId)
     {
         Result = STATUS_ACCESS_DENIED;
         goto exit;
@@ -374,7 +375,7 @@ ULONG SpdStorageUnitGetUseBitmap(
         I++)
     {
         SPD_STORAGE_UNIT *Unit = DeviceExtension->StorageUnits[I];
-        if (0 != Unit && (0 == PProcessId || *PProcessId == Unit->ProcessId))
+        if (0 != Unit && (0 == PProcessId || *PProcessId == Unit->OwnerProcessId))
         {
             SetFlag(Bitmap[I >> 3], 1 << (I & 7));
             Count++;

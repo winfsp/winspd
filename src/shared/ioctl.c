@@ -474,6 +474,35 @@ exit:
     return Error;
 }
 
+DWORD SpdIoctlSetTransactProcessId(HANDLE DeviceHandle,
+    UINT32 Btl,
+    ULONG ProcessId)
+{
+    SPD_IOCTL_SET_TRANSACT_PID_PARAMS Params;
+    DWORD BytesTransferred;
+    DWORD Error;
+
+    memset(&Params, 0, sizeof Params);
+    Params.Base.Size = sizeof Params;
+    Params.Base.Code = SPD_IOCTL_SET_TRANSACT_PID;
+    Params.Btl = Btl;
+    Params.ProcessId = ProcessId;
+
+    if (!DeviceIoControl(DeviceHandle, IOCTL_MINIPORT_PROCESS_SERVICE_IRP,
+        &Params, sizeof Params,
+        0, 0,
+        &BytesTransferred, 0))
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    Error = ERROR_SUCCESS;
+
+exit:
+    return Error;
+}
+
 DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP)
 {
     if (AlignmentMask + 1 < sizeof(PVOID))

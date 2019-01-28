@@ -9,6 +9,7 @@ EXPORTS
 	SpdIoctlUnprovision
 	SpdIoctlGetList
 	SpdIoctlTransact
+	SpdIoctlSetTransactProcessId
 	SpdIoctlMemAlignAlloc
 	SpdIoctlMemAlignFree
 

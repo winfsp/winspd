@@ -1067,7 +1067,7 @@ static void ioctl_transact_cancel_test(void)
     ASSERT(0 != ExitCode);
 }
 
-static void ioctl_provision_die_test_DO_NOT_RUN_FROM_COMMAND_LINE(void)
+static void ioctl_process_death_test_DO_NOT_RUN_FROM_COMMAND_LINE(void)
 {
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
     HANDLE DeviceHandle;
@@ -1116,7 +1116,7 @@ static void ioctl_process_death_test(void)
     ASSERT(ERROR_SUCCESS == GetLastError());
 
     StringCbPrintfW(CommandLine, sizeof CommandLine,
-        L"\"%s\" +ioctl_provision_die_test_DO_NOT_RUN_FROM_COMMAND_LINE",
+        L"\"%s\" +ioctl_process_death_test_DO_NOT_RUN_FROM_COMMAND_LINE",
         FileName);
 
     memset(&StartupInfo, 0, sizeof StartupInfo);
@@ -1156,6 +1156,240 @@ static void ioctl_process_death_test(void)
     ASSERT(Success);
 }
 
+static void ioctl_process_access_test_DO_NOT_RUN_FROM_COMMAND_LINE(void)
+{
+    HANDLE DeviceHandle;
+    SPD_IOCTL_TRANSACT_REQ Req;
+    PVOID DataBuffer = 0;
+    DWORD Error;
+    BOOL Success;
+
+    DataBuffer = malloc(5 * 512);
+    ASSERT(0 != DataBuffer);
+
+    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    memset(DataBuffer, 0, sizeof DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, 0, 0, &Req, DataBuffer);
+    ASSERT(ERROR_ACCESS_DENIED == Error);
+
+    Error = SpdIoctlUnprovision(DeviceHandle, &TestGuid);
+    ASSERT(ERROR_ACCESS_DENIED == Error);
+
+    Success = CloseHandle(DeviceHandle);
+    ASSERT(Success);
+
+    free(DataBuffer);
+}
+
+static void ioctl_process_access_test(void)
+{
+    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
+    HANDLE DeviceHandle;
+    UINT32 Btl;
+    DWORD Error;
+    HANDLE Stdout, Stderr;
+    WCHAR FileName[MAX_PATH];
+    WCHAR CommandLine[MAX_PATH + 64];
+    STARTUPINFOW StartupInfo;
+    PROCESS_INFORMATION ProcessInfo;
+    DWORD WaitResult;
+    DWORD ExitCode;
+    BOOL Success;
+
+    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    memset(&StorageUnitParams, 0, sizeof StorageUnitParams);
+    memcpy(&StorageUnitParams.Guid, &TestGuid, sizeof TestGuid);
+    StorageUnitParams.BlockCount = 16;
+    StorageUnitParams.BlockLength = 512;
+    StorageUnitParams.MaxTransferLength = 5 * 512;
+    Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
+    ASSERT(ERROR_SUCCESS == Error);
+    ASSERT(0 == Btl);
+
+    Error = SpdIoctlScsiInquiry(DeviceHandle, Btl, 0, 3000);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Stdout = CreateFileW(L"NUL",
+        GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        0, OPEN_EXISTING, 0, 0);
+    ASSERT(INVALID_HANDLE_VALUE != Stdout);
+    Stderr = CreateFileW(L"NUL",
+        GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        0, OPEN_EXISTING, 0, 0);
+    ASSERT(INVALID_HANDLE_VALUE != Stderr);
+
+    GetModuleFileNameW(0, FileName, MAX_PATH);
+    ASSERT(ERROR_SUCCESS == GetLastError());
+
+    StringCbPrintfW(CommandLine, sizeof CommandLine,
+        L"\"%s\" +ioctl_process_access_test_DO_NOT_RUN_FROM_COMMAND_LINE",
+        FileName);
+
+    memset(&StartupInfo, 0, sizeof StartupInfo);
+    StartupInfo.cb = sizeof StartupInfo;
+    StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+    StartupInfo.hStdOutput = Stdout;
+    StartupInfo.hStdError = Stderr;
+    Success = CreateProcessW(FileName, CommandLine, 0, 0, TRUE, 0, 0, 0, &StartupInfo, &ProcessInfo);
+    ASSERT(Success);
+
+    WaitResult = WaitForSingleObject(ProcessInfo.hProcess, 3000);
+    ASSERT(WAIT_OBJECT_0 == WaitResult);
+
+    ASSERT(GetExitCodeProcess(ProcessInfo.hProcess, &ExitCode));
+    ASSERT(0 == ExitCode);
+
+    CloseHandle(ProcessInfo.hThread);
+    CloseHandle(ProcessInfo.hProcess);
+
+    CloseHandle(Stdout);
+    CloseHandle(Stderr);
+
+    Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Success = CloseHandle(DeviceHandle);
+    ASSERT(Success);
+}
+
+static void ioctl_process_transact_test_DO_NOT_RUN_FROM_COMMAND_LINE(void)
+{
+    SPD_IOCTL_TRANSACT_REQ Req;
+    SPD_IOCTL_TRANSACT_RSP Rsp;
+    PVOID DataBuffer = 0;
+    HANDLE DeviceHandle;
+    UINT32 Btl;
+    DWORD Error;
+    BOOL Success;
+    HANDLE Thread;
+    DWORD ExitCode;
+
+    DataBuffer = malloc(5 * 512);
+    ASSERT(0 != DataBuffer);
+
+    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Btl = 0;
+
+    Thread = (HANDLE)_beginthreadex(0, 0, ioctl_transact_read_test_thread, (PVOID)(UINT_PTR)Btl, 0, 0);
+    ASSERT(0 != Thread);
+
+    memset(DataBuffer, 0, sizeof DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    ASSERT(0 != Req.Hint);
+    ASSERT(SpdIoctlTransactReadKind == Req.Kind);
+    ASSERT(7 == Req.Op.Read.BlockAddress);
+    ASSERT(5 == Req.Op.Read.BlockCount);
+    ASSERT(1 == Req.Op.Read.ForceUnitAccess);
+    ASSERT(0 == Req.Op.Read.Reserved);
+
+    FillOrTest(DataBuffer, 512, 7, 5, SpdIoctlTransactReservedKind);
+
+    memset(&Rsp, 0, sizeof Rsp);
+    Rsp.Hint = Req.Hint;
+    Rsp.Kind = Req.Kind;
+
+    Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Success = CloseHandle(DeviceHandle);
+    ASSERT(Success);
+
+    free(DataBuffer);
+
+    WaitForSingleObject(Thread, INFINITE);
+    GetExitCodeThread(Thread, &ExitCode);
+    CloseHandle(Thread);
+
+    ASSERT(ERROR_SUCCESS == ExitCode);
+}
+
+static void ioctl_process_transact_test(void)
+{
+    SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
+    HANDLE DeviceHandle;
+    UINT32 Btl;
+    DWORD Error;
+    HANDLE Stdout, Stderr;
+    WCHAR FileName[MAX_PATH];
+    WCHAR CommandLine[MAX_PATH + 64];
+    STARTUPINFOW StartupInfo;
+    PROCESS_INFORMATION ProcessInfo;
+    DWORD WaitResult;
+    DWORD ExitCode;
+    BOOL Success;
+
+    Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    memset(&StorageUnitParams, 0, sizeof StorageUnitParams);
+    memcpy(&StorageUnitParams.Guid, &TestGuid, sizeof TestGuid);
+    StorageUnitParams.BlockCount = 16;
+    StorageUnitParams.BlockLength = 512;
+    StorageUnitParams.MaxTransferLength = 5 * 512;
+    Error = SpdIoctlProvision(DeviceHandle, &StorageUnitParams, &Btl);
+    ASSERT(ERROR_SUCCESS == Error);
+    ASSERT(0 == Btl);
+
+    Error = SpdIoctlScsiInquiry(DeviceHandle, Btl, 0, 3000);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Stdout = CreateFileW(L"NUL",
+        GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        0, OPEN_EXISTING, 0, 0);
+    ASSERT(INVALID_HANDLE_VALUE != Stdout);
+    Stderr = CreateFileW(L"NUL",
+        GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        0, OPEN_EXISTING, 0, 0);
+    ASSERT(INVALID_HANDLE_VALUE != Stderr);
+
+    GetModuleFileNameW(0, FileName, MAX_PATH);
+    ASSERT(ERROR_SUCCESS == GetLastError());
+
+    StringCbPrintfW(CommandLine, sizeof CommandLine,
+        L"\"%s\" +ioctl_process_transact_test_DO_NOT_RUN_FROM_COMMAND_LINE",
+        FileName);
+
+    memset(&StartupInfo, 0, sizeof StartupInfo);
+    StartupInfo.cb = sizeof StartupInfo;
+    StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+    StartupInfo.hStdOutput = Stdout;
+    StartupInfo.hStdError = Stderr;
+    Success = CreateProcessW(FileName, CommandLine, 0, 0, TRUE, CREATE_SUSPENDED, 0, 0, &StartupInfo, &ProcessInfo);
+    ASSERT(Success);
+
+    Error = SpdIoctlSetTransactProcessId(DeviceHandle, Btl, ProcessInfo.dwProcessId);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Success = ResumeThread(ProcessInfo.hThread);
+    ASSERT(Success);
+
+    WaitResult = WaitForSingleObject(ProcessInfo.hProcess, 3000);
+    ASSERT(WAIT_OBJECT_0 == WaitResult);
+
+    ASSERT(GetExitCodeProcess(ProcessInfo.hProcess, &ExitCode));
+    ASSERT(0 == ExitCode);
+
+    CloseHandle(ProcessInfo.hThread);
+    CloseHandle(ProcessInfo.hProcess);
+
+    CloseHandle(Stdout);
+    CloseHandle(Stderr);
+
+    Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
+    ASSERT(ERROR_SUCCESS == Error);
+
+    Success = CloseHandle(DeviceHandle);
+    ASSERT(Success);
+}
+
 void ioctl_tests(void)
 {
     TEST(ioctl_provision_test);
@@ -1171,6 +1405,10 @@ void ioctl_tests(void)
     TEST(ioctl_transact_unmap_test);
     TEST(ioctl_transact_error_test);
     TEST(ioctl_transact_cancel_test);
-    TEST_OPT(ioctl_provision_die_test_DO_NOT_RUN_FROM_COMMAND_LINE);
+    TEST_OPT(ioctl_process_death_test_DO_NOT_RUN_FROM_COMMAND_LINE);
     TEST(ioctl_process_death_test);
+    TEST_OPT(ioctl_process_access_test_DO_NOT_RUN_FROM_COMMAND_LINE);
+    TEST(ioctl_process_access_test);
+    TEST_OPT(ioctl_process_transact_test_DO_NOT_RUN_FROM_COMMAND_LINE);
+    TEST(ioctl_process_transact_test);
 }
