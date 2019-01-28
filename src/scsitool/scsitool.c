@@ -1,7 +1,7 @@
 /**
  * @file scsitool/scsitool.c
  *
- * @copyright 2018 Bill Zissimopoulos
+ * @copyright 2018-2019 Bill Zissimopoulos
  */
 /*
  * This file is part of WinSpd.
