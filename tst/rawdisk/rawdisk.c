@@ -52,6 +52,38 @@ static inline BOOLEAN ExceptionFilter(ULONG Code, PEXCEPTION_POINTERS Pointers,
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
+static VOID CopyBuffer(SPD_STORAGE_UNIT *StorageUnit,
+    PVOID Dst, PVOID Src, ULONG Length, UINT8 ASC,
+    SPD_STORAGE_UNIT_STATUS *Status)
+{
+    RAWDISK *RawDisk = StorageUnit->UserContext;
+    UINT_PTR ExceptionDataAddress;
+    UINT64 Information, *PInformation;
+
+    __try
+    {
+        if (0 != Src)
+            memcpy(Dst, Src, Length);
+        else
+            memset(Dst, 0, Length);
+    }
+    __except (ExceptionFilter(GetExceptionCode(), GetExceptionInformation(), &ExceptionDataAddress))
+    {
+        if (0 != Status)
+        {
+            PInformation = 0;
+            if (0 != ExceptionDataAddress)
+            {
+                Information = (UINT64)(ExceptionDataAddress - (UINT_PTR)RawDisk->Pointer) /
+                    RawDisk->BlockLength;
+                PInformation = &Information;
+            }
+
+            SpdStorageUnitStatusSetSense(Status, SCSI_SENSE_MEDIUM_ERROR, ASC, PInformation);
+        }
+    }
+}
+
 static BOOLEAN FlushInternal(SPD_STORAGE_UNIT *StorageUnit,
     UINT64 BlockAddress, UINT32 BlockCount,
     SPD_STORAGE_UNIT_STATUS *Status)
@@ -88,19 +120,10 @@ static BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
 
     RAWDISK *RawDisk = StorageUnit->UserContext;
     PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
-    UINT_PTR ExceptionDataAddress;
 
-    __try
-    {
-        memcpy(Buffer, FileBuffer, BlockCount * RawDisk->BlockLength);
-    }
-    __except (ExceptionFilter(GetExceptionCode(), GetExceptionInformation(), &ExceptionDataAddress))
-    {
-        UINT64 Information = (UINT64)(ExceptionDataAddress - (UINT_PTR)RawDisk->Pointer) /
-            RawDisk->BlockLength;
-        SpdStorageUnitStatusSetSense(Status,
-            SCSI_SENSE_MEDIUM_ERROR, SCSI_ADSENSE_UNRECOVERED_ERROR, 0 != Information ? &Information : 0);
-    }
+    CopyBuffer(StorageUnit,
+        Buffer, FileBuffer, BlockCount * RawDisk->BlockLength, SCSI_ADSENSE_UNRECOVERED_ERROR,
+        Status);
 
     return TRUE;
 }
@@ -114,19 +137,10 @@ static BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
 
     RAWDISK *RawDisk = StorageUnit->UserContext;
     PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
-    UINT_PTR ExceptionDataAddress;
 
-    __try
-    {
-        memcpy(FileBuffer, Buffer, BlockCount * RawDisk->BlockLength);
-    }
-    __except (ExceptionFilter(GetExceptionCode(), GetExceptionInformation(), &ExceptionDataAddress))
-    {
-        UINT64 Information = (UINT64)(ExceptionDataAddress - (UINT_PTR)RawDisk->Pointer) /
-            RawDisk->BlockLength;
-        SpdStorageUnitStatusSetSense(Status,
-            SCSI_SENSE_MEDIUM_ERROR, SCSI_ADSENSE_WRITE_ERROR, 0 != Information ? &Information : 0);
-    }
+    CopyBuffer(StorageUnit,
+        FileBuffer, Buffer, BlockCount * RawDisk->BlockLength, SCSI_ADSENSE_WRITE_ERROR,
+        Status);
 
     if (SCSISTAT_GOOD == Status->ScsiStatus && FlushFlag)
         FlushInternal(StorageUnit, BlockAddress, BlockCount, Status);
@@ -155,7 +169,6 @@ static BOOLEAN Unmap(SPD_STORAGE_UNIT *StorageUnit,
     FILE_ZERO_DATA_INFORMATION Zero;
     DWORD BytesTransferred;
     PVOID FileBuffer;
-    UINT_PTR ExceptionDataAddress;
 
     for (UINT32 I = 0; Count > I; I++)
     {
@@ -174,13 +187,9 @@ static BOOLEAN Unmap(SPD_STORAGE_UNIT *StorageUnit,
         {
             FileBuffer = (PUINT8)RawDisk->Pointer + Descriptors[I].BlockAddress * RawDisk->BlockLength;
 
-            __try
-            {
-                memset(FileBuffer, 0, Descriptors[I].BlockCount * RawDisk->BlockLength);
-            }
-            __except (ExceptionFilter(GetExceptionCode(), GetExceptionInformation(), &ExceptionDataAddress))
-            {
-            }
+            CopyBuffer(StorageUnit,
+                FileBuffer, 0, Descriptors[I].BlockCount * RawDisk->BlockLength, SCSI_ADSENSE_NO_SENSE,
+                0);
         }
     }
 
