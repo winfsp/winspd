@@ -25,6 +25,9 @@
     <ClCompile Include="..\..\..\src\shared\printlog.c">
       <Filter>Source\shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\shared\memalign.c">
+      <Filter>Source\shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\shared\minimal.h">
@@ -37,6 +40,9 @@
       <Filter>Source\shared</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\shared\strtoint.h">
+      <Filter>Source\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\shared\memalign.h">
       <Filter>Source\shared</Filter>
     </ClInclude>
   </ItemGroup>

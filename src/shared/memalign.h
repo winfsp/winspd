@@ -1,5 +1,5 @@
 /**
- * @file scsitool/scsitool.h
+ * @file shared/memalign.h
  *
  * @copyright 2018-2019 Bill Zissimopoulos
  */
@@ -19,17 +19,10 @@
  * associated repository.
  */
 
-#ifndef WINSPD_SCSITOOL_SCSITOOL_H_INCLUDED
-#define WINSPD_SCSITOOL_SCSITOOL_H_INCLUDED
+#ifndef WINSPD_SHARED_MEMALIGN_H_INCLUDED
+#define WINSPD_SHARED_MEMALIGN_H_INCLUDED
 
-#include <winspd/winspd.h>
-#include <shared/minimal.h>
-#include <shared/memalign.h>
-#include <shared/printlog.h>
-#include <shared/strtoint.h>
-
-#define PROGNAME                        "scsitool"
-
-void ScsiLineText(HANDLE h, const char *format, void *buf, size_t len);
+DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP);
+VOID SpdIoctlMemAlignFree(PVOID P);
 
 #endif

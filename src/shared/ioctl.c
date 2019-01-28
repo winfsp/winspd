@@ -502,28 +502,3 @@ DWORD SpdIoctlSetTransactProcessId(HANDLE DeviceHandle,
 exit:
     return Error;
 }
-
-DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP)
-{
-    if (AlignmentMask + 1 < sizeof(PVOID))
-        AlignmentMask = sizeof(PVOID) - 1;
-
-    PVOID P = MemAlloc(Size + AlignmentMask);
-    if (0 == P)
-    {
-        *PP = 0;
-        return ERROR_NOT_ENOUGH_MEMORY;
-    }
-
-    *PP = (PVOID)(((UINT_PTR)(PUINT8)P + (UINT_PTR)AlignmentMask) & ~(UINT_PTR)AlignmentMask);
-    ((PVOID *)*PP)[-1] = P;
-    return ERROR_SUCCESS;
-}
-
-VOID SpdIoctlMemAlignFree(PVOID P)
-{
-    if (0 == P)
-        return;
-
-    MemFree(((PVOID *)P)[-1]);
-}

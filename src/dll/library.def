@@ -10,8 +10,6 @@ EXPORTS
 	SpdIoctlGetList
 	SpdIoctlTransact
 	SpdIoctlSetTransactProcessId
-	SpdIoctlMemAlignAlloc
-	SpdIoctlMemAlignFree
 
 	; winspd.h
 	SpdStorageUnitCreate

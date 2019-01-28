@@ -218,8 +218,6 @@ DWORD SpdIoctlTransact(HANDLE DeviceHandle,
 DWORD SpdIoctlSetTransactProcessId(HANDLE DeviceHandle,
     UINT32 Btl,
     ULONG ProcessId);
-DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP);
-VOID SpdIoctlMemAlignFree(PVOID P);
 #endif
 
 #ifdef __cplusplus

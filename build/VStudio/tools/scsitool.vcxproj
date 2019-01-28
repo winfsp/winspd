@@ -186,11 +186,13 @@
     <ClCompile Include="..\..\..\src\scsitool\scsitext.c" />
     <ClCompile Include="..\..\..\src\scsitool\scsitool.c" />
     <ClCompile Include="..\..\..\src\shared\ioctl.c" />
+    <ClCompile Include="..\..\..\src\shared\memalign.c" />
     <ClCompile Include="..\..\..\src\shared\printlog.c" />
     <ClCompile Include="..\..\..\src\shared\strtoint.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\scsitool\scsitool.h" />
+    <ClInclude Include="..\..\..\src\shared\memalign.h" />
     <ClInclude Include="..\..\..\src\shared\minimal.h" />
     <ClInclude Include="..\..\..\src\shared\printlog.h" />
     <ClInclude Include="..\..\..\src\shared\strtoint.h" />
