@@ -48,6 +48,9 @@
     <Compile Include="..\..\..\src\dotnet\Interop.cs">
       <Link>Interop.cs</Link>
     </Compile>
+    <Compile Include="..\..\..\src\dotnet\StorageUnitBase+Const.cs">
+      <Link>StorageUnitBase+Const.cs</Link>
+    </Compile>
     <Compile Include="..\..\..\src\dotnet\StorageUnitBase.cs">
       <Link>StorageUnitBase.cs</Link>
     </Compile>
