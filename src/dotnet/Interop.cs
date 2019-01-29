@@ -117,6 +117,24 @@ namespace Spd.Interop
         internal UInt64 ReservedCSI;
         internal UInt32 ReservedSKS;
         internal UInt32 Flags;
+
+        internal void SetSense(Byte SenseKey, Byte ASC)
+        {
+            this.ScsiStatus = 2/*SCSISTAT_CHECK_CONDITION*/;
+            this.SenseKey = SenseKey;
+            this.ASC = ASC;
+            this.Information = 0;
+            this.Flags = 0;
+        }
+
+        internal void SetSense(Byte SenseKey, Byte ASC, UInt64 Information)
+        {
+            this.ScsiStatus = 2/*SCSISTAT_CHECK_CONDITION*/;
+            this.SenseKey = SenseKey;
+            this.ASC = ASC;
+            this.Information = Information;
+            this.Flags = InformationValid;
+        }
     }
 
     [StructLayout(LayoutKind.Sequential)]
