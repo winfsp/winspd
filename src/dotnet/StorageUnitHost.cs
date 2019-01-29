@@ -58,7 +58,7 @@ namespace Spd
         {
             if (IntPtr.Zero != _StorageUnitPtr)
             {
-                Api.SpdStorageUnitShutdownDispatcher(_StorageUnitPtr);
+                Api.SpdStorageUnitShutdown(_StorageUnitPtr);
                 Api.SpdStorageUnitWaitDispatcher(_StorageUnitPtr);
                 if (disposing)
                     try

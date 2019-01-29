@@ -200,12 +200,12 @@ namespace Spd.Interop
             internal delegate void SpdStorageUnitDelete(
                 IntPtr StorageUnit);
             [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate void SpdStorageUnitShutdown(
+                IntPtr StorageUnit);
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
             internal delegate int SpdStorageUnitStartDispatcher(
                 IntPtr StorageUnit,
                 UInt32 ThreadCount);
-            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-            internal delegate void SpdStorageUnitShutdownDispatcher(
-                IntPtr StorageUnit);
             [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
             internal delegate void SpdStorageUnitWaitDispatcher(
                 IntPtr StorageUnit);
@@ -230,7 +230,7 @@ namespace Spd.Interop
         internal static Proto.SpdStorageUnitCreate SpdStorageUnitCreate;
         internal static Proto.SpdStorageUnitDelete SpdStorageUnitDelete;
         internal static Proto.SpdStorageUnitStartDispatcher SpdStorageUnitStartDispatcher;
-        internal static Proto.SpdStorageUnitShutdownDispatcher SpdStorageUnitShutdownDispatcher;
+        internal static Proto.SpdStorageUnitShutdown SpdStorageUnitShutdown;
         internal static Proto.SpdStorageUnitWaitDispatcher SpdStorageUnitWaitDispatcher;
         internal static Proto.SpdStorageUnitSetDebugLogF SpdStorageUnitSetDebugLog;
         internal static Proto.SpdDebugLog SpdDebugLog;
@@ -325,8 +325,8 @@ namespace Spd.Interop
         {
             SpdStorageUnitCreate = GetEntryPoint<Proto.SpdStorageUnitCreate>(Module);
             SpdStorageUnitDelete = GetEntryPoint<Proto.SpdStorageUnitDelete>(Module);
+            SpdStorageUnitShutdown = GetEntryPoint<Proto.SpdStorageUnitShutdown>(Module);
             SpdStorageUnitStartDispatcher = GetEntryPoint<Proto.SpdStorageUnitStartDispatcher>(Module);
-            SpdStorageUnitShutdownDispatcher = GetEntryPoint<Proto.SpdStorageUnitShutdownDispatcher>(Module);
             SpdStorageUnitWaitDispatcher = GetEntryPoint<Proto.SpdStorageUnitWaitDispatcher>(Module);
             SpdStorageUnitSetDebugLog = GetEntryPoint<Proto.SpdStorageUnitSetDebugLogF>(Module);
             SpdDebugLog = GetEntryPoint<Proto.SpdDebugLog>(Module);
