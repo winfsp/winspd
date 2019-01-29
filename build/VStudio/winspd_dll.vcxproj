@@ -116,7 +116,7 @@
       <StripPrivateSymbols>$(OutDir)$(TargetFileName).public.pdb</StripPrivateSymbols>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)$(TargetFileName).map</MapFileName>
-      <AdditionalDependencies>setupapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>setupapi.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>..\..\src\dll\library.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
@@ -141,7 +141,7 @@
       <StripPrivateSymbols>$(OutDir)$(TargetFileName).public.pdb</StripPrivateSymbols>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)$(TargetFileName).map</MapFileName>
-      <AdditionalDependencies>setupapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>setupapi.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>..\..\src\dll\library.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
@@ -168,7 +168,7 @@
       <StripPrivateSymbols>$(OutDir)$(TargetFileName).public.pdb</StripPrivateSymbols>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)$(TargetFileName).map</MapFileName>
-      <AdditionalDependencies>setupapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>setupapi.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>..\..\src\dll\library.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
@@ -195,7 +195,7 @@
       <StripPrivateSymbols>$(OutDir)$(TargetFileName).public.pdb</StripPrivateSymbols>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)$(TargetFileName).map</MapFileName>
-      <AdditionalDependencies>setupapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>setupapi.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>..\..\src\dll\library.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
@@ -204,6 +204,7 @@
     <ClCompile Include="..\..\src\dll\library.c" />
     <ClCompile Include="..\..\src\dll\stghandle.c" />
     <ClCompile Include="..\..\src\dll\stgunit.c" />
+    <ClCompile Include="..\..\src\dll\util.c" />
     <ClCompile Include="..\..\src\shared\ioctl.c" />
   </ItemGroup>
   <ItemGroup>

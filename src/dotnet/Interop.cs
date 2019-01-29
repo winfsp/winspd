@@ -20,7 +20,9 @@
  */
 
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.AccessControl;
@@ -203,6 +205,9 @@ namespace Spd.Interop
             [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
             internal delegate void SpdDebugLogSetHandle(
                 IntPtr Handle);
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate int SpdVersion(
+                out UInt32 PVersion);
         }
 
         internal static Proto.SpdStorageUnitCreate SpdStorageUnitCreate;
@@ -213,6 +218,7 @@ namespace Spd.Interop
         internal static Proto.SpdStorageUnitSetDebugLogF SpdStorageUnitSetDebugLogF;
         internal static Proto.SpdDebugLog SpdDebugLog;
         internal static Proto.SpdDebugLogSetHandle SpdDebugLogSetHandle;
+        internal static Proto.SpdVersion SpdVersion;
 
         internal static int SetDebugLogFile(String FileName)
         {
@@ -232,6 +238,13 @@ namespace Spd.Interop
                 return Marshal.GetLastWin32Error();
             Api.SpdDebugLogSetHandle(Handle);
             return 0/*ERROR_SUCCESS*/;
+        }
+
+        internal static Version GetVersion()
+        {
+            UInt32 Version = 0;
+            SpdVersion(out Version);
+            return new System.Version((Int32)Version >> 16, (Int32)Version & 0xFFFF);
         }
 
         /* initialization */
@@ -262,6 +275,18 @@ namespace Spd.Interop
             SpdStorageUnitSetDebugLogF = GetEntryPoint<Proto.SpdStorageUnitSetDebugLogF>(Module);
             SpdDebugLog = GetEntryPoint<Proto.SpdDebugLog>(Module);
             SpdDebugLogSetHandle = GetEntryPoint<Proto.SpdDebugLogSetHandle>(Module);
+            SpdVersion = GetEntryPoint<Proto.SpdVersion>(Module);
+        }
+        private static void CheckVersion()
+        {
+            FileVersionInfo Info;
+            UInt32 Version = 0, VersionMajor, VersionMinor;
+            Info = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
+            SpdVersion(out Version); VersionMajor = Version >> 16; VersionMinor = Version & 0xFFFF;
+            if (Info.FileMajorPart != VersionMajor || Info.FileMinorPart > VersionMinor)
+                throw new TypeLoadException(String.Format(
+                    "incorrect dll version (need {0}.{1}, have {2}.{3})",
+                    Info.FileMajorPart, Info.FileMinorPart, VersionMajor, VersionMinor));
         }
         static Api()
         {
@@ -270,6 +295,7 @@ namespace Spd.Interop
                 Debugger.Break();
 #endif
             LoadProto(LoadDll());
+            CheckVersion();
         }
 
         [DllImport("kernel32.dll", CallingConvention = CallingConvention.StdCall, SetLastError = true)]
