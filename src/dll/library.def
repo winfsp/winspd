@@ -14,8 +14,8 @@ EXPORTS
 	; winspd.h
 	SpdStorageUnitCreate
 	SpdStorageUnitDelete
+	SpdStorageUnitShutdown
 	SpdStorageUnitStartDispatcher
-	SpdStorageUnitShutdownDispatcher
 	SpdStorageUnitWaitDispatcher
 	SpdStorageUnitSendResponse
 	SpdStorageUnitGetOperationContext

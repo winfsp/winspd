@@ -115,6 +115,13 @@ DWORD SpdStorageUnitCreate(
  */
 VOID SpdStorageUnitDelete(SPD_STORAGE_UNIT *StorageUnit);
 /**
+ * Shutdown the storage unit.
+ *
+ * @param StorageUnit
+ *     The storage unit object.
+ */
+VOID SpdStorageUnitShutdown(SPD_STORAGE_UNIT *StorageUnit);
+/**
  * Start the storage unit dispatcher.
  *
  * @param StorageUnit
@@ -126,13 +133,6 @@ VOID SpdStorageUnitDelete(SPD_STORAGE_UNIT *StorageUnit);
  *     ERROR_SUCCESS or error code.
  */
 DWORD SpdStorageUnitStartDispatcher(SPD_STORAGE_UNIT *StorageUnit, ULONG ThreadCount);
-/**
- * Shutdown the storage unit dispatcher.
- *
- * @param StorageUnit
- *     The storage unit object.
- */
-VOID SpdStorageUnitShutdownDispatcher(SPD_STORAGE_UNIT *StorageUnit);
 /**
  * Wait for the storage unit dispatcher to stop.
  *
@@ -209,6 +209,37 @@ VOID SpdStorageUnitStatusSetSense(SPD_STORAGE_UNIT_STATUS *Status,
         Status->InformationValid = 1;
     }
 }
+
+/*
+ * Guards
+ */
+typedef struct _SPD_GUARD
+{
+    SRWLOCK Lock;
+    PVOID Pointer;
+} SPD_GUARD;
+static inline
+VOID SpdGuardInit(SPD_GUARD *Guard)
+{
+    InitializeSRWLock(&Guard->Lock);
+    Guard->Pointer = 0;
+}
+static inline
+VOID SpdGuardSet(SPD_GUARD *Guard, PVOID Pointer)
+{
+    AcquireSRWLockExclusive(&Guard->Lock);
+    Guard->Pointer = Pointer;
+    ReleaseSRWLockExclusive(&Guard->Lock);
+}
+static inline
+VOID SpdGuardExecute(SPD_GUARD *Guard, VOID (*Func)(PVOID))
+{
+    AcquireSRWLockShared(&Guard->Lock);
+    if (0 != Guard->Pointer)
+        Func(Guard->Pointer);
+    ReleaseSRWLockShared(&Guard->Lock);
+}
+#define SPD_GUARD_INIT                  { SRWLOCK_INIT, 0 }
 
 /*
  * Utility

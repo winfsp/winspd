@@ -63,11 +63,11 @@ static wchar_t *argtos(wchar_t **argp)
     return argp[0];
 }
 
-static RAWDISK *RawDisk;
+static SPD_GUARD ConsoleCtrlGuard = SPD_GUARD_INIT;
 
 static BOOL WINAPI ConsoleCtrlHandler(DWORD CtrlType)
 {
-    SpdStorageUnitShutdownDispatcher(RawDiskStorageUnit(RawDisk));
+    SpdGuardExecute(&ConsoleCtrlGuard, SpdStorageUnitShutdown);
     return TRUE;
 }
 
@@ -86,6 +86,7 @@ int wmain(int argc, wchar_t **argv)
     PWSTR DebugLogFile = 0;
     HANDLE DebugLogHandle = INVALID_HANDLE_VALUE;
     PWSTR PipeName = 0;
+    RAWDISK *RawDisk = 0;
     DWORD Error;
 
     for (argp = argv + 1; 0 != argp[0]; argp++)
@@ -184,9 +185,11 @@ int wmain(int argc, wchar_t **argv)
         0 != PipeName ? " -p " : "",
         0 != PipeName ? PipeName : L"");
 
+    SpdGuardSet(&ConsoleCtrlGuard, RawDiskStorageUnit(RawDisk));
     SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
-
     SpdStorageUnitWaitDispatcher(RawDiskStorageUnit(RawDisk));
+    SpdGuardSet(&ConsoleCtrlGuard, 0);
+
     RawDiskDelete(RawDisk);
     RawDisk = 0;
 

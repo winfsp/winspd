@@ -113,6 +113,11 @@ VOID SpdStorageUnitDelete(SPD_STORAGE_UNIT *StorageUnit)
     MemFree(StorageUnit);
 }
 
+VOID SpdStorageUnitShutdown(SPD_STORAGE_UNIT *StorageUnit)
+{
+    SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->StorageUnitParams.Guid);
+}
+
 static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
 {
     SPD_STORAGE_UNIT *StorageUnit = StorageUnit0;
@@ -296,14 +301,6 @@ DWORD SpdStorageUnitStartDispatcher(SPD_STORAGE_UNIT *StorageUnit, ULONG ThreadC
     }
 
     return ERROR_SUCCESS;
-}
-
-VOID SpdStorageUnitShutdownDispatcher(SPD_STORAGE_UNIT *StorageUnit)
-{
-    if (0 == StorageUnit->DispatcherThread)
-        return;
-
-    SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->StorageUnitParams.Guid);
 }
 
 VOID SpdStorageUnitWaitDispatcher(SPD_STORAGE_UNIT *StorageUnit)
