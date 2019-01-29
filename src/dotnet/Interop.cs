@@ -42,7 +42,7 @@ namespace Spd.Interop
 
         internal unsafe fixed Byte Guid[GuidSize];
         internal UInt64 BlockCount;
-        internal UInt64 BlockLength;
+        internal UInt32 BlockLength;
         internal unsafe fixed Byte ProductId[ProductIdSize];
         internal unsafe fixed Byte ProductRevisionLevel[ProductRevisionLevelSize];
         internal Byte DeviceType;

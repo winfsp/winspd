@@ -48,6 +48,12 @@
     <Compile Include="..\..\..\src\dotnet\Interop.cs">
       <Link>Interop.cs</Link>
     </Compile>
+    <Compile Include="..\..\..\src\dotnet\StorageUnitBase.cs">
+      <Link>StorageUnitBase.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\src\dotnet\StorageUnitHost.cs">
+      <Link>StorageUnitHost.cs</Link>
+    </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
