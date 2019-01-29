@@ -126,7 +126,6 @@ namespace Spd.Interop
             this.Information = 0;
             this.Flags = 0;
         }
-
         public void SetSense(Byte SenseKey, Byte ASC, UInt64 Information)
         {
             this.ScsiStatus = 2/*SCSISTAT_CHECK_CONDITION*/;
