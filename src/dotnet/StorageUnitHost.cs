@@ -62,12 +62,12 @@ namespace Spd
                 if (disposing)
                     try
                     {
-                        //_StorageUnit.Unmounted(this);
+                        _StorageUnit.Stopped(this);
                     }
                     catch (Exception)
                     {
-                        //ExceptionHandler(_StorageUnit, ex);
                     }
+                Api.DisposeUserContext(_StorageUnitPtr);
                 Api.SpdStorageUnitDelete(_StorageUnitPtr);
                 _StorageUnitPtr = IntPtr.Zero;
             }
@@ -151,67 +151,64 @@ namespace Spd
         /// <summary>
         /// Start a storage unit.
         /// </summary>
+        /// <param name="PipeName">
+        /// A value of null adds the storage unit to the Windows storage stack.
+        /// A value of "\\.\pipe\PipeName" listens on the specified pipe and
+        /// allows for user mode testing (e.g. using the stgtest utility).
+        /// </param>
         /// <param name="DebugLog">
         /// A value of 0 disables all debug logging.
         /// A value of -1 enables all debug logging.
         /// </param>
         /// <returns></returns>
-        public int Start(UInt32 DebugLog = 0)
+        public int Start(
+            String PipeName = null,
+            UInt32 DebugLog = 0)
         {
-            return 0;
-#if false
-            int Result = 0;
+            int Error = 0;
             try
             {
-                //_StorageUnit.Init(this);
+                _StorageUnit.Init(this);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                //Result = ExceptionHandler(_StorageUnit, ex);
+                Error = 574/*ERROR_UNHANDLED_EXCEPTION*/;
             }
-            if (0 != Result)
-                return Result;
-            Result = Api.SpdStorageUnitCreate(
-                0,
+            if (0 != Error)
+                return Error;
+            Error = Api.SpdStorageUnitCreate(PipeName,
                 ref _StorageUnitParams, _StorageUnitInterfacePtr, out _StorageUnitPtr);
-            if (0 != Result)
-                return Result;
+            if (0 != Error)
+                return Error;
             Api.SetUserContext(_StorageUnitPtr, _StorageUnit);
             Api.SpdStorageUnitSetDebugLog(_StorageUnitPtr, DebugLog);
-            Result = Api.FspFileSystemSetMountPointEx(_FileSystemPtr, MountPoint,
-                SecurityDescriptor);
-            if (0 <= Result)
+            try
             {
-                try
-                {
-                    Result = _FileSystem.Mounted(this);
-                }
-                catch (Exception ex)
-                {
-                    Result = ExceptionHandler(_FileSystem, ex);
-                }
-                if (0 <= Result)
-                {
-                    Result = Api.FspFileSystemStartDispatcher(_FileSystemPtr, 0);
-                    if (0 > Result)
-                        try
-                        {
-                            _FileSystem.Unmounted(this);
-                        }
-                        catch (Exception ex)
-                        {
-                            ExceptionHandler(_FileSystem, ex);
-                        }
-                }
+                _StorageUnit.Started(this);
             }
-            if (0 > Result)
+            catch (Exception)
             {
-                Api.DisposeUserContext(_FileSystemPtr);
-                Api.FspFileSystemDelete(_FileSystemPtr);
-                _FileSystemPtr = IntPtr.Zero;
+                Error = 574/*ERROR_UNHANDLED_EXCEPTION*/;
             }
-            return Result;
-#endif
+            if (0 == Error)
+            {
+                Error = Api.SpdStorageUnitStartDispatcher(_StorageUnitPtr, 2);
+                if (0 != Error)
+                    try
+                    {
+                        _StorageUnit.Stopped(this);
+                    }
+                    catch (Exception)
+                    {
+                    }
+            }
+            if (0 != Error)
+            {
+                Api.DisposeUserContext(_StorageUnitPtr);
+                Api.SpdStorageUnitDelete(_StorageUnitPtr);
+                _StorageUnitPtr = IntPtr.Zero;
+            }
+            return Error;
         }
         /// <summary>
         /// Stops the storage unit and releases all associated resources.
@@ -244,7 +241,7 @@ namespace Spd
             return Api.SetDebugLogFile(FileName);
         }
         /// <summary>
-        /// Return the installed version of WinFsp.
+        /// Return the installed version of WinSpd.
         /// </summary>
         public static Version Version()
         {
@@ -990,8 +987,8 @@ namespace Spd
         }
 #endif
 
-        //private static FileSystemInterface _FileSystemInterface;
-        //private static IntPtr _FileSystemInterfacePtr;
+        private static StorageUnitInterface _StorageUnitInterface;
+        private static IntPtr _StorageUnitInterfacePtr;
         private StorageUnitParams _StorageUnitParams;
         private StorageUnitBase _StorageUnit;
         private IntPtr _StorageUnitPtr;

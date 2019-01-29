@@ -106,19 +106,19 @@ namespace Spd.Interop
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal struct StorageUnitStatus
+    public struct StorageUnitStatus
     {
-        internal const UInt32 InformationValid = 0x00000010;
-        internal Byte ScsiStatus;
-        internal Byte SenseKey;
-        internal Byte ASC;
-        internal Byte ASCQ;
-        internal UInt64 Information;
-        internal UInt64 ReservedCSI;
-        internal UInt32 ReservedSKS;
-        internal UInt32 Flags;
+        public const UInt32 InformationValid = 0x00000010;
+        public Byte ScsiStatus;
+        public Byte SenseKey;
+        public Byte ASC;
+        public Byte ASCQ;
+        public UInt64 Information;
+        public UInt64 ReservedCSI;
+        public UInt32 ReservedSKS;
+        public UInt32 Flags;
 
-        internal void SetSense(Byte SenseKey, Byte ASC)
+        public void SetSense(Byte SenseKey, Byte ASC)
         {
             this.ScsiStatus = 2/*SCSISTAT_CHECK_CONDITION*/;
             this.SenseKey = SenseKey;
@@ -127,7 +127,7 @@ namespace Spd.Interop
             this.Flags = 0;
         }
 
-        internal void SetSense(Byte SenseKey, Byte ASC, UInt64 Information)
+        public void SetSense(Byte SenseKey, Byte ASC, UInt64 Information)
         {
             this.ScsiStatus = 2/*SCSISTAT_CHECK_CONDITION*/;
             this.SenseKey = SenseKey;
@@ -233,10 +233,36 @@ namespace Spd.Interop
         internal static Proto.SpdStorageUnitStartDispatcher SpdStorageUnitStartDispatcher;
         internal static Proto.SpdStorageUnitShutdownDispatcher SpdStorageUnitShutdownDispatcher;
         internal static Proto.SpdStorageUnitWaitDispatcher SpdStorageUnitWaitDispatcher;
-        internal static Proto.SpdStorageUnitSetDebugLogF SpdStorageUnitSetDebugLogF;
+        internal static Proto.SpdStorageUnitSetDebugLogF SpdStorageUnitSetDebugLog;
         internal static Proto.SpdDebugLog SpdDebugLog;
         internal static Proto.SpdDebugLogSetHandle SpdDebugLogSetHandle;
         internal static Proto.SpdVersion SpdVersion;
+
+        internal unsafe static Object GetUserContext(
+            IntPtr NativePtr)
+        {
+            IntPtr UserContext = *(IntPtr *)((Byte *)NativePtr + sizeof(IntPtr));
+            return IntPtr.Zero != UserContext ? GCHandle.FromIntPtr(UserContext).Target : null;
+        }
+        internal unsafe static void SetUserContext(
+            IntPtr NativePtr,
+            Object Obj)
+        {
+            Debug.Assert(IntPtr.Zero == *(IntPtr *)((Byte *)NativePtr + sizeof(IntPtr)));
+            GCHandle Handle = GCHandle.Alloc(Obj, GCHandleType.Weak);
+            *(IntPtr *)((Byte *)NativePtr + sizeof(IntPtr)) = (IntPtr)Handle;
+        }
+        internal unsafe static void DisposeUserContext(
+            IntPtr NativePtr)
+        {
+            IntPtr UserContext = *(IntPtr *)((Byte *)NativePtr + sizeof(IntPtr));
+            Debug.Assert(IntPtr.Zero != UserContext);
+            if (IntPtr.Zero != UserContext)
+            {
+                GCHandle.FromIntPtr(UserContext).Free();
+                *(IntPtr *)((Byte *)NativePtr + sizeof(IntPtr)) = IntPtr.Zero;
+            }
+        }
 
         internal static int SetDebugLogFile(String FileName)
         {
@@ -290,7 +316,7 @@ namespace Spd.Interop
             SpdStorageUnitStartDispatcher = GetEntryPoint<Proto.SpdStorageUnitStartDispatcher>(Module);
             SpdStorageUnitShutdownDispatcher = GetEntryPoint<Proto.SpdStorageUnitShutdownDispatcher>(Module);
             SpdStorageUnitWaitDispatcher = GetEntryPoint<Proto.SpdStorageUnitWaitDispatcher>(Module);
-            SpdStorageUnitSetDebugLogF = GetEntryPoint<Proto.SpdStorageUnitSetDebugLogF>(Module);
+            SpdStorageUnitSetDebugLog = GetEntryPoint<Proto.SpdStorageUnitSetDebugLogF>(Module);
             SpdDebugLog = GetEntryPoint<Proto.SpdDebugLog>(Module);
             SpdDebugLogSetHandle = GetEntryPoint<Proto.SpdDebugLogSetHandle>(Module);
             SpdVersion = GetEntryPoint<Proto.SpdVersion>(Module);
