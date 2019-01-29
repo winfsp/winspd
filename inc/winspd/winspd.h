@@ -171,6 +171,8 @@ VOID SpdStorageUnitGetDispatcherError(SPD_STORAGE_UNIT *StorageUnit,
     *PDispatcherError = StorageUnit->DispatcherError;
     MemoryBarrier();
 }
+VOID SpdStorageUnitGetDispatcherErrorF(SPD_STORAGE_UNIT *StorageUnit,
+    DWORD *PDispatcherError);
 static inline
 VOID SpdStorageUnitSetDispatcherError(SPD_STORAGE_UNIT *StorageUnit,
     DWORD DispatcherError)
@@ -179,12 +181,16 @@ VOID SpdStorageUnitSetDispatcherError(SPD_STORAGE_UNIT *StorageUnit,
         return;
     InterlockedCompareExchange(&StorageUnit->DispatcherError, DispatcherError, ERROR_SUCCESS);
 }
+VOID SpdStorageUnitSetDispatcherErrorF(SPD_STORAGE_UNIT *StorageUnit,
+    DWORD DispatcherError);
 static inline
 VOID SpdStorageUnitSetDebugLog(SPD_STORAGE_UNIT *StorageUnit,
     UINT32 DebugLog)
 {
     StorageUnit->DebugLog = DebugLog;
 }
+VOID SpdStorageUnitSetDebugLogF(SPD_STORAGE_UNIT *StorageUnit,
+    UINT32 DebugLog);
 
 /*
  * Helpers

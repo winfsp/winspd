@@ -342,3 +342,21 @@ SPD_STORAGE_UNIT_OPERATION_CONTEXT *SpdStorageUnitGetOperationContext(VOID)
 {
     return (SPD_STORAGE_UNIT_OPERATION_CONTEXT *)TlsGetValue(SpdStorageUnitTlsKey);
 }
+
+VOID SpdStorageUnitGetDispatcherErrorF(SPD_STORAGE_UNIT *StorageUnit,
+    DWORD *PDispatcherError)
+{
+    SpdStorageUnitGetDispatcherError(StorageUnit, PDispatcherError);
+}
+
+VOID SpdStorageUnitSetDispatcherErrorF(SPD_STORAGE_UNIT *StorageUnit,
+    DWORD DispatcherError)
+{
+    SpdStorageUnitSetDispatcherError(StorageUnit, DispatcherError);
+}
+
+VOID SpdStorageUnitSetDebugLogF(SPD_STORAGE_UNIT *StorageUnit,
+    UINT32 DebugLog)
+{
+    SpdStorageUnitSetDebugLog(StorageUnit, DebugLog);
+}

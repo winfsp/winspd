@@ -19,6 +19,9 @@ EXPORTS
 	SpdStorageUnitWaitDispatcher
 	SpdStorageUnitSendResponse
 	SpdStorageUnitGetOperationContext
+	SpdStorageUnitGetDispatcherErrorF
+	SpdStorageUnitSetDispatcherErrorF
+	SpdStorageUnitSetDebugLogF
 	SpdDebugLogSetHandle
 	SpdDebugLog
 	SpdDebugLogRequest
