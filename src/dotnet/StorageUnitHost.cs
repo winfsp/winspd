@@ -22,6 +22,7 @@
 using System;
 
 using Spd.Interop;
+using System.Runtime.InteropServices;
 
 namespace Spd
 {
@@ -248,744 +249,88 @@ namespace Spd
             return Api.GetVersion();
         }
 
-#if false
-        /* FSP_FILE_SYSTEM_INTERFACE */
-        private static Byte[] ByteBufferNotNull = new Byte[0];
-        private static Int32 ExceptionHandler(
-            FileSystemBase FileSystem,
-            Exception ex)
+        /* SPD_STORAGE_UNIT_INTERFACE */
+        private static Boolean Read(
+            IntPtr StorageUnitPtr,
+            IntPtr Buffer, UInt64 BlockAddress, UInt32 BlockCount, Boolean Flush,
+            ref StorageUnitStatus Status)
         {
+            StorageUnitBase StorageUnit = (StorageUnitBase)Api.GetUserContext(StorageUnitPtr);
             try
             {
-                return FileSystem.ExceptionHandler(ex);
+                StorageUnit.Read(Buffer, BlockAddress, BlockCount, Flush, ref Status);
             }
-            catch
+            catch (Exception)
             {
-                return unchecked((Int32)0xc00000e9)/*STATUS_UNEXPECTED_IO_ERROR*/;
+                Status.SetSense(
+                    StorageUnitBase.SCSI_SENSE_MEDIUM_ERROR,
+                    StorageUnitBase.SCSI_ADSENSE_UNRECOVERED_ERROR);
             }
+            return true;
         }
-        private static Int32 GetVolumeInfo(
-            IntPtr FileSystemPtr,
-            out VolumeInfo VolumeInfo)
+        private static Boolean Write(
+            IntPtr StorageUnitPtr,
+            IntPtr Buffer, UInt64 BlockAddress, UInt32 BlockCount, Boolean Flush,
+            ref StorageUnitStatus Status)
         {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
+            StorageUnitBase StorageUnit = (StorageUnitBase)Api.GetUserContext(StorageUnitPtr);
             try
             {
-                return FileSystem.GetVolumeInfo(
-                    out VolumeInfo);
+                StorageUnit.Write(Buffer, BlockAddress, BlockCount, Flush, ref Status);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                VolumeInfo = default(VolumeInfo);
-                return ExceptionHandler(FileSystem, ex);
+                Status.SetSense(
+                    StorageUnitBase.SCSI_SENSE_MEDIUM_ERROR,
+                    StorageUnitBase.SCSI_ADSENSE_WRITE_ERROR);
             }
+            return true;
         }
-        private static Int32 SetVolumeLabel(
-            IntPtr FileSystemPtr,
-            String VolumeLabel,
-            out VolumeInfo VolumeInfo)
+        private static Boolean Flush(
+            IntPtr StorageUnitPtr,
+            UInt64 BlockAddress, UInt32 BlockCount,
+            ref StorageUnitStatus Status)
         {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
+            StorageUnitBase StorageUnit = (StorageUnitBase)Api.GetUserContext(StorageUnitPtr);
             try
             {
-                return FileSystem.SetVolumeLabel(
-                    VolumeLabel,
-                    out VolumeInfo);
+                StorageUnit.Flush(BlockAddress, BlockCount, ref Status);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                VolumeInfo = default(VolumeInfo);
-                return ExceptionHandler(FileSystem, ex);
+                Status.SetSense(
+                    StorageUnitBase.SCSI_SENSE_MEDIUM_ERROR,
+                    StorageUnitBase.SCSI_ADSENSE_WRITE_ERROR);
             }
+            return true;
         }
-        private static Int32 GetSecurityByName(
-            IntPtr FileSystemPtr,
-            String FileName,
-            IntPtr PFileAttributes/* or ReparsePointIndex */,
-            IntPtr SecurityDescriptor,
-            IntPtr PSecurityDescriptorSize)
+        private static Boolean Unmap(
+            IntPtr StorageUnitPtr,
+            IntPtr Descriptors, UInt32 Count,
+            ref StorageUnitStatus Status)
         {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
+            StorageUnitBase StorageUnit = (StorageUnitBase)Api.GetUserContext(StorageUnitPtr);
+            UnmapDescriptor[] DescriptorArray = Api.MakeUnmapDescriptorArray(Descriptors, Count);
             try
             {
-                UInt32 FileAttributes;
-                Byte[] SecurityDescriptorBytes = null;
-                Int32 Result;
-                if (IntPtr.Zero != PSecurityDescriptorSize)
-                    SecurityDescriptorBytes = ByteBufferNotNull;
-                Result = FileSystem.GetSecurityByName(
-                    FileName,
-                    out FileAttributes,
-                    ref SecurityDescriptorBytes);
-                if (0 <= Result && 260/*STATUS_REPARSE*/ != Result)
-                {
-                    if (IntPtr.Zero != PFileAttributes)
-                        Marshal.WriteInt32(PFileAttributes, (Int32)FileAttributes);
-                    Result = Api.CopySecurityDescriptor(SecurityDescriptorBytes,
-                        SecurityDescriptor, PSecurityDescriptorSize);
-                }
-                return Result;
+                StorageUnit.Unmap(DescriptorArray, ref Status);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ExceptionHandler(FileSystem, ex);
             }
-        }
-        private static Int32 Create(
-            IntPtr FileSystemPtr,
-            String FileName,
-            UInt32 CreateOptions,
-            UInt32 GrantedAccess,
-            UInt32 FileAttributes,
-            IntPtr SecurityDescriptor,
-            UInt64 AllocationSize,
-            ref FullContext FullContext,
-            ref OpenFileInfo OpenFileInfo)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                String NormalizedName;
-                Int32 Result;
-                Result = FileSystem.Create(
-                    FileName,
-                    CreateOptions,
-                    GrantedAccess,
-                    FileAttributes,
-                    Api.MakeSecurityDescriptor(SecurityDescriptor),
-                    AllocationSize,
-                    out FileNode,
-                    out FileDesc,
-                    out OpenFileInfo.FileInfo,
-                    out NormalizedName);
-                if (0 <= Result)
-                {
-                    if (null != NormalizedName)
-                        OpenFileInfo.SetNormalizedName(NormalizedName);
-                    Api.SetFullContext(ref FullContext, FileNode, FileDesc);
-                }
-                return Result;
-            }
-            catch (Exception ex)
-            {
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 Open(
-            IntPtr FileSystemPtr,
-            String FileName,
-            UInt32 CreateOptions,
-            UInt32 GrantedAccess,
-            ref FullContext FullContext,
-            ref OpenFileInfo OpenFileInfo)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                String NormalizedName;
-                Int32 Result;
-                Result = FileSystem.Open(
-                    FileName,
-                    CreateOptions,
-                    GrantedAccess,
-                    out FileNode,
-                    out FileDesc,
-                    out OpenFileInfo.FileInfo,
-                    out NormalizedName);
-                if (0 <= Result)
-                {
-                    if (null != NormalizedName)
-                        OpenFileInfo.SetNormalizedName(NormalizedName);
-                    Api.SetFullContext(ref FullContext, FileNode, FileDesc);
-                }
-                return Result;
-            }
-            catch (Exception ex)
-            {
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 Overwrite(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            UInt32 FileAttributes,
-            Boolean ReplaceFileAttributes,
-            UInt64 AllocationSize,
-            out FileInfo FileInfo)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                return FileSystem.Overwrite(
-                    FileNode,
-                    FileDesc,
-                    FileAttributes,
-                    ReplaceFileAttributes,
-                    AllocationSize,
-                    out FileInfo);
-            }
-            catch (Exception ex)
-            {
-                FileInfo = default(FileInfo);
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static void Cleanup(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            String FileName,
-            UInt32 Flags)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                FileSystem.Cleanup(
-                    FileNode,
-                    FileDesc,
-                    FileName,
-                    Flags);
-            }
-            catch (Exception ex)
-            {
-                ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static void Close(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                FileSystem.Close(
-                    FileNode,
-                    FileDesc);
-                Api.DisposeFullContext(ref FullContext);
-            }
-            catch (Exception ex)
-            {
-                ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 Read(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            IntPtr Buffer,
-            UInt64 Offset,
-            UInt32 Length,
-            out UInt32 PBytesTransferred)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                return FileSystem.Read(
-                    FileNode,
-                    FileDesc,
-                    Buffer,
-                    Offset,
-                    Length,
-                    out PBytesTransferred);
-            }
-            catch (Exception ex)
-            {
-                PBytesTransferred = default(UInt32);
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 Write(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            IntPtr Buffer,
-            UInt64 Offset,
-            UInt32 Length,
-            Boolean WriteToEndOfFile,
-            Boolean ConstrainedIo,
-            out UInt32 PBytesTransferred,
-            out FileInfo FileInfo)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                return FileSystem.Write(
-                    FileNode,
-                    FileDesc,
-                    Buffer,
-                    Offset,
-                    Length,
-                    WriteToEndOfFile,
-                    ConstrainedIo,
-                    out PBytesTransferred,
-                    out FileInfo);
-            }
-            catch (Exception ex)
-            {
-                PBytesTransferred = default(UInt32);
-                FileInfo = default(FileInfo);
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 Flush(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            out FileInfo FileInfo)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                return FileSystem.Flush(
-                    FileNode,
-                    FileDesc,
-                    out FileInfo);
-            }
-            catch (Exception ex)
-            {
-                FileInfo = default(FileInfo);
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 GetFileInfo(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            out FileInfo FileInfo)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                return FileSystem.GetFileInfo(
-                    FileNode,
-                    FileDesc,
-                    out FileInfo);
-            }
-            catch (Exception ex)
-            {
-                FileInfo = default(FileInfo);
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 SetBasicInfo(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            UInt32 FileAttributes,
-            UInt64 CreationTime,
-            UInt64 LastAccessTime,
-            UInt64 LastWriteTime,
-            UInt64 ChangeTime,
-            out FileInfo FileInfo)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                return FileSystem.SetBasicInfo(
-                    FileNode,
-                    FileDesc,
-                    FileAttributes,
-                    CreationTime,
-                    LastAccessTime,
-                    LastWriteTime,
-                    ChangeTime,
-                    out FileInfo);
-            }
-            catch (Exception ex)
-            {
-                FileInfo = default(FileInfo);
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 SetFileSize(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            UInt64 NewSize,
-            Boolean SetAllocationSize,
-            out FileInfo FileInfo)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                return FileSystem.SetFileSize(
-                    FileNode,
-                    FileDesc,
-                    NewSize,
-                    SetAllocationSize,
-                    out FileInfo);
-            }
-            catch (Exception ex)
-            {
-                FileInfo = default(FileInfo);
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 Rename(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            String FileName,
-            String NewFileName,
-            Boolean ReplaceIfExists)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                return FileSystem.Rename(
-                    FileNode,
-                    FileDesc,
-                    FileName,
-                    NewFileName,
-                    ReplaceIfExists);
-            }
-            catch (Exception ex)
-            {
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 GetSecurity(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            IntPtr SecurityDescriptor,
-            IntPtr PSecurityDescriptorSize)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Byte[] SecurityDescriptorBytes;
-                Int32 Result;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                SecurityDescriptorBytes = ByteBufferNotNull;
-                Result = FileSystem.GetSecurity(
-                    FileNode,
-                    FileDesc,
-                    ref SecurityDescriptorBytes);
-                if (0 <= Result)
-                    Result = Api.CopySecurityDescriptor(SecurityDescriptorBytes,
-                        SecurityDescriptor, PSecurityDescriptorSize);
-                return Result;
-            }
-            catch (Exception ex)
-            {
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 SetSecurity(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            UInt32 SecurityInformation,
-            IntPtr ModificationDescriptor)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                AccessControlSections Sections;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                Sections = AccessControlSections.None;
-                if (0 != (SecurityInformation & 1/*OWNER_SECURITY_INFORMATION*/))
-                    Sections |= AccessControlSections.Owner;
-                if (0 != (SecurityInformation & 2/*GROUP_SECURITY_INFORMATION*/))
-                    Sections |= AccessControlSections.Group;
-                if (0 != (SecurityInformation & 4/*DACL_SECURITY_INFORMATION*/))
-                    Sections |= AccessControlSections.Access;
-                if (0 != (SecurityInformation & 8/*SACL_SECURITY_INFORMATION*/))
-                    Sections |= AccessControlSections.Audit;
-                return FileSystem.SetSecurity(
-                    FileNode,
-                    FileDesc,
-                    Sections,
-                    Api.MakeSecurityDescriptor(ModificationDescriptor));
-            }
-            catch (Exception ex)
-            {
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 ReadDirectory(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            String Pattern,
-            String Marker,
-            IntPtr Buffer,
-            UInt32 Length,
-            out UInt32 PBytesTransferred)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                return FileSystem.ReadDirectory(
-                    FileNode,
-                    FileDesc,
-                    Pattern,
-                    Marker,
-                    Buffer,
-                    Length,
-                    out PBytesTransferred);
-            }
-            catch (Exception ex)
-            {
-                PBytesTransferred = default(UInt32);
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 ResolveReparsePoints(
-            IntPtr FileSystemPtr,
-            String FileName,
-            UInt32 ReparsePointIndex,
-            Boolean ResolveLastPathComponent,
-            out IoStatusBlock PIoStatus,
-            IntPtr Buffer,
-            IntPtr PSize)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                return FileSystem.ResolveReparsePoints(
-                    FileName,
-                    ReparsePointIndex,
-                    ResolveLastPathComponent,
-                    out PIoStatus,
-                    Buffer,
-                    PSize);
-            }
-            catch (Exception ex)
-            {
-                PIoStatus = default(IoStatusBlock);
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 GetReparsePoint(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            String FileName,
-            IntPtr Buffer,
-            IntPtr PSize)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Byte[] ReparseData;
-                Object FileNode, FileDesc;
-                Int32 Result;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                ReparseData = null;
-                Result = FileSystem.GetReparsePoint(
-                    FileNode,
-                    FileDesc,
-                    FileName,
-                    ref ReparseData);
-                if (0 <= Result)
-                    Result = Api.CopyReparsePoint(ReparseData, Buffer, PSize);
-                return Result;
-            }
-            catch (Exception ex)
-            {
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 SetReparsePoint(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            String FileName,
-            IntPtr Buffer,
-            UIntPtr Size)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                return FileSystem.SetReparsePoint(
-                    FileNode,
-                    FileDesc,
-                    FileName,
-                    Api.MakeReparsePoint(Buffer, Size));
-            }
-            catch (Exception ex)
-            {
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 DeleteReparsePoint(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            String FileName,
-            IntPtr Buffer,
-            UIntPtr Size)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                return FileSystem.DeleteReparsePoint(
-                    FileNode,
-                    FileDesc,
-                    FileName,
-                    Api.MakeReparsePoint(Buffer, Size));
-            }
-            catch (Exception ex)
-            {
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 GetStreamInfo(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            IntPtr Buffer,
-            UInt32 Length,
-            out UInt32 PBytesTransferred)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                return FileSystem.GetStreamInfo(
-                    FileNode,
-                    FileDesc,
-                    Buffer,
-                    Length,
-                    out PBytesTransferred);
-            }
-            catch (Exception ex)
-            {
-                PBytesTransferred = default(UInt32);
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 GetDirInfoByName(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            String FileName,
-            out DirInfo DirInfo)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                String NormalizedName;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                DirInfo = default(DirInfo);
-                Int32 Result = FileSystem.GetDirInfoByName(
-                    FileNode,
-                    FileDesc,
-                    FileName,
-                    out NormalizedName,
-                    out DirInfo.FileInfo);
-                DirInfo.SetFileNameBuf(NormalizedName);
-                return Result;
-            }
-            catch (Exception ex)
-            {
-                DirInfo = default(DirInfo);
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 Control(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            UInt32 ControlCode,
-            IntPtr InputBuffer, UInt32 InputBufferLength,
-            IntPtr OutputBuffer, UInt32 OutputBufferLength,
-            out UInt32 PBytesTransferred)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                return FileSystem.Control(
-                    FileNode,
-                    FileDesc,
-                    ControlCode,
-                    InputBuffer,
-                    InputBufferLength,
-                    OutputBuffer,
-                    OutputBufferLength,
-                    out PBytesTransferred);
-            }
-            catch (Exception ex)
-            {
-                PBytesTransferred = default(UInt32);
-                return ExceptionHandler(FileSystem, ex);
-            }
-        }
-        private static Int32 SetDelete(
-            IntPtr FileSystemPtr,
-            ref FullContext FullContext,
-            String FileName,
-            Boolean DeleteFile)
-        {
-            FileSystemBase FileSystem = (FileSystemBase)Api.GetUserContext(FileSystemPtr);
-            try
-            {
-                Object FileNode, FileDesc;
-                Api.GetFullContext(ref FullContext, out FileNode, out FileDesc);
-                return FileSystem.SetDelete(
-                    FileNode,
-                    FileDesc,
-                    FileName,
-                    DeleteFile);
-            }
-            catch (Exception ex)
-            {
-                return ExceptionHandler(FileSystem, ex);
-            }
+            return true;
         }
 
-        static FileSystemHost()
+        static StorageUnitHost()
         {
-            _FileSystemInterface.GetVolumeInfo = GetVolumeInfo;
-            _FileSystemInterface.SetVolumeLabel = SetVolumeLabel;
-            _FileSystemInterface.GetSecurityByName = GetSecurityByName;
-            _FileSystemInterface.Create = Create;
-            _FileSystemInterface.Open = Open;
-            _FileSystemInterface.Overwrite = Overwrite;
-            _FileSystemInterface.Cleanup = Cleanup;
-            _FileSystemInterface.Close = Close;
-            _FileSystemInterface.Read = Read;
-            _FileSystemInterface.Write = Write;
-            _FileSystemInterface.Flush = Flush;
-            _FileSystemInterface.GetFileInfo = GetFileInfo;
-            _FileSystemInterface.SetBasicInfo = SetBasicInfo;
-            _FileSystemInterface.SetFileSize = SetFileSize;
-            _FileSystemInterface.Rename = Rename;
-            _FileSystemInterface.GetSecurity = GetSecurity;
-            _FileSystemInterface.SetSecurity = SetSecurity;
-            _FileSystemInterface.ReadDirectory = ReadDirectory;
-            _FileSystemInterface.ResolveReparsePoints = ResolveReparsePoints;
-            _FileSystemInterface.GetReparsePoint = GetReparsePoint;
-            _FileSystemInterface.SetReparsePoint = SetReparsePoint;
-            _FileSystemInterface.DeleteReparsePoint = DeleteReparsePoint;
-            _FileSystemInterface.GetStreamInfo = GetStreamInfo;
-            _FileSystemInterface.GetDirInfoByName = GetDirInfoByName;
-            _FileSystemInterface.Control = Control;
-            _FileSystemInterface.SetDelete = SetDelete;
+            _StorageUnitInterface.Read = Read;
+            _StorageUnitInterface.Write = Write;
+            _StorageUnitInterface.Flush = Flush;
+            _StorageUnitInterface.Unmap = Unmap;
 
-            _FileSystemInterfacePtr = Marshal.AllocHGlobal(FileSystemInterface.Size);
-            Marshal.StructureToPtr(_FileSystemInterface, _FileSystemInterfacePtr, false);
+            _StorageUnitInterfacePtr = Marshal.AllocHGlobal(StorageUnitInterface.Size);
+            Marshal.StructureToPtr(_StorageUnitInterface, _StorageUnitInterfacePtr, false);
         }
-#endif
 
         private static StorageUnitInterface _StorageUnitInterface;
         private static IntPtr _StorageUnitInterfacePtr;

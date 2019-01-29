@@ -138,10 +138,10 @@ namespace Spd.Interop
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal struct UnmapDescriptor
+    public struct UnmapDescriptor
     {
-        internal UInt64 BlockAddress;
-        internal UInt32 BlockCount;
+        public UInt64 BlockAddress;
+        public UInt32 BlockCount;
         internal UInt32 Reserved;
     }
 
@@ -155,25 +155,25 @@ namespace Spd.Interop
             internal delegate Boolean Read(
                 IntPtr StorageUnit,
                 IntPtr Buffer, UInt64 BlockAddress, UInt32 BlockCount, [MarshalAs(UnmanagedType.U1)] Boolean Flush,
-                IntPtr Status);
+                ref StorageUnitStatus Status);
             [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
             [return: MarshalAs(UnmanagedType.U1)]
             internal delegate Boolean Write(
                 IntPtr StorageUnit,
                 IntPtr Buffer, UInt64 BlockAddress, UInt32 BlockCount, [MarshalAs(UnmanagedType.U1)] Boolean Flush,
-                IntPtr Status);
+                ref StorageUnitStatus Status);
             [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
             [return: MarshalAs(UnmanagedType.U1)]
             internal delegate Boolean Flush(
                 IntPtr StorageUnit,
                 UInt64 BlockAddress, UInt32 BlockCount,
-                IntPtr Status);
+                ref StorageUnitStatus Status);
             [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
             [return: MarshalAs(UnmanagedType.U1)]
             internal delegate Boolean Unmap(
                 IntPtr StorageUnit,
                 IntPtr Descriptors, UInt32 Count,
-                IntPtr Status);
+                ref StorageUnitStatus Status);
         }
         
         internal static int Size = IntPtr.Size * 16;
@@ -262,6 +262,19 @@ namespace Spd.Interop
                 GCHandle.FromIntPtr(UserContext).Free();
                 *(IntPtr *)((Byte *)NativePtr + sizeof(IntPtr)) = IntPtr.Zero;
             }
+        }
+
+        internal unsafe static UnmapDescriptor[] MakeUnmapDescriptorArray(
+            IntPtr Descriptors, UInt32 Count)
+        {
+            UnmapDescriptor *P = (UnmapDescriptor *)Descriptors;
+            UnmapDescriptor[] DescriptorArray = new UnmapDescriptor[Count];
+            for (UInt32 I = 0; Count > I; I++)
+            {
+                DescriptorArray[I].BlockAddress = P[I].BlockAddress;
+                DescriptorArray[I].BlockCount = P[I].BlockCount;
+            }
+            return DescriptorArray;
         }
 
         internal static int SetDebugLogFile(String FileName)

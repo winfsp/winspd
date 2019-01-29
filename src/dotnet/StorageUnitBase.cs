@@ -97,8 +97,7 @@ namespace Spd
         /// Unmap blocks from the storage unit.
         /// </summary>
         public virtual void Unmap(
-            UInt64 BlockAddress,
-            UInt32 BlockCount,
+            UnmapDescriptor[] Descriptors,
             ref StorageUnitStatus Status)
         {
         }
