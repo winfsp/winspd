@@ -66,7 +66,7 @@ namespace Spd
         /// Reads blocks from the storage unit.
         /// </summary>
         public virtual void Read(
-            IntPtr Buffer,
+            Byte[] Buffer,
             UInt64 BlockAddress,
             UInt32 BlockCount,
             Boolean Flush,
@@ -77,7 +77,7 @@ namespace Spd
         /// Write blocks to the storage unit.
         /// </summary>
         public virtual void Write(
-            IntPtr Buffer,
+            Byte[] Buffer,
             UInt64 BlockAddress,
             UInt32 BlockCount,
             Boolean Flush,
