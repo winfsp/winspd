@@ -94,6 +94,7 @@ DWORD SpdStorageUnitCreate(
     StorageUnit->Interface = Interface;
     StorageUnit->Handle = Handle;
     StorageUnit->Btl = Btl;
+    SpdStorageUnitSetBufferAllocator(StorageUnit, MemAlloc, MemFree);
 
     *PStorageUnit = StorageUnit;
 
@@ -129,7 +130,7 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
     BOOLEAN Complete;
     DWORD Error;
 
-    DataBuffer = MemAlloc(StorageUnit->StorageUnitParams.MaxTransferLength);
+    DataBuffer = StorageUnit->BufferAlloc(StorageUnit->StorageUnitParams.MaxTransferLength);
     if (0 == DataBuffer)
     {
         Error = ERROR_NO_SYSTEM_RESOURCES;
@@ -267,7 +268,7 @@ exit:
 
     TlsSetValue(SpdStorageUnitTlsKey, 0);
 
-    MemFree(DataBuffer);
+    StorageUnit->BufferFree(DataBuffer);
 
     return Error;
 }
@@ -338,6 +339,13 @@ VOID SpdStorageUnitSendResponse(SPD_STORAGE_UNIT *StorageUnit,
 SPD_STORAGE_UNIT_OPERATION_CONTEXT *SpdStorageUnitGetOperationContext(VOID)
 {
     return (SPD_STORAGE_UNIT_OPERATION_CONTEXT *)TlsGetValue(SpdStorageUnitTlsKey);
+}
+
+VOID SpdStorageUnitSetBufferAllocatorF(SPD_STORAGE_UNIT *StorageUnit,
+    PVOID(*BufferAlloc)(size_t),
+    VOID(*BufferFree)(PVOID))
+{
+    SpdStorageUnitSetBufferAllocator(StorageUnit, BufferAlloc, BufferFree);
 }
 
 VOID SpdStorageUnitGetDispatcherErrorF(SPD_STORAGE_UNIT *StorageUnit,

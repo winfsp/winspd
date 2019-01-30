@@ -72,6 +72,8 @@ typedef struct _SPD_STORAGE_UNIT
     PVOID UserContext;
     SPD_STORAGE_UNIT_PARAMS StorageUnitParams;
     const SPD_STORAGE_UNIT_INTERFACE *Interface;
+    PVOID (*BufferAlloc)(size_t);
+    VOID (*BufferFree)(PVOID);
     HANDLE Handle;
     UINT32 Btl;
     DWORD DispatcherThreadId;
@@ -163,6 +165,17 @@ VOID SpdStorageUnitSendResponse(SPD_STORAGE_UNIT *StorageUnit,
  *     The current operation context.
  */
 SPD_STORAGE_UNIT_OPERATION_CONTEXT *SpdStorageUnitGetOperationContext(VOID);
+static inline
+VOID SpdStorageUnitSetBufferAllocator(SPD_STORAGE_UNIT *StorageUnit,
+    PVOID (*BufferAlloc)(size_t),
+    VOID (*BufferFree)(PVOID))
+{
+    StorageUnit->BufferAlloc = BufferAlloc;
+    StorageUnit->BufferFree = BufferFree;
+}
+VOID SpdStorageUnitSetBufferAllocatorF(SPD_STORAGE_UNIT *StorageUnit,
+    PVOID (*BufferAlloc)(size_t),
+    VOID (*BufferFree)(PVOID));
 static inline
 VOID SpdStorageUnitGetDispatcherError(SPD_STORAGE_UNIT *StorageUnit,
     DWORD *PDispatcherError)
