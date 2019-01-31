@@ -26,6 +26,17 @@ namespace Spd
 
     public partial class StorageUnitBase
     {
+        /* SCSI Status Codes */
+        public const Byte SCSISTAT_GOOD = 0x00;
+        public const Byte SCSISTAT_CHECK_CONDITION = 0x02;
+        public const Byte SCSISTAT_CONDITION_MET = 0x04;
+        public const Byte SCSISTAT_BUSY = 0x08;
+        public const Byte SCSISTAT_INTERMEDIATE = 0x10;
+        public const Byte SCSISTAT_INTERMEDIATE_COND_MET = 0x14;
+        public const Byte SCSISTAT_RESERVATION_CONFLICT = 0x18;
+        public const Byte SCSISTAT_COMMAND_TERMINATED = 0x22;
+        public const Byte SCSISTAT_QUEUE_FULL = 0x28;
+
         /* SCSI Sense Keys */
         public const Byte SCSI_SENSE_NO_SENSE = 0x00;
         public const Byte SCSI_SENSE_RECOVERED_ERROR = 0x01;

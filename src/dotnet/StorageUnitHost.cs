@@ -306,7 +306,7 @@ namespace Spd
             StorageUnitBase StorageUnit = (StorageUnitBase)Api.GetUserContext(StorageUnitPtr);
             try
             {
-                StorageUnit.Read(ThreadBuffer, BlockAddress, BlockCount, Flush, ref Status);
+                StorageUnit.Read(_ThreadBuffer, BlockAddress, BlockCount, Flush, ref Status);
             }
             catch (Exception)
             {
@@ -324,7 +324,7 @@ namespace Spd
             StorageUnitBase StorageUnit = (StorageUnitBase)Api.GetUserContext(StorageUnitPtr);
             try
             {
-                StorageUnit.Write(ThreadBuffer, BlockAddress, BlockCount, Flush, ref Status);
+                StorageUnit.Write(_ThreadBuffer, BlockAddress, BlockCount, Flush, ref Status);
             }
             catch (Exception)
             {
@@ -370,18 +370,18 @@ namespace Spd
         }
 
         /* BufferAllocator */
-        [ThreadStatic] private static Byte[] ThreadBuffer;
-        [ThreadStatic] private static GCHandle ThreadGCHandle;
+        [ThreadStatic] private static Byte[] _ThreadBuffer;
+        [ThreadStatic] private static GCHandle _ThreadGCHandle;
         private static IntPtr BufferAlloc(IntPtr Size)
         {
-            ThreadBuffer = new Byte[(int)Size];
-            ThreadGCHandle = GCHandle.Alloc(ThreadBuffer, GCHandleType.Pinned);
-            return ThreadGCHandle.AddrOfPinnedObject();
+            _ThreadBuffer = new Byte[(int)Size];
+            _ThreadGCHandle = GCHandle.Alloc(_ThreadBuffer, GCHandleType.Pinned);
+            return _ThreadGCHandle.AddrOfPinnedObject();
         }
         private static void BufferFree(IntPtr Pointer)
         {
             if (IntPtr.Zero != Pointer)
-                ThreadGCHandle.Free();
+                _ThreadGCHandle.Free();
         }
 
         static StorageUnitHost()

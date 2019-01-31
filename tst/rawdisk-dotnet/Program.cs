@@ -1,0 +1,356 @@
+/**
+ * @file Program.cs
+ *
+ * @copyright 2018-2019 Bill Zissimopoulos
+ */
+/*
+ * This file is part of WinSpd.
+ *
+ * You can redistribute it and/or modify it under the terms of the GNU
+ * General Public License version 3 as published by the Free Software
+ * Foundation.
+ *
+ * Licensees holding a valid commercial license may use this software
+ * in accordance with the commercial license agreement provided in
+ * conjunction with the software.  The terms and conditions of any such
+ * commercial license agreement shall govern, supersede, and render
+ * ineffective any application of the GPLv3 license to this software,
+ * notwithstanding of any reference thereto in the software or
+ * associated repository.
+ */
+
+using System;
+using System.IO;
+
+using Spd;
+using StorageUnitStatus = Spd.Interop.StorageUnitStatus;
+using UnmapDescriptor = Spd.Interop.UnmapDescriptor;
+using System.Runtime.InteropServices;
+
+namespace rawdisk
+{
+    class RawDisk : StorageUnitBase
+    {
+        public const UInt32 MaxTransferLength = 64 * 1024;
+
+        public RawDisk(
+            String RawDiskFile,
+            UInt64 BlockCount, UInt32 BlockLength)
+        {
+            _BlockCount = BlockCount;
+            _BlockLength = BlockLength;
+
+            _Stream = new FileStream(RawDiskFile,
+                FileMode.OpenOrCreate, FileAccess.ReadWrite, 0, (int)MaxTransferLength, false);
+
+            FILE_SET_SPARSE_BUFFER Sparse;
+            UInt32 BytesTransferred;
+            Sparse.SetSparse = true;
+            _Sparse = DeviceIoControl(_Stream.SafeFileHandle.DangerousGetHandle(),
+                0x900c4/*FSCTL_SET_SPARSE*/,
+                ref Sparse, (UInt32)Marshal.SizeOf(Sparse),
+                IntPtr.Zero, 0, out BytesTransferred, IntPtr.Zero);
+
+            UInt64 FileSize = (UInt64)_Stream.Length;
+            if (0 == FileSize)
+                FileSize = BlockCount * BlockLength;
+            if (0 == FileSize || BlockCount * BlockLength != FileSize)
+                throw new ArgumentException();
+            _Stream.SetLength((long)FileSize);
+        }
+
+        public override void Init(Object Host0)
+        {
+            StorageUnitHost Host = (StorageUnitHost)Host0;
+            Host.Guid = Guid.NewGuid();
+            Host.BlockCount = _BlockCount;
+            Host.BlockLength = _BlockLength;
+            Host.MaxTransferLength = MaxTransferLength;
+        }
+
+        public override void Stopped(Object Host0)
+        {
+            _Stream.Dispose();
+        }
+
+        public override void Read(
+            Byte[] Buffer,
+            UInt64 BlockAddress,
+            UInt32 BlockCount,
+            Boolean FlushFlag,
+            ref StorageUnitStatus Status)
+        {
+            if (FlushFlag)
+            {
+                Flush(BlockAddress, BlockCount, ref Status);
+                if (SCSISTAT_GOOD != Status.ScsiStatus)
+                    return;
+            }
+
+            /* we need a lock, because FileStream does not have pread */
+            lock (this)
+            {
+                UInt64 Offset = BlockAddress * _BlockLength;
+                _Stream.Seek((long)Offset, SeekOrigin.Begin);
+                _Stream.Read(Buffer, 0, Buffer.Length);
+                    /* We assume that we are reading from a file and ignore the return value. Fix? */
+            }
+        }
+
+        public override void Write(
+            Byte[] Buffer,
+            UInt64 BlockAddress,
+            UInt32 BlockCount,
+            Boolean FlushFlag,
+            ref StorageUnitStatus Status)
+        {
+            /* we need a lock, because FileStream does not have pwrite */
+            lock (this)
+            {
+                UInt64 Offset = BlockAddress * _BlockLength;
+                _Stream.Seek((long)Offset, SeekOrigin.Begin);
+                _Stream.Write(Buffer, 0, Buffer.Length);
+                    /* We assume that we are writing to a file and ignore the return value. Fix? */
+            }
+
+            if (FlushFlag && SCSISTAT_GOOD == Status.ScsiStatus)
+                Flush(BlockAddress, BlockCount, ref Status);
+        }
+
+        public override void Flush(
+            UInt64 BlockAddress,
+            UInt32 BlockCount,
+            ref StorageUnitStatus Status)
+        {
+            _Stream.Flush();
+        }
+
+        public override void Unmap(
+            UnmapDescriptor[] Descriptors,
+            ref StorageUnitStatus Status)
+        {
+            FILE_ZERO_DATA_INFORMATION Zero;
+            UInt32 BytesTransferred;
+            for (int I = 0; Descriptors.Length > I; I++)
+            {
+                Boolean SetZero = false;
+
+                if (_Sparse)
+                {
+                    Zero.FileOffset = (long)(Descriptors[I].BlockAddress * _BlockLength);
+                    Zero.BeyondFinalZero = (long)((Descriptors[I].BlockAddress + Descriptors[I].BlockCount) *
+                        _BlockLength);
+                    SetZero = DeviceIoControl(_Stream.SafeFileHandle.DangerousGetHandle(),
+                        0x980c8/*FSCTL_SET_ZERO_DATA*/,
+                        ref Zero, (UInt32)Marshal.SizeOf(Zero),
+                        IntPtr.Zero, 0, out BytesTransferred, IntPtr.Zero);
+                }
+
+                if (!SetZero)
+                {
+#if false
+                    FileBuffer = (PUINT8)RawDisk->Pointer + Descriptors[I].BlockAddress * RawDisk->BlockLength;
+
+                    CopyBuffer(StorageUnit,
+                        FileBuffer, 0, Descriptors[I].BlockCount * RawDisk->BlockLength, SCSI_ADSENSE_NO_SENSE,
+                        0);
+#endif
+                }
+            }
+        }
+
+        private UInt64 _BlockCount;
+        private UInt32 _BlockLength;
+        private FileStream _Stream;
+        private Boolean _Sparse;
+
+        /* interop */
+        [StructLayout(LayoutKind.Sequential)]
+        private struct FILE_SET_SPARSE_BUFFER
+        {
+            public Boolean SetSparse;
+        }
+        [StructLayout(LayoutKind.Sequential)]
+        private struct FILE_ZERO_DATA_INFORMATION
+        {
+            public Int64 FileOffset;
+            public Int64 BeyondFinalZero;
+        }
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        private static extern Boolean DeviceIoControl(
+            IntPtr hDevice,
+            UInt32 dwIoControlCode,
+            ref FILE_SET_SPARSE_BUFFER lpInBuffer,
+            UInt32 nInBufferSize,
+            IntPtr lpOutBuffer,
+            UInt32 nOutBufferSize,
+            out UInt32 lpBytesReturned,
+            IntPtr Overlapped);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        private static extern Boolean DeviceIoControl(
+            IntPtr hDevice,
+            UInt32 dwIoControlCode,
+            ref FILE_ZERO_DATA_INFORMATION lpInBuffer,
+            UInt32 nInBufferSize,
+            IntPtr lpOutBuffer,
+            UInt32 nOutBufferSize,
+            out UInt32 lpBytesReturned,
+            IntPtr Overlapped);
+    }
+
+    class Program
+    {
+        private class CommandLineUsageException : Exception
+        {
+            public CommandLineUsageException(String Message = null) : base(Message)
+            {
+                HasMessage = null != Message;
+            }
+
+            public bool HasMessage;
+        }
+
+        private const String PROGNAME = "rawdisk-dotnet";
+
+        private static void argtos(String[] Args, ref int I, ref String V)
+        {
+            if (Args.Length > ++I)
+                V = Args[I];
+            else
+                throw new CommandLineUsageException();
+        }
+        private static void argtol(String[] Args, ref int I, ref UInt32 V)
+        {
+            Int32 R;
+            if (Args.Length > ++I)
+                V = Int32.TryParse(Args[I], out R) ? (UInt32)R : V;
+            else
+                throw new CommandLineUsageException();
+        }
+
+        static void Main(string[] Args)
+        {
+            try
+            {
+                String RawDiskFile = null;
+                UInt32 BlockCount = 1024 * 1024;
+                UInt32 BlockLength = 512;
+                String ProductId = "RawDisk";
+                String ProductRevision = "1.0";
+                UInt32 WriteAllowed = 1;
+                UInt32 CacheSupported = 1;
+                UInt32 UnmapSupported = 1;
+                UInt32 DebugFlags = 0;
+                String DebugLogFile = null;
+                String PipeName = null;
+                StorageUnitHost Host = null;
+                RawDisk RawDisk = null;
+                int I;
+
+                for (I = 1; Args.Length > I; I++)
+                {
+                    String Arg = Args[I];
+                    if ('-' != Arg[0])
+                        break;
+                    switch (Arg[1])
+                    {
+                    case '?':
+                        throw new CommandLineUsageException();
+                    case 'c':
+                        argtol(Args, ref I, ref BlockCount);
+                        break;
+                    case 'C':
+                        argtol(Args, ref I, ref CacheSupported);
+                        break;
+                    case 'd':
+                        argtol(Args, ref I, ref DebugFlags);
+                        break;
+                    case 'D':
+                        argtos(Args, ref I, ref DebugLogFile);
+                        break;
+                    case 'f':
+                        argtos(Args, ref I, ref RawDiskFile);
+                        break;
+                    case 'i':
+                        argtos(Args, ref I, ref ProductId);
+                        break;
+                    case 'l':
+                        argtol(Args, ref I, ref BlockLength);
+                        break;
+                    case 'p':
+                        argtos(Args, ref I, ref PipeName);
+                        break;
+                    case 'r':
+                        argtos(Args, ref I, ref ProductRevision);
+                        break;
+                    case 'U':
+                        argtol(Args, ref I, ref UnmapSupported);
+                        break;
+                    case 'W':
+                        argtol(Args, ref I, ref WriteAllowed);
+                        break;
+                    default:
+                        throw new CommandLineUsageException();
+                    }
+                }
+
+                if (Args.Length > I)
+                    throw new CommandLineUsageException();
+
+                if (null == RawDiskFile)
+                    throw new CommandLineUsageException();
+
+                if (null != DebugLogFile)
+                    if (0 > StorageUnitHost.SetDebugLogFile(DebugLogFile))
+                        throw new CommandLineUsageException("cannot open debug log file");
+
+                Host = new StorageUnitHost(RawDisk = new RawDisk(RawDiskFile, BlockCount, BlockLength));
+                Host.ProductId = ProductId;
+                Host.ProductRevisionLevel = ProductRevision;
+                Host.WriteProtected = 0 == WriteAllowed;
+                Host.CacheSupported = 0 != CacheSupported;
+                Host.UnmapSupported = 0 != UnmapSupported;
+                if (0 != Host.Start(PipeName, DebugFlags))
+                    throw new IOException("cannot start storage unit");
+
+                Console.Error.WriteLine("{0} -f {1} -c {2} -l {3} -i {4} -r {5} -W {6} -C {7} -U {8}{9}{10}",
+                    PROGNAME,
+                    RawDiskFile,
+                    BlockCount, BlockLength, ProductId, ProductRevision,
+                    0 != WriteAllowed ? 1 : 0,
+                    0 != CacheSupported ? 1 : 0,
+                    0 != UnmapSupported ? 1 : 0,
+                    null != PipeName ? " -p " : "",
+                    null != PipeName ? PipeName : "");
+            }
+            catch (CommandLineUsageException ex)
+            {
+                Console.Error.WriteLine(
+                    "{0}" +
+                    "usage: {1} OPTIONS\n" +
+                    "\n" +
+                    "options:\n" +
+                    "    -f RawDiskFile                      Storage unit data file\n" +
+                    "    -c BlockCount                       Storage unit size in blocks\n" +
+                    "    -l BlockLength                      Storage unit block length\n" +
+                    "    -i ProductId                        1-16 chars\n" +
+                    "    -r ProductRevision                  1-4 chars\n" +
+                    "    -W 0|1                              Disable/enable writes (deflt: enable)\n" +
+                    "    -C 0|1                              Disable/enable cache (deflt: enable)\n" +
+                    "    -U 0|1                              Disable/enable unmap (deflt: enable)\n" +
+                    "    -d -1                               Debug flags\n" +
+                    "    -D DebugLogFile                     Debug log file; - for stderr\n" +
+                    "    -p \\\\.\\pipe\\PipeName                Listen on pipe; omit to use driver\n",
+                    ex.HasMessage ? ex.Message + "\n" : "",
+                    PROGNAME);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("{0}", ex.Message);
+                throw;
+            }
+        }
+    }
+}
