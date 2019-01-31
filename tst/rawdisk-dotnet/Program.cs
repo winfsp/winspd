@@ -324,6 +324,13 @@ namespace rawdisk
                     0 != UnmapSupported ? 1 : 0,
                     null != PipeName ? " -p " : "",
                     null != PipeName ? PipeName : "");
+
+                Console.CancelKeyPress +=
+                    delegate (Object Sender, ConsoleCancelEventArgs Event)
+                    {
+                        Host.Shutdown();
+                    };
+                Host.Wait();
             }
             catch (CommandLineUsageException ex)
             {
