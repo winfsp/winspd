@@ -329,6 +329,7 @@ namespace rawdisk
                     delegate (Object Sender, ConsoleCancelEventArgs Event)
                     {
                         Host.Shutdown();
+                        Event.Cancel = true;
                     };
                 Host.Wait();
             }
