@@ -127,7 +127,19 @@ namespace rawdisk
 
                 if (!SetZero)
                 {
-                    /* FIX: write zeroes for testing; (Unmap does not actually require it) */
+                    lock (this) /* I want pwrite */
+                    {
+                        _Stream.Position = (long)(Descriptors[I].BlockAddress * _BlockLength);
+
+                        int TotalLength = (int)(Descriptors[I].BlockCount * _BlockLength);
+                        Byte[] Buffer = new Byte[Math.Min(64 * 1024, TotalLength)];
+
+                        while (0 < TotalLength)
+                        {
+                            _Stream.Write(Buffer, 0, Buffer.Length);
+                            TotalLength -= Buffer.Length;
+                        }
+                    }
                 }
             }
         }
