@@ -46,4 +46,9 @@
       <Filter>Source\shared</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\..\..\src\scsitool\scsitool-version.rc">
+      <Filter>Source</Filter>
+    </ResourceCompile>
+  </ItemGroup>
 </Project>

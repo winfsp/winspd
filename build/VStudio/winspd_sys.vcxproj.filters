@@ -64,4 +64,9 @@
       <Filter>Source</Filter>
     </CustomBuild>
   </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\..\src\sys\version.rc">
+      <Filter>Source</Filter>
+    </ResourceCompile>
+  </ItemGroup>
 </Project>
