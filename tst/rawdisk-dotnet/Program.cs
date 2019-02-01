@@ -33,8 +33,7 @@ namespace rawdisk
     {
         public const UInt32 MaxTransferLength = 64 * 1024;
 
-        public RawDisk(
-            String RawDiskFile,
+        public RawDisk(String RawDiskFile,
             UInt64 BlockCount, UInt32 BlockLength)
         {
             _BlockCount = BlockCount;
@@ -73,56 +72,40 @@ namespace rawdisk
             _Stream.Dispose();
         }
 
-        public override void Read(
-            Byte[] Buffer,
-            UInt64 BlockAddress,
-            UInt32 BlockCount,
-            Boolean FlushFlag,
+        public override void Read(Byte[] Buffer, UInt64 BlockAddress, UInt32 BlockCount, Boolean Flush,
             ref StorageUnitStatus Status)
         {
-            if (FlushFlag)
-                Flush(BlockAddress, BlockCount, ref Status);
+            if (Flush)
+                this.Flush(BlockAddress, BlockCount, ref Status);
 
-            /* we need a lock, because FileStream does not have pread */
-            lock (this)
+            lock (this) /* I want pread */
             {
-                UInt64 Offset = BlockAddress * _BlockLength;
-                _Stream.Seek((long)Offset, SeekOrigin.Begin);
+                _Stream.Position = (long)(BlockAddress * _BlockLength);
                 _Stream.Read(Buffer, 0, Buffer.Length);
-                    /* We assume that we are reading from a file and ignore the return value. Fix? */
+                    /* FIX: we assume that we are reading from a file and ignore the return value */
             }
         }
 
-        public override void Write(
-            Byte[] Buffer,
-            UInt64 BlockAddress,
-            UInt32 BlockCount,
-            Boolean FlushFlag,
+        public override void Write(Byte[] Buffer, UInt64 BlockAddress, UInt32 BlockCount, Boolean Flush,
             ref StorageUnitStatus Status)
         {
-            /* we need a lock, because FileStream does not have pwrite */
-            lock (this)
+            lock (this) /* I want pwrite */
             {
-                UInt64 Offset = BlockAddress * _BlockLength;
-                _Stream.Seek((long)Offset, SeekOrigin.Begin);
+                _Stream.Position = (long)(BlockAddress * _BlockLength);
                 _Stream.Write(Buffer, 0, Buffer.Length);
-                    /* We assume that we are writing to a file and ignore the return value. Fix? */
             }
 
-            if (FlushFlag)
-                Flush(BlockAddress, BlockCount, ref Status);
+            if (Flush)
+                this.Flush(BlockAddress, BlockCount, ref Status);
         }
 
-        public override void Flush(
-            UInt64 BlockAddress,
-            UInt32 BlockCount,
+        public override void Flush(UInt64 BlockAddress, UInt32 BlockCount,
             ref StorageUnitStatus Status)
         {
             _Stream.Flush();
         }
 
-        public override void Unmap(
-            UnmapDescriptor[] Descriptors,
+        public override void Unmap(UnmapDescriptor[] Descriptors,
             ref StorageUnitStatus Status)
         {
             FILE_ZERO_DATA_INFORMATION Zero;
@@ -144,13 +127,7 @@ namespace rawdisk
 
                 if (!SetZero)
                 {
-#if false
-                    FileBuffer = (PUINT8)RawDisk->Pointer + Descriptors[I].BlockAddress * RawDisk->BlockLength;
-
-                    CopyBuffer(StorageUnit,
-                        FileBuffer, 0, Descriptors[I].BlockCount * RawDisk->BlockLength, SCSI_ADSENSE_NO_SENSE,
-                        0);
-#endif
+                    /* FIX: write zeroes for testing; (Unmap does not actually require it) */
                 }
             }
         }
