@@ -348,7 +348,6 @@ namespace Spd.Interop
         }
         private static void CheckVersion()
         {
-#if !DEBUG
             FileVersionInfo Info;
             UInt32 Version = 0, VersionMajor, VersionMinor;
             Info = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
@@ -357,7 +356,6 @@ namespace Spd.Interop
                 throw new TypeLoadException(String.Format(
                     "incorrect dll version (need {0}.{1}, have {2}.{3})",
                     Info.FileMajorPart, Info.FileMinorPart, VersionMajor, VersionMinor));
-#endif
         }
         static Api()
         {
