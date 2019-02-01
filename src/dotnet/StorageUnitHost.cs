@@ -202,7 +202,7 @@ namespace Spd
             if (0 != Error)
                 return Error;
             Api.SetUserContext(_StorageUnitPtr, _StorageUnit);
-            Api.SpdStorageUnitSetBufferAllocator(_StorageUnitPtr, BufferAlloc, BufferFree);
+            Api.SpdStorageUnitSetBufferAllocator(_StorageUnitPtr, _BufferAlloc, _BufferFree);
             Api.SpdStorageUnitSetDebugLog(_StorageUnitPtr, DebugLog);
             try
             {
@@ -383,10 +383,15 @@ namespace Spd
 
             _StorageUnitInterfacePtr = Marshal.AllocHGlobal(StorageUnitInterface.Size);
             Marshal.StructureToPtr(_StorageUnitInterface, _StorageUnitInterfacePtr, false);
+
+            _BufferAlloc = BufferAlloc;
+            _BufferFree = BufferFree;
         }
 
         private static StorageUnitInterface _StorageUnitInterface;
         private static IntPtr _StorageUnitInterfacePtr;
+        private static Api.Proto.BufferAlloc _BufferAlloc;
+        private static Api.Proto.BufferFree _BufferFree;
         private StorageUnitParams _StorageUnitParams;
         private StorageUnitBase _StorageUnit;
         private IntPtr _StorageUnitPtr;
