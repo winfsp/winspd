@@ -41,7 +41,7 @@ namespace Spd
         public StorageUnitHost(StorageUnitBase StorageUnit)
         {
             _StorageUnit = StorageUnit;
-            _StorageUnitPtrLock = new ReaderWriterLockSlim();
+            _ShutdownLock = new ReaderWriterLockSlim();
         }
         ~StorageUnitHost()
         {
@@ -62,31 +62,35 @@ namespace Spd
         }
         private void WaitInternal(bool shutdown, bool disposing)
         {
-            if (disposing)
-                _StorageUnitPtrLock.EnterWriteLock();
-            try
+            if (IntPtr.Zero != _StorageUnitPtr)
             {
-                if (IntPtr.Zero != _StorageUnitPtr)
-                {
-                    Api.SpdStorageUnitShutdown(_StorageUnitPtr);
-                    Api.SpdStorageUnitWaitDispatcher(_StorageUnitPtr);
-                    if (disposing)
-                        try
-                        {
-                            _StorageUnit.Stopped(this);
-                        }
-                        catch (Exception)
-                        {
-                        }
-                    Api.DisposeUserContext(_StorageUnitPtr);
-                    Api.SpdStorageUnitDelete(_StorageUnitPtr);
-                    _StorageUnitPtr = IntPtr.Zero;
-                }
-            }
-            finally
-            {
+                IntPtr StorageUnitPtr = _StorageUnitPtr;
+                if (shutdown)
+                    Api.SpdStorageUnitShutdown(StorageUnitPtr);
+                Api.SpdStorageUnitWaitDispatcher(StorageUnitPtr);
                 if (disposing)
-                    _StorageUnitPtrLock.ExitWriteLock();
+                {
+                    try
+                    {
+                        _StorageUnit.Stopped(this);
+                    }
+                    catch (Exception)
+                    {
+                    }
+                    _ShutdownLock.EnterWriteLock();
+                    try
+                    {
+                        _StorageUnitPtr = IntPtr.Zero;
+                    }
+                    finally
+                    {
+                        _ShutdownLock.ExitWriteLock();
+                    }
+                }
+                else
+                    _StorageUnitPtr = IntPtr.Zero;
+                Api.DisposeUserContext(StorageUnitPtr);
+                Api.SpdStorageUnitDelete(StorageUnitPtr);
             }
         }
  
@@ -182,67 +186,59 @@ namespace Spd
             String PipeName = null,
             UInt32 DebugLog = 0)
         {
-            _StorageUnitPtrLock.EnterWriteLock();
+            int Error = 0;
             try
             {
-                int Error = 0;
-                try
-                {
-                    _StorageUnit.Init(this);
-                }
-                catch (Exception)
-                {
-                    Error = 574/*ERROR_UNHANDLED_EXCEPTION*/;
-                }
-                if (0 != Error)
-                    return Error;
-                Error = Api.SpdStorageUnitCreate(PipeName,
-                    ref _StorageUnitParams, _StorageUnitInterfacePtr, out _StorageUnitPtr);
-                if (0 != Error)
-                    return Error;
-                Api.SetUserContext(_StorageUnitPtr, _StorageUnit);
-                Api.SpdStorageUnitSetBufferAllocator(_StorageUnitPtr, BufferAlloc, BufferFree);
-                Api.SpdStorageUnitSetDebugLog(_StorageUnitPtr, DebugLog);
-                try
-                {
-                    _StorageUnit.Started(this);
-                }
-                catch (Exception)
-                {
-                    Error = 574/*ERROR_UNHANDLED_EXCEPTION*/;
-                }
-                if (0 == Error)
-                {
-                    Error = Api.SpdStorageUnitStartDispatcher(_StorageUnitPtr, 2);
-                    if (0 != Error)
-                        try
-                        {
-                            _StorageUnit.Stopped(this);
-                        }
-                        catch (Exception)
-                        {
-                        }
-                }
-                if (0 != Error)
-                {
-                    Api.DisposeUserContext(_StorageUnitPtr);
-                    Api.SpdStorageUnitDelete(_StorageUnitPtr);
-                    _StorageUnitPtr = IntPtr.Zero;
-                }
-                return Error;
+                _StorageUnit.Init(this);
             }
-            finally
+            catch (Exception)
             {
-                _StorageUnitPtrLock.ExitWriteLock();
+                Error = 574/*ERROR_UNHANDLED_EXCEPTION*/;
             }
+            if (0 != Error)
+                return Error;
+            Error = Api.SpdStorageUnitCreate(PipeName,
+                ref _StorageUnitParams, _StorageUnitInterfacePtr, out _StorageUnitPtr);
+            if (0 != Error)
+                return Error;
+            Api.SetUserContext(_StorageUnitPtr, _StorageUnit);
+            Api.SpdStorageUnitSetBufferAllocator(_StorageUnitPtr, BufferAlloc, BufferFree);
+            Api.SpdStorageUnitSetDebugLog(_StorageUnitPtr, DebugLog);
+            try
+            {
+                _StorageUnit.Started(this);
+            }
+            catch (Exception)
+            {
+                Error = 574/*ERROR_UNHANDLED_EXCEPTION*/;
+            }
+            if (0 == Error)
+            {
+                Error = Api.SpdStorageUnitStartDispatcher(_StorageUnitPtr, 2);
+                if (0 != Error)
+                    try
+                    {
+                        _StorageUnit.Stopped(this);
+                    }
+                    catch (Exception)
+                    {
+                    }
+            }
+            if (0 != Error)
+            {
+                Api.DisposeUserContext(_StorageUnitPtr);
+                Api.SpdStorageUnitDelete(_StorageUnitPtr);
+                _StorageUnitPtr = IntPtr.Zero;
+            }
+            return Error;
         }
         /// <summary>
         /// Shuts down the storage unit.
-        /// This method can be safely called from multiple threads.
+        /// This method can be safely called from multiple threads (after Start has been called).
         /// </summary>
         public void Shutdown()
         {
-            _StorageUnitPtrLock.EnterReadLock();
+            _ShutdownLock.EnterReadLock();
             try
             {
                 if (IntPtr.Zero != _StorageUnitPtr)
@@ -250,7 +246,7 @@ namespace Spd
             }
             finally
             {
-                _StorageUnitPtrLock.ExitReadLock();
+                _ShutdownLock.ExitReadLock();
             }
         }
         /// <summary>
@@ -262,15 +258,7 @@ namespace Spd
         }
         public IntPtr StorageUnitHandle()
         {
-            _StorageUnitPtrLock.EnterReadLock();
-            try
-            {
-                return _StorageUnitPtr;
-            }
-            finally
-            {
-                _StorageUnitPtrLock.ExitReadLock();
-            }
+            return _StorageUnitPtr;
         }
         /// <summary>
         /// Gets the hosted storage unit.
@@ -402,7 +390,7 @@ namespace Spd
         private StorageUnitParams _StorageUnitParams;
         private StorageUnitBase _StorageUnit;
         private IntPtr _StorageUnitPtr;
-        private ReaderWriterLockSlim _StorageUnitPtrLock;
+        private ReaderWriterLockSlim _ShutdownLock;
     }
 
 }
