@@ -359,7 +359,7 @@ namespace Spd.Interop
         }
         static Api()
         {
-#if DEBUG
+#if false //DEBUG
             if (Debugger.IsAttached)
                 Debugger.Break();
 #endif
