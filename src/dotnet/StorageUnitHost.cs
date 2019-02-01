@@ -20,10 +20,10 @@
  */
 
 using System;
-
-using Spd.Interop;
 using System.Runtime.InteropServices;
 using System.Threading;
+
+using Spd.Interop;
 
 namespace Spd
 {

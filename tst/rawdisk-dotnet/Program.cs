@@ -21,11 +21,11 @@
 
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 
 using Spd;
 using StorageUnitStatus = Spd.Interop.StorageUnitStatus;
 using UnmapDescriptor = Spd.Interop.UnmapDescriptor;
-using System.Runtime.InteropServices;
 
 namespace rawdisk
 {
