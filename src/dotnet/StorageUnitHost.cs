@@ -62,7 +62,8 @@ namespace Spd
         }
         private void WaitInternal(bool shutdown, bool disposing)
         {
-            _StorageUnitPtrLock.EnterWriteLock();
+            if (disposing)
+                _StorageUnitPtrLock.EnterWriteLock();
             try
             {
                 if (IntPtr.Zero != _StorageUnitPtr)
@@ -84,7 +85,8 @@ namespace Spd
             }
             finally
             {
-                _StorageUnitPtrLock.ExitWriteLock();
+                if (disposing)
+                    _StorageUnitPtrLock.ExitWriteLock();
             }
         }
  

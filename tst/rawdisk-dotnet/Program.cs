@@ -249,7 +249,7 @@ namespace rawdisk
                 RawDisk RawDisk = null;
                 int I;
 
-                for (I = 1; Args.Length > I; I++)
+                for (I = 0; Args.Length > I; I++)
                 {
                     String Arg = Args[I];
                     if ('-' != Arg[0])
@@ -352,11 +352,21 @@ namespace rawdisk
                     "    -p \\\\.\\pipe\\PipeName                Listen on pipe; omit to use driver\n",
                     ex.HasMessage ? ex.Message + "\n" : "",
                     PROGNAME);
+                Environment.ExitCode = 87/*ERROR_INVALID_PARAMETER*/;
             }
             catch (Exception ex)
             {
+                if (ex is TypeInitializationException && null != ex.InnerException)
+                    ex = ex.InnerException;
+
                 Console.Error.WriteLine("{0}", ex.Message);
-                throw;
+
+                int hr = Marshal.GetHRForException(ex);
+                Environment.ExitCode = Marshal.GetHRForException(ex);
+                if ((hr & 0xffff0000) == 0x80070000)
+                    Environment.ExitCode = hr & 0xffff;
+                else
+                    Environment.ExitCode = 574/*ERROR_UNHANDLED_EXCEPTION*/;
             }
         }
     }

@@ -261,6 +261,7 @@ VOID SpdDebugLogSetHandle(HANDLE Handle);
 VOID SpdDebugLog(const char *Format, ...);
 VOID SpdDebugLogRequest(SPD_IOCTL_TRANSACT_REQ *Request);
 VOID SpdDebugLogResponse(SPD_IOCTL_TRANSACT_RSP *Response);
+DWORD SpdVersion(PUINT32 PVersion);
 
 #ifdef __cplusplus
 }
