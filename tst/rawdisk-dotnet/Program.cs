@@ -81,11 +81,7 @@ namespace rawdisk
             ref StorageUnitStatus Status)
         {
             if (FlushFlag)
-            {
                 Flush(BlockAddress, BlockCount, ref Status);
-                if (SCSISTAT_GOOD != Status.ScsiStatus)
-                    return;
-            }
 
             /* we need a lock, because FileStream does not have pread */
             lock (this)
@@ -113,7 +109,7 @@ namespace rawdisk
                     /* We assume that we are writing to a file and ignore the return value. Fix? */
             }
 
-            if (FlushFlag && SCSISTAT_GOOD == Status.ScsiStatus)
+            if (FlushFlag)
                 Flush(BlockAddress, BlockCount, ref Status);
         }
 
