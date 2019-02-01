@@ -118,7 +118,7 @@ exit /b 0
 set TestExit=0
 start "" /b rawdisk-%1 -p \\.\pipe\rawdisk -f test.disk %~3
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
-stgtest-%1 \\.\pipe\rawdisk\0 %2 WRUR * *
+stgtest-x64 \\.\pipe\rawdisk\0 %2 WRUR * *
 if !ERRORLEVEL! neq 0 set TestExit=1
 taskkill /f /im rawdisk-%1.exe
 del test.disk 2>nul
@@ -159,7 +159,7 @@ set TestExit=0
 start "" /b rawdisk-%1 -f test.disk %~3
 waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
 call :diskpart-partition 1 R
-stgtest-%1 \\.\R: %2 WR * *
+stgtest-x64 \\.\R: %2 WR * *
 if !ERRORLEVEL! neq 0 set TestExit=1
 call :diskpart-remove 1 R
 taskkill /f /im rawdisk-%1.exe
