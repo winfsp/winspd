@@ -16,20 +16,28 @@ cd build\%Configuration%
 set dfl_tests=^
     rawdisk-cc-stgtest-pipe-x64 ^
     rawdisk-cc-stgtest-pipe-x86 ^
+    rawdisk-cc-stgtest-pipe-msil ^
     rawdisk-nc-stgtest-pipe-x64 ^
     rawdisk-nc-stgtest-pipe-x86 ^
+    rawdisk-nc-stgtest-pipe-msil ^
     rawdisk-cc-stgtest-raw-x64 ^
     rawdisk-cc-stgtest-raw-x86 ^
+    rawdisk-cc-stgtest-raw-msil ^
     rawdisk-nc-stgtest-raw-x64 ^
     rawdisk-nc-stgtest-raw-x86 ^
+    rawdisk-nc-stgtest-raw-msil ^
     rawdisk-nu-stgtest-raw-x64 ^
     rawdisk-nu-stgtest-raw-x86 ^
+    rawdisk-nu-stgtest-raw-msil ^
     rawdisk-cc-format-ntfs-x64 ^
     rawdisk-cc-format-ntfs-x86 ^
+    rawdisk-cc-format-ntfs-msil ^
     rawdisk-nc-format-ntfs-x64 ^
     rawdisk-nc-format-ntfs-x86 ^
+    rawdisk-nc-format-ntfs-msil ^
     rawdisk-nu-format-ntfs-x64 ^
-    rawdisk-nu-format-ntfs-x86
+    rawdisk-nu-format-ntfs-x86 ^
+    rawdisk-nu-format-ntfs-msil
 set opt_tests=^
     winspd-tests-x64 ^
     winspd-tests-x86
@@ -126,6 +134,11 @@ call :rawdisk-stgtest-pipe-common x86 10000 "-C 1 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
+:rawdisk-cc-stgtest-pipe-msil
+call :rawdisk-stgtest-pipe-common dotnet-msil 10000 "-C 1 -U 1"
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
 :rawdisk-nc-stgtest-pipe-x64
 call :rawdisk-stgtest-pipe-common x64 1000 "-C 0 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
@@ -133,6 +146,11 @@ exit /b 0
 
 :rawdisk-nc-stgtest-pipe-x86
 call :rawdisk-stgtest-pipe-common x86 1000 "-C 0 -U 1"
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-nc-stgtest-pipe-msil
+call :rawdisk-stgtest-pipe-common dotnet-msil 1000 "-C 0 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
@@ -158,6 +176,11 @@ call :rawdisk-stgtest-raw-common x86 10000 "-C 1 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
+:rawdisk-cc-stgtest-raw-msil
+call :rawdisk-stgtest-raw-common dotnet-msil 10000 "-C 1 -U 1"
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
 :rawdisk-nc-stgtest-raw-x64
 call :rawdisk-stgtest-raw-common x64 1000 "-C 0 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
@@ -168,6 +191,11 @@ call :rawdisk-stgtest-raw-common x86 1000 "-C 0 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
+:rawdisk-nc-stgtest-raw-msil
+call :rawdisk-stgtest-raw-common dotnet-msil 1000 "-C 0 -U 1"
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
 :rawdisk-nu-stgtest-raw-x64
 call :rawdisk-stgtest-raw-common x64 1000 "-C 1 -U 0"
 if !ERRORLEVEL! neq 0 goto fail
@@ -175,6 +203,11 @@ exit /b 0
 
 :rawdisk-nu-stgtest-raw-x86
 call :rawdisk-stgtest-raw-common x86 1000 "-C 1 -U 0"
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-nu-stgtest-raw-msil
+call :rawdisk-stgtest-raw-common dotnet-msil 1000 "-C 1 -U 0"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
@@ -211,6 +244,11 @@ call :rawdisk-format-ntfs-common x86 "-C 1 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
+:rawdisk-cc-format-ntfs-msil
+call :rawdisk-format-ntfs-common dotnet-msil "-C 1 -U 1"
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
 :rawdisk-nc-format-ntfs-x64
 call :rawdisk-format-ntfs-common x64 "-C 0 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
@@ -221,6 +259,11 @@ call :rawdisk-format-ntfs-common x86 "-C 0 -U 1"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
+:rawdisk-nc-format-ntfs-msil
+call :rawdisk-format-ntfs-common dotnet-msil "-C 0 -U 1"
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
 :rawdisk-nu-format-ntfs-x64
 call :rawdisk-format-ntfs-common x64 "-C 1 -U 0"
 if !ERRORLEVEL! neq 0 goto fail
@@ -228,6 +271,11 @@ exit /b 0
 
 :rawdisk-nu-format-ntfs-x86
 call :rawdisk-format-ntfs-common x86 "-C 1 -U 0"
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-nu-format-ntfs-msil
+call :rawdisk-format-ntfs-common dotnet-msil "-C 1 -U 0"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
