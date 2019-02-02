@@ -19,6 +19,10 @@ build_script:
 - tools\build.bat %CONFIGURATION%
 
 test_script:
+- appveyor DownloadFile http://www.secfs.net/Test.Device.Storage.zip && 7z x Test.Device.Storage.zip
+- appveyor DownloadFile http://www.secfs.net/TAEF.zip && 7z x TAEF.zip
+- start /wait msiexec /i "Test.Device.Storage\HCK Device.Storage Content-x86_en-us.msi" /qn
+- start /wait msiexec /i "TAEF\HCK TAEF Tools-x86_en-us.msi" /qn
 - net stop shellhwdetection
 - '"C:\Program Files (x86)\Windows Kits\10\bin\x64\certmgr.exe" /add /c build\VStudio\build\%CONFIGURATION%\winspd-x64.cer /s /r localMachine root'
 - '"C:\Program Files (x86)\Windows Kits\10\bin\x64\certmgr.exe" /add /c build\VStudio\build\%CONFIGURATION%\winspd-x64.cer /s /r localMachine TrustedPublisher'
