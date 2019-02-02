@@ -187,6 +187,9 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
 
     if (0 == Cdb->CDB6INQUIRY3.EnableVitalProductData)
     {
+        if (0 != Cdb->CDB6INQUIRY3.PageCode)
+            return SpdScsiError(Srb, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_CDB);
+
         if (INQUIRYDATABUFFERSIZE > DataTransferLength)
             return SRB_STATUS_DATA_OVERRUN;
 
