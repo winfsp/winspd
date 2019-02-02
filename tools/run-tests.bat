@@ -34,7 +34,10 @@ set dfl_tests=^
     rawdisk-nc-format-ntfs-x64 ^
     rawdisk-nc-format-ntfs-x86 ^
     rawdisk-nu-format-ntfs-x64 ^
-    rawdisk-nu-format-ntfs-x86
+    rawdisk-nu-format-ntfs-x86 ^
+    rawdisk-scsicompliance-x64 ^
+    rawdisk-scsicompliance-x86 ^
+    rawdisk-scsicompliance-msil
 set opt_tests=^
     winspd-tests-x64 ^
     winspd-tests-x86 ^
@@ -279,6 +282,31 @@ call :rawdisk-format-ntfs-common dotnet-msil "-C 1 -U 0"
 if !ERRORLEVEL! neq 0 goto fail
 exit /b 0
 
+:rawdisk-scsicompliance-common
+set TestExit=0
+start "" /b rawdisk-%1 -f test.disk %~3
+waitfor 7BF47D72F6664550B03248ECFE77C7DD /t 3 2>nul
+call :scsicompliance /device \\.\PhysicalDrive1 /operation test /scenario common /verbosity 2
+if !ERRORLEVEL! neq 0 set TestExit=1
+taskkill /f /im rawdisk-%1.exe
+del test.disk 2>nul
+exit /b !TestExit!
+
+:rawdisk-scsicompliance-x64
+call :rawdisk-scsicompliance-common x64 "-C 1 -U 1"
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-scsicompliance-x86
+call :rawdisk-scsicompliance-common x86 "-C 1 -U 1"
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
+:rawdisk-scsicompliance-msil
+call :rawdisk-scsicompliance-common dotnet-msil "-C 1 -U 1"
+if !ERRORLEVEL! neq 0 goto fail
+exit /b 0
+
 :diskpart-partition
 echo rescan                             > %TMP%\diskpart.script
 echo select disk %1                     >>%TMP%\diskpart.script
@@ -315,6 +343,69 @@ echo exit                               >>%TMP%\diskpart.script
 diskpart /s %TMP%\diskpart.script
 del %TMP%\diskpart.script 2>nul
 exit /b 0
+
+:scsicompliance
+set ScsiComplianceTestFound=
+set ScsiComplianceTestName=
+set ScsiComplianceTestActive=
+set ScsiComplianceTestLines=
+set ScsiComplianceTestStatus=
+set ScsiComplianceTestExit=0
+(SET LF=^
+%=this line is empty=%
+)
+for /F "delims=" %%l in ('call "%ProjRoot%\tools\scsicompliance.bat" %* ^| findstr /n "^"') do (
+    set ScsiComplianceTestLine=%%l
+    set ScsiComplianceTestLine=!ScsiComplianceTestLine:*:=!
+
+    for /F "tokens=1,2,* delims=:" %%h in ("%%l") do (
+        set FieldName=%%i
+        set FieldName=!FieldName: =!
+        set FieldValue=%%j
+
+        if X!FieldName!==XStart (
+            for /F "tokens=1 delims=," %%a in ("!FieldValue!") do (
+                set ScsiComplianceTestName=####%%a
+                set ScsiComplianceTestName=!ScsiComplianceTestName:#### =####!
+                set ScsiComplianceTestName=!ScsiComplianceTestName:####=!
+                set ScsiComplianceTestName=!ScsiComplianceTestName:ASSERTION: =!
+            )
+            set ScsiComplianceTestActive=YES
+            set ScsiComplianceTestLines=
+            set ScsiComplianceTestFound=YES
+        )
+
+        if X!ScsiComplianceTestActive!==XYES (
+            set ScsiComplianceTestLines=!ScsiComplianceTestLines!!LF!    !ScsiComplianceTestLine!
+        )
+
+        if X!FieldName!==XEnd (
+            for /F "tokens=1 delims=," %%a in ("!FieldValue!") do (
+                set ScsiComplianceTestStatus=####%%a
+                set ScsiComplianceTestStatus=!ScsiComplianceTestStatus:#### =####!
+                set ScsiComplianceTestStatus=!ScsiComplianceTestStatus:####=!
+            )
+
+            set ScsiComplianceTestPrefix=!ScsiComplianceTestName!..............................................................
+            set ScsiComplianceTestPrefix=!ScsiComplianceTestPrefix:~0,63!
+            if X!ScsiComplianceTestStatus!==XPass (
+                echo !ScsiComplianceTestPrefix! OK
+            ) else if X!ScsiComplianceTestStatus!==XWarn (
+                echo !ScsiComplianceTestPrefix! SKIP
+            ) else (
+                echo !ScsiComplianceTestPrefix! KO!ScsiComplianceTestLines!
+                set ScsiComplianceTestExit=1
+            )
+
+            set ScsiComplianceTestName=
+            set ScsiComplianceTestActive=
+            set ScsiComplianceTestLines=
+            set ScsiComplianceTestStatus=
+        )
+    )
+)
+if not X!ScsiComplianceTestFound!==XYES set ScsiComplianceTestExit=1
+exit /b !ScsiComplianceTestExit!
 
 :leak-test
 for /F "tokens=1,2 delims=:" %%i in ('verifier /query ^| findstr ^

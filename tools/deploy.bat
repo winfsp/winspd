@@ -13,7 +13,7 @@ mkdir %TARGET% 2>nul
 for %%f in (winspd-%SUFFIX%.inf winspd-%SUFFIX%.cat winspd-%SUFFIX%.cer winspd-%SUFFIX%.sys winspd-%SUFFIX%.dll scsitool-%SUFFIX%.exe stgtest-%SUFFIX%.exe rawdisk-%SUFFIX%.exe winspd-tests-%SUFFIX%.exe) do (
 	copy build\VStudio\build\%CONFIG%\%%f %TARGET% >nul
 )
-for %%f in (scsicompliance.cmd) do (
+for %%f in (scsicompliance.bat) do (
 	copy tools\%%f %TARGET% >nul
 )
 
