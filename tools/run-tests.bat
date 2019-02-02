@@ -31,16 +31,16 @@ set dfl_tests=^
     rawdisk-nu-stgtest-raw-msil ^
     rawdisk-cc-format-ntfs-x64 ^
     rawdisk-cc-format-ntfs-x86 ^
-    rawdisk-cc-format-ntfs-msil ^
     rawdisk-nc-format-ntfs-x64 ^
     rawdisk-nc-format-ntfs-x86 ^
-    rawdisk-nc-format-ntfs-msil ^
     rawdisk-nu-format-ntfs-x64 ^
-    rawdisk-nu-format-ntfs-x86 ^
-    rawdisk-nu-format-ntfs-msil
+    rawdisk-nu-format-ntfs-x86
 set opt_tests=^
     winspd-tests-x64 ^
-    winspd-tests-x86
+    winspd-tests-x86 ^
+    rawdisk-cc-format-ntfs-msil ^
+    rawdisk-nc-format-ntfs-msil ^
+    rawdisk-nu-format-ntfs-msil
 
 set tests=
 for %%f in (%dfl_tests%) do (
