@@ -174,7 +174,7 @@ static int inquiry(int argc, wchar_t **argv)
         "u1  VS\n"
         "A8  T10 VENDOR IDENTIFICATION\n"
         "A16 PRODUCT IDENTIFICATION\n"
-        "A8  PRODUCT REVISION LEVEL\n"
+        "A4  PRODUCT REVISION LEVEL\n"
         "X20 Vendor specific\n"
         "u4  Reserved\n"
         "u2  CLOCKING\n"

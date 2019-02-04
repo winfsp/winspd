@@ -146,92 +146,103 @@ void ScsiText(
     }
 }
 
-void ScsiLineTextFn(void *data,
+struct ScsiTextPrinter
+{
+    HANDLE h;
+    char buf[1024];
+    size_t pos;
+};
+
+static void ScsiTextPrint(struct ScsiTextPrinter *printer, const char *buf, size_t len)
+{
+    DWORD BytesTransferred;
+
+    if (printer->pos + len > sizeof printer->buf)
+    {
+        memcpy(printer->buf + printer->pos, buf, sizeof printer->buf - printer->pos);
+        WriteFile(printer->h, printer->buf, (DWORD)sizeof printer->buf, &BytesTransferred, 0);
+        memcpy(printer->buf,
+            buf + (sizeof printer->buf - printer->pos), len - (sizeof printer->buf - printer->pos));
+        printer->pos = len - (sizeof printer->buf - printer->pos);
+    }
+    else
+    {
+        memcpy(printer->buf + printer->pos, buf, len);
+        printer->pos += len;
+    }
+}
+
+static void ScsiTextPrintf(struct ScsiTextPrinter *printer, const char *format, ...)
+{
+    va_list ap;
+    char buf[1024];
+    size_t len;
+
+    va_start(ap, format);
+    len = wvsprintfA(buf, format, ap);
+    va_end(ap);
+    ScsiTextPrint(printer, buf, len);
+}
+
+static void ScsiTextFlush(struct ScsiTextPrinter *printer)
+{
+    DWORD BytesTransferred;
+
+    WriteFile(printer->h, printer->buf, (DWORD)printer->pos, &BytesTransferred, 0);
+    printer->pos = 0;
+}
+
+static void ScsiLineTextFn(void *data,
     unsigned type, unsigned width, const char *name, size_t namelen,
     unsigned long long uval, void *pval, size_t lval,
     const char *warn)
 {
-    char buf[1024], *mem = 0, *bufp = buf;
-    size_t size, warnlen;
-    const char *sep = "";
-    DWORD BytesTransferred;
+    struct ScsiTextPrinter printer;
+    char c, *sep = "";
 
-    warnlen = 0 != warn ? sizeof " (WARN: )" - 1 + lstrlenA(warn) : 0;
+    printer.h = (HANDLE)data;
+    printer.pos = 0;
+
+    ScsiTextPrint(&printer, name, namelen);
+    c = '=';
+    ScsiTextPrint(&printer, &c, 1);
     switch (type)
     {
     case 'u':
-        size = namelen + 1 + 64 + warnlen;
-        break;
-
-    case 'A':
-        size = namelen + 1 + lval + warnlen;
-        break;
-
-    case 'X':
-        size = namelen + 1 + 3 * lval - 1 + warnlen;
-        break;
-
-    default:
-        goto exit;
-    }
-
-    if (sizeof buf < size)
-    {
-        mem = MemAlloc(size);
-        if (0 == mem)
-            return;
-        bufp = mem;
-    }
-
-    memcpy(bufp, name, namelen);
-    bufp += namelen;
-
-    *bufp++ = '=';
-
-    switch (type)
-    {
-    case 'u':
-        if (0xffffffffULL < uval)
-        {
-            bufp += wsprintfA(bufp, "%lx", (unsigned long)(uval >> 32));
-            bufp += wsprintfA(bufp, "%08lxh", (unsigned long)uval);
-        }
-        else if (10 > uval)
-            bufp += wsprintfA(bufp, "%lu", (unsigned long)uval);
+        if (0x100000000ULL <= uval)
+            ScsiTextPrintf(&printer, "%lx:%08lx", (unsigned long)(uval >> 32), (unsigned long)uval);
+        else if (10 <= uval)
+            ScsiTextPrintf(&printer, "%lu (0x%lx)", (unsigned long)uval, (unsigned long)uval);
         else
-            bufp += wsprintfA(bufp, "%lu %lxh", (unsigned long)uval, (unsigned long)uval);
+            ScsiTextPrintf(&printer, "%lu", (unsigned long)uval);
         break;
 
     case 'A':
         for (size_t i = 0; lval > i; i++)
         {
-            char c = ((char *)pval)[i];
-            *bufp++ = 0x20 <= c && c < 0x7f ? c : '.';
+            c = ((char *)pval)[i];
+            if (0x20 > c || c >= 0x7f)
+                c = '.';
+            ScsiTextPrint(&printer, &c, 1);
         }
         break;
 
     case 'X':
         for (size_t i = 0; lval > i; i++)
         {
-            bufp += wsprintfA(bufp, "%s%02x", sep, ((unsigned char *)pval)[i]);
+            ScsiTextPrintf(&printer, "%s%02x", sep, ((unsigned char *)pval)[i]);
             sep = " ";
         }
         break;
-
-    default:
-        goto exit;
     }
 
     if (0 != warn)
-        bufp += wsprintfA(bufp, " (WARN: %s)", warn);
+        ScsiTextPrintf(&printer, " (WARN: %s)", warn);
 
-    *bufp++ = '\n';
+    c = '\n';
+    ScsiTextPrint(&printer, &c, 1);
 
-    WriteFile((HANDLE)data, buf, (DWORD)(bufp - buf), &BytesTransferred, 0);
-
-exit:
-    if (0 != mem)
-        MemFree(mem);
+    ScsiTextFlush(&printer);
 }
 
 void ScsiLineText(HANDLE h, const char *format, void *buf, size_t len)
