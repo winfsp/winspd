@@ -133,6 +133,25 @@ exit:
     return Error;
 }
 
+static int report_luns(int argc, wchar_t **argv)
+{
+    CDB Cdb;
+    const char *Format;
+
+    memset(&Cdb, 0, sizeof Cdb);
+    Cdb.REPORT_LUNS.OperationCode = SCSIOP_REPORT_LUNS;
+    Cdb.REPORT_LUNS.AllocationLength[2] = (1024 >> 8) & 0xff;
+    Cdb.REPORT_LUNS.AllocationLength[3] = 1024 & 0xff;
+
+    Format =
+        "u32 LUN LIST LENGTH (n-7)\n"
+        "u32 Reserved\n"
+        "*"
+        "u64 LUN\n";
+
+    return ScsiDataInAndPrint(argc, argv, &Cdb, 1024, Format);
+}
+
 static int inquiry(int argc, wchar_t **argv)
 {
     CDB Cdb;
@@ -359,23 +378,45 @@ static int inquiry_mode_sense(int argc, wchar_t **argv)
     return ScsiDataInAndPrint(argc, argv, &Cdb, 255, Format);
 }
 
-static int report_luns(int argc, wchar_t **argv)
+static int capacity(int argc, wchar_t **argv)
 {
     CDB Cdb;
     const char *Format;
 
     memset(&Cdb, 0, sizeof Cdb);
-    Cdb.REPORT_LUNS.OperationCode = SCSIOP_REPORT_LUNS;
-    Cdb.REPORT_LUNS.AllocationLength[2] = (1024 >> 8) & 0xff;
-    Cdb.REPORT_LUNS.AllocationLength[3] = 1024 & 0xff;
+    Cdb.CDB10.OperationCode = SCSIOP_READ_CAPACITY;
 
     Format =
-        "u32 LUN LIST LENGTH (n-7)\n"
-        "u32 Reserved\n"
-        "*"
-        "u64 LUN\n";
+        "u32 RETURNED LOGICAL BLOCK ADDRESS\n"
+        "u32 LOGICAL BLOCK LENGTH IN BYTES\n";
 
-    return ScsiDataInAndPrint(argc, argv, &Cdb, 1024, Format);
+    return ScsiDataInAndPrint(argc, argv, &Cdb, 255, Format);
+}
+
+static int capacity16(int argc, wchar_t **argv)
+{
+    CDB Cdb;
+    const char *Format;
+
+    memset(&Cdb, 0, sizeof Cdb);
+    Cdb.READ_CAPACITY16.OperationCode = SCSIOP_SERVICE_ACTION_IN16;
+    Cdb.READ_CAPACITY16.ServiceAction = SERVICE_ACTION_READ_CAPACITY16;
+    Cdb.READ_CAPACITY16.AllocationLength[3] = 255;
+
+    Format =
+        "u64 RETURNED LOGICAL BLOCK ADDRESS\n"
+        "u32 LOGICAL BLOCK LENGTH IN BYTES\n"
+        "u4  Reserved\n"
+        "u3  P_TYPE\n"
+        "u1  PROT_EN\n"
+        "u4  P_I_EXPONENT\n"
+        "u4  LOGICAL BLOCKS PER PHYSICAL BLOCK EXPONENT\n"
+        "u1  TPE\n"
+        "u1  TPRZ\n"
+        "u14 LOWEST ALIGNED LOGICAL BLOCK ADDRESS\n"
+        "X16 Reserved\n";
+
+    return ScsiDataInAndPrint(argc, argv, &Cdb, 255, Format);
 }
 
 static void usage(void)
@@ -385,14 +426,16 @@ static void usage(void)
         "\n"
         "commands:\n"
         "    devpath device-name\n"
+        "    luns device-name [b:t:l]\n"
         "    inquiry device-name [b:t:l]\n"
-        "    report-luns device-name [b:t:l]\n"
         "    vpd0 device-name [b:t:l]\n"
         "    vpd80 device-name [b:t:l]\n"
         "    vpd83 device-name [b:t:l]\n"
         "    vpdb0 device-name [b:t:l]\n"
         "    vpdb2 device-name [b:t:l]\n"
         "    mode-sense device-name [b:t:l]\n"
+        "    capacity device-name [b:t:l]\n"
+        "    capacity16 device-name [b:t:l]\n"
         "",
         PROGNAME);
 }
@@ -417,11 +460,11 @@ int wmain(int argc, wchar_t **argv)
     if (0 == invariant_wcscmp(L"devpath", argv[0]))
         Error = devpath(argc, argv);
     else
+    if (0 == invariant_wcscmp(L"luns", argv[0]))
+        Error = report_luns(argc, argv);
+    else
     if (0 == invariant_wcscmp(L"inquiry", argv[0]))
         Error = inquiry(argc, argv);
-    else
-    if (0 == invariant_wcscmp(L"report-luns", argv[0]))
-        Error = report_luns(argc, argv);
     else
     if (0 == invariant_wcscmp(L"vpd0", argv[0]))
         Error = inquiry_vpd0(argc, argv);
@@ -440,6 +483,12 @@ int wmain(int argc, wchar_t **argv)
     else
     if (0 == invariant_wcscmp(L"mode-sense", argv[0]))
         Error = inquiry_mode_sense(argc, argv);
+    else
+    if (0 == invariant_wcscmp(L"capacity", argv[0]))
+        Error = capacity(argc, argv);
+    else
+    if (0 == invariant_wcscmp(L"capacity16", argv[0]))
+        Error = capacity16(argc, argv);
     else
         usage();
 
