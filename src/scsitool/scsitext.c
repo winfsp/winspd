@@ -151,6 +151,7 @@ struct ScsiTextPrinter
     HANDLE h;
     char buf[1024];
     size_t pos;
+    size_t col;
 };
 
 static void ScsiTextPrint(struct ScsiTextPrinter *printer, const char *buf, size_t len)
@@ -193,8 +194,11 @@ static void ScsiTextFlush(struct ScsiTextPrinter *printer)
 {
     DWORD BytesTransferred;
 
-    WriteFile(printer->h, printer->buf, (DWORD)printer->pos, &BytesTransferred, 0);
-    printer->pos = 0;
+    if (0 != printer->pos)
+    {
+        WriteFile(printer->h, printer->buf, (DWORD)printer->pos, &BytesTransferred, 0);
+        printer->pos = 0;
+    }
 }
 
 static void ScsiLineTextFn(void *data,
@@ -245,10 +249,147 @@ static void ScsiLineTextFn(void *data,
 
 void ScsiLineText(HANDLE h, const char *format, void *buf, size_t len)
 {
-    struct ScsiTextPrinter printer;
+    struct ScsiTextPrinter printer = { 0 };
     printer.h = h;
-    printer.pos = 0;
 
     ScsiText(ScsiLineTextFn, &printer, format, buf, len);
     ScsiTextFlush(&printer);
+}
+
+static void ScsiTableTextCenter(struct ScsiTextPrinter *printer, unsigned colwidth)
+{
+    if (colwidth > printer->pos)
+    {
+        size_t spacewidth = colwidth - printer->pos;
+        memmove(printer->buf + 1 + spacewidth / 2, printer->buf + 1, printer->pos - 1);
+        memset(printer->buf + 1, ' ', spacewidth / 2);
+        memset(printer->buf + spacewidth / 2 + printer->pos, ' ', spacewidth - spacewidth / 2);
+        printer->pos = colwidth;
+    }
+}
+
+static void ScsiTablePrintBoundary(struct ScsiTextPrinter *printer)
+{
+    static const char boundary[] =
+        "+--------+--------+--------+--------+--------+--------+--------+--------+\n";
+
+    ScsiTextPrint(printer, boundary, sizeof boundary - 1);
+    printer->col = 0;
+}
+
+static void ScsiTableTextFn(void *data,
+    unsigned type, unsigned width, const char *name, size_t namelen,
+    unsigned long long uval, void *pval, size_t lval,
+    const char *warn0)
+{
+    struct ScsiTextPrinter *printer = data;
+    char c, *sep = "";
+    unsigned colwidth;
+
+    if ('u' == type && 0 != printer->col && 8 * 9 < printer->col + 9 * width)
+    {
+        char spaces[80];
+        memset(spaces, ' ', 8 * 9 - printer->col - 1);
+        ScsiTextPrintc(printer, '|');
+        ScsiTextPrint(printer, spaces, 8 * 9 - printer->col - 1);
+        ScsiTextPrint(printer, "|\n", 2);
+        for (size_t i = 0; 8 > i; i++)
+        {
+            if (i * 9 < printer->col)
+                ScsiTextPrint(printer, "+--------", 9);
+            else if (i * 9 == printer->col)
+                ScsiTextPrint(printer, "+        ", 9);
+            else
+                ScsiTextPrint(printer, "         ", 9);
+        }
+        ScsiTextPrint(printer, "|\n", 2);
+        ScsiTextFlush(printer);
+    }
+
+    ScsiTextPrintc(printer, '|');
+    ScsiTextPrint(printer, name, namelen);
+
+    switch (type)
+    {
+    case 'u':
+        ScsiTextPrintc(printer, '=');
+        if (0x100000000ULL <= uval)
+            ScsiTextPrintf(printer, "%lx:%08lx", (unsigned long)(uval >> 32), (unsigned long)uval);
+        else if (10 <= uval)
+            ScsiTextPrintf(printer, "%lu (0x%lx)", (unsigned long)uval, (unsigned long)uval);
+        else
+            ScsiTextPrintf(printer, "%lu", (unsigned long)uval);
+        colwidth = 9 * (8 > width ? width : 8);
+        ScsiTableTextCenter(printer, colwidth);
+        if (colwidth < printer->pos)
+        {
+            for (char *p = printer->buf, *q, *endp = p + printer->pos; endp > p; p++)
+                if ('=' == *p)
+                {
+                    q = p - (printer->pos - colwidth);
+                    if (q < printer->buf)
+                        q = printer->buf;
+                    memmove(q, p, endp - p);
+                    printer->pos = (q - printer->buf) + (endp - p);
+                    break;
+                }
+        }
+        printer->col += printer->pos;
+        if (8 * 9 <= printer->col)
+        {
+            ScsiTextPrint(printer, "|\n", 2);
+            ScsiTablePrintBoundary(printer);
+        }
+        break;
+
+    case 'A':
+        for (size_t i = 0; lval > i; i++)
+        {
+            if (0 == i % 64)
+            {
+                ScsiTableTextCenter(printer, 9 * 8);
+                ScsiTextPrint(printer, "|\n", 2);
+                ScsiTextFlush(printer);
+                ScsiTextPrintc(printer, '|');
+            }
+            c = ((char *)pval)[i];
+            if (0x20 > c || c >= 0x7f)
+                c = '.';
+            ScsiTextPrintc(printer, c);
+        }
+        ScsiTableTextCenter(printer, 9 * 8);
+        ScsiTextPrint(printer, "|\n", 2);
+        ScsiTablePrintBoundary(printer);
+        break;
+
+    case 'X':
+        for (size_t i = 0; lval > i; i++)
+        {
+            if (0 == i % 16)
+            {
+                ScsiTableTextCenter(printer, 9 * 8);
+                ScsiTextPrint(printer, "|\n", 2);
+                ScsiTextFlush(printer);
+                ScsiTextPrintc(printer, '|');
+            }
+            ScsiTextPrintf(printer, "%s%02x", sep, ((unsigned char *)pval)[i]);
+            sep = " ";
+        }
+        ScsiTableTextCenter(printer, 9 * 8);
+        ScsiTextPrint(printer, "|\n", 2);
+        ScsiTablePrintBoundary(printer);
+        break;
+    }
+
+    ScsiTextFlush(printer);
+}
+
+void ScsiTableText(HANDLE h, const char *format, void *buf, size_t len)
+{
+    struct ScsiTextPrinter printer = { 0 };
+    printer.h = h;
+
+    ScsiTablePrintBoundary(&printer);
+    ScsiTextFlush(&printer);
+    ScsiText(ScsiTableTextFn, &printer, format, buf, len);
 }

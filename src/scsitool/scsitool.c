@@ -25,7 +25,7 @@ static void usage(void);
 
 static void ScsiPrint(const char *format, void *buf, size_t len)
 {
-    ScsiLineText(GetStdHandle(STD_OUTPUT_HANDLE), format, buf, len);
+    ScsiTableText(GetStdHandle(STD_OUTPUT_HANDLE), format, buf, len);
 }
 
 static void ScsiPrintSenseInfo(UCHAR ScsiStatus, UCHAR SenseInfoBuffer[32])

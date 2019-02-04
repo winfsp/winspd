@@ -31,5 +31,6 @@
 #define PROGNAME                        "scsitool"
 
 void ScsiLineText(HANDLE h, const char *format, void *buf, size_t len);
+void ScsiTableText(HANDLE h, const char *format, void *buf, size_t len);
 
 #endif
