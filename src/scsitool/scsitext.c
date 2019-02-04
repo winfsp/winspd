@@ -172,6 +172,11 @@ static void ScsiTextPrint(struct ScsiTextPrinter *printer, const char *buf, size
     }
 }
 
+static void ScsiTextPrintc(struct ScsiTextPrinter *printer, char c)
+{
+    ScsiTextPrint(printer, &c, 1);
+}
+
 static void ScsiTextPrintf(struct ScsiTextPrinter *printer, const char *format, ...)
 {
     va_list ap;
@@ -197,24 +202,20 @@ static void ScsiLineTextFn(void *data,
     unsigned long long uval, void *pval, size_t lval,
     const char *warn)
 {
-    struct ScsiTextPrinter printer;
+    struct ScsiTextPrinter *printer = data;
     char c, *sep = "";
 
-    printer.h = (HANDLE)data;
-    printer.pos = 0;
-
-    ScsiTextPrint(&printer, name, namelen);
-    c = '=';
-    ScsiTextPrint(&printer, &c, 1);
+    ScsiTextPrint(printer, name, namelen);
+    ScsiTextPrintc(printer, '=');
     switch (type)
     {
     case 'u':
         if (0x100000000ULL <= uval)
-            ScsiTextPrintf(&printer, "%lx:%08lx", (unsigned long)(uval >> 32), (unsigned long)uval);
+            ScsiTextPrintf(printer, "%lx:%08lx", (unsigned long)(uval >> 32), (unsigned long)uval);
         else if (10 <= uval)
-            ScsiTextPrintf(&printer, "%lu (0x%lx)", (unsigned long)uval, (unsigned long)uval);
+            ScsiTextPrintf(printer, "%lu (0x%lx)", (unsigned long)uval, (unsigned long)uval);
         else
-            ScsiTextPrintf(&printer, "%lu", (unsigned long)uval);
+            ScsiTextPrintf(printer, "%lu", (unsigned long)uval);
         break;
 
     case 'A':
@@ -223,29 +224,31 @@ static void ScsiLineTextFn(void *data,
             c = ((char *)pval)[i];
             if (0x20 > c || c >= 0x7f)
                 c = '.';
-            ScsiTextPrint(&printer, &c, 1);
+            ScsiTextPrintc(printer, c);
         }
         break;
 
     case 'X':
         for (size_t i = 0; lval > i; i++)
         {
-            ScsiTextPrintf(&printer, "%s%02x", sep, ((unsigned char *)pval)[i]);
+            ScsiTextPrintf(printer, "%s%02x", sep, ((unsigned char *)pval)[i]);
             sep = " ";
         }
         break;
     }
 
     if (0 != warn)
-        ScsiTextPrintf(&printer, " (WARN: %s)", warn);
+        ScsiTextPrintf(printer, " (WARN: %s)", warn);
 
-    c = '\n';
-    ScsiTextPrint(&printer, &c, 1);
-
-    ScsiTextFlush(&printer);
+    ScsiTextPrintc(printer, '\n');
 }
 
 void ScsiLineText(HANDLE h, const char *format, void *buf, size_t len)
 {
-    ScsiText(ScsiLineTextFn, h, format, buf, len);
+    struct ScsiTextPrinter printer;
+    printer.h = h;
+    printer.pos = 0;
+
+    ScsiText(ScsiLineTextFn, &printer, format, buf, len);
+    ScsiTextFlush(&printer);
 }
