@@ -250,7 +250,9 @@ static void ScsiLineTextFn(void *data,
 
 void ScsiLineText(HANDLE h, const char *format, void *buf, size_t len)
 {
-    struct ScsiTextPrinter printer = { 0 };
+    struct ScsiTextPrinter printer;
+
+    memset(&printer, 0, sizeof printer);
     printer.h = h;
 
     ScsiText(ScsiLineTextFn, &printer, format, buf, len);
@@ -387,7 +389,9 @@ static void ScsiTableTextFn(void *data,
 
 void ScsiTableText(HANDLE h, const char *format, void *buf, size_t len)
 {
-    struct ScsiTextPrinter printer = { 0 };
+    struct ScsiTextPrinter printer;
+
+    memset(&printer, 0, sizeof printer);
     printer.h = h;
 
     ScsiTablePrintBoundary(&printer);
