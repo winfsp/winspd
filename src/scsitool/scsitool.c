@@ -354,7 +354,7 @@ static int inquiry_vpdb2(int argc, wchar_t **argv)
     return ScsiDataInAndPrint(argc, argv, &Cdb, VPD_MAX_BUFFER_SIZE, Format);
 }
 
-static int inquiry_mode_sense(int argc, wchar_t **argv)
+static int mode_sense(int argc, wchar_t **argv)
 {
     CDB Cdb;
     const char *Format;
@@ -482,7 +482,7 @@ int wmain(int argc, wchar_t **argv)
         Error = inquiry_vpdb2(argc, argv);
     else
     if (0 == invariant_wcscmp(L"mode-sense", argv[0]))
-        Error = inquiry_mode_sense(argc, argv);
+        Error = mode_sense(argc, argv);
     else
     if (0 == invariant_wcscmp(L"capacity", argv[0]))
         Error = capacity(argc, argv);
