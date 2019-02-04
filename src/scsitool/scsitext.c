@@ -101,7 +101,8 @@ void ScsiText(
                 lval = (unsigned)(len - bitpos / 8);
             bitpos += lval * 8;
 
-            fn(data, type, width, name, p - name, uval, pval, lval, warn);
+            if (0 != width)
+                fn(data, type, width, name, p - name, uval, pval, lval, warn);
         }
         else if ('a' <= type && type <= 'z')
         {

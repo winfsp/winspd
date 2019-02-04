@@ -372,8 +372,61 @@ static int mode_sense(int argc, wchar_t **argv)
         "u2  Reserved\n"
         "u1  DPOFUA\n"
         "u4  Reserved\n"
-        "u8  BLOCK DESCRIPTOR LENGTH\n"
-        "X255 BLOCK DESCRIPTORS AND MODE PAGES\n";
+        "u8  BLOCK DESCRIPTOR LENGTH (m-0)\n"
+        "Xm  BLOCK DESCRIPTORS\n"
+        "X255 MODE PAGES\n";
+
+    return ScsiDataInAndPrint(argc, argv, &Cdb, 255, Format);
+}
+
+static int mode_caching(int argc, wchar_t **argv)
+{
+    CDB Cdb;
+    const char *Format;
+
+    memset(&Cdb, 0, sizeof Cdb);
+    Cdb.MODE_SENSE.OperationCode = SCSIOP_MODE_SENSE;
+    Cdb.MODE_SENSE.Pc = MODE_SENSE_CURRENT_VALUES;
+    Cdb.MODE_SENSE.PageCode = MODE_PAGE_CACHING;
+    Cdb.MODE_SENSE.AllocationLength = 255;
+
+    Format =
+        "u8  MODE DATA LENGTH (n-0)\n"
+        "u8  MEDIUM TYPE\n"
+        "u1  WP\n"
+        "u2  Reserved\n"
+        "u1  DPOFUA\n"
+        "u4  Reserved\n"
+        "u8  BLOCK DESCRIPTOR LENGTH (m-0)\n"
+        "Xm  BLOCK DESCRIPTORS\n"
+        "u1  PS\n"
+        "u1  SPF\n"
+        "u6  PAGE CODE (08h)\n"
+        "u8  PAGE LENGTH (12h)\n"
+        "u1  IC\n"
+        "u1  ABPF\n"
+        "u1  CAP\n"
+        "u1  DISC\n"
+        "u1  SIZE\n"
+        "u1  WCE\n"
+        "u1  MF\n"
+        "u1  RCD\n"
+        "u4  DEMAND READ RETENTION PRIORITY\n"
+        "u4  WRITE RETENTION PRIORITY\n"
+        "u8  DISABLE PRE-FETCH TRANSFER LENGTH\n"
+        "u8  MINIMUM PRE-FETCH\n"
+        "u8  MAXIMUM PRE-FETCH\n"
+        "u8  MAXIMUM PRE-FETCH CEILING\n"
+        "u1  FSW\n"
+        "u1  LBCSS\n"
+        "u1  DRA\n"
+        "u2  vendor specific\n"
+        "u2  Reserved\n"
+        "u1  NV_DIS\n"
+        "u8  NUMBER OF CACHE SEGMENTS\n"
+        "u16 CACHE SEGMENT SIZE\n"
+        "u8  Reserved\n"
+        "u24 Obsolete\n";
 
     return ScsiDataInAndPrint(argc, argv, &Cdb, 255, Format);
 }
@@ -434,6 +487,7 @@ static void usage(void)
         "    vpdb0 device-name [b:t:l]\n"
         "    vpdb2 device-name [b:t:l]\n"
         "    mode-sense device-name [b:t:l]\n"
+        "    mode-caching device-name [b:t:l]\n"
         "    capacity device-name [b:t:l]\n"
         "    capacity16 device-name [b:t:l]\n"
         "",
@@ -483,6 +537,9 @@ int wmain(int argc, wchar_t **argv)
     else
     if (0 == invariant_wcscmp(L"mode-sense", argv[0]))
         Error = mode_sense(argc, argv);
+    else
+    if (0 == invariant_wcscmp(L"mode-caching", argv[0]))
+        Error = mode_caching(argc, argv);
     else
     if (0 == invariant_wcscmp(L"capacity", argv[0]))
         Error = capacity(argc, argv);
