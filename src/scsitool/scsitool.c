@@ -23,9 +23,13 @@
 
 static void usage(void);
 
+static int ScsiPrintCanonical = 0;
 static void ScsiPrint(const char *format, void *buf, size_t len)
 {
-    ScsiTableText(GetStdHandle(STD_OUTPUT_HANDLE), format, buf, len);
+    if (ScsiPrintCanonical)
+        ScsiLineText(GetStdHandle(STD_OUTPUT_HANDLE), format, buf, len);
+    else
+        ScsiTableText(GetStdHandle(STD_OUTPUT_HANDLE), format, buf, len);
 }
 
 static void ScsiPrintSenseInfo(UCHAR ScsiStatus, UCHAR SenseInfoBuffer[32])
@@ -397,6 +401,13 @@ int wmain(int argc, wchar_t **argv)
 {
     argc--;
     argv++;
+
+    if (0 != argc && 0 == invariant_wcscmp(L"-c", argv[0]))
+    {
+        ScsiPrintCanonical = 1;
+        argc--;
+        argv++;
+    }
 
     if (0 == argc)
         usage();
