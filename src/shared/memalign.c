@@ -19,8 +19,9 @@
  * associated repository.
  */
 
-#include <winspd/winspd.h>
+#include <windows.h>
 #include <shared/minimal.h>
+#include <shared/memalign.h>
 
 DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP)
 {

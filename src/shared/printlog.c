@@ -19,8 +19,9 @@
  * associated repository.
  */
 
-#include <winspd/winspd.h>
+#include <windows.h>
 #include <shared/minimal.h>
+#include <shared/printlog.h>
 
 void vprintlog(HANDLE h, const char *format, va_list ap)
 {

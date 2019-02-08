@@ -19,13 +19,17 @@
  * associated repository.
  */
 
-#include <winspd/winspd.h>
-#include <shared/minimal.h>
+#include <windows.h>
+#define _NTSCSI_USER_MODE_
+#include <scsi.h>
+#undef _NTSCSI_USER_MODE_
 #pragma warning(push)
 #pragma warning(disable:4091)           /* typedef ignored */
 #include <ntddscsi.h>
 #pragma warning(pop)
 #include <setupapi.h>
+#include <shared/minimal.h>
+#include <winspd/ioctl.h>
 
 #define GLOBAL                          L"\\\\?\\"
 #define GLOBALROOT                      L"\\\\?\\GLOBALROOT"

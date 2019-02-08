@@ -26,10 +26,10 @@
 #ifndef WINSPD_WINSPD_H_INCLUDED
 #define WINSPD_WINSPD_H_INCLUDED
 
-#define _NTSCSI_USER_MODE_
 #include <windows.h>
+#define _NTSCSI_USER_MODE_
 #include <scsi.h>
-
+#undef _NTSCSI_USER_MODE_
 #include <winspd/ioctl.h>
 
 #ifdef __cplusplus

@@ -19,7 +19,7 @@
  * associated repository.
  */
 
-#include <winspd/winspd.h>
+#include <windows.h>
 #include <shared/minimal.h>
 #include <shared/regutil.h>
 

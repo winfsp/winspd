@@ -20,6 +20,7 @@
  */
 
 #include <wchar.h>
+#include <shared/strtoint.h>
 
 long long strtoint(const char *p, int base, int is_signed, const char **endp)
 {
