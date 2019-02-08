@@ -5,10 +5,16 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="Source\shared">
+      <UniqueIdentifier>{dddf12f8-33ad-4799-9b46-9eae98585895}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\shellex\library.cpp">
       <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\shared\regutil.c">
+      <Filter>Source\shared</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -33,6 +39,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\shellex\com.hpp">
       <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\shared\minimal.h">
+      <Filter>Source\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\shared\regutil.h">
+      <Filter>Source\shared</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

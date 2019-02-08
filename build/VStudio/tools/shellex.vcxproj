@@ -20,6 +20,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\src\shared\regutil.c" />
     <ClCompile Include="..\..\..\src\shellex\library.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -29,6 +30,8 @@
     <None Include="..\..\..\src\shellex\library.def" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\src\shared\minimal.h" />
+    <ClInclude Include="..\..\..\src\shared\regutil.h" />
     <ClInclude Include="..\..\..\src\shellex\com.hpp" />
     <ClInclude Include="..\..\..\src\shellex\command.hpp" />
     <ClInclude Include="..\..\..\src\shellex\ejectcmd.hpp" />

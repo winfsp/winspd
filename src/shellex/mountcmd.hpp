@@ -23,6 +23,7 @@
 #define WINSPD_SHELLEX_MOUNTCMD_HPP_INCLUDED
 
 #include <shellex/command.hpp>
+#include <shared/regutil.h>
 
 #define SPD_SHELLEX_MOUNT_PROGID        "WinSpd.Mount"
 #define SPD_SHELLEX_MOUNT_VERB          "open"
@@ -37,9 +38,30 @@ public:
     static constexpr PWSTR ThreadingModel = L"Apartment";
     static STDMETHODIMP Register(BOOL Flag)
     {
-        return RegisterEx(Flag,
-            L"" SPD_SHELLEX_MOUNT_PROGID, L"" SPD_SHELLEX_MOUNT_VERB, L"" SPD_SHELLEX_MOUNT_VERB_DESC,
-            FALSE, Clsid);
+        if (Flag)
+        {
+            WCHAR GuidStr[40];
+            REGRECORD Records[] =
+            {
+                { L"SOFTWARE\\Classes" },
+                { L"" SPD_SHELLEX_MOUNT_PROGID },
+                { L"shell" },
+                { L"" SPD_SHELLEX_MOUNT_VERB },
+                { 0, REG_SZ, L"" SPD_SHELLEX_MOUNT_VERB_DESC, sizeof L"" SPD_SHELLEX_MOUNT_VERB_DESC },
+                { L"MultiSelectModel", REG_SZ, L"Document", sizeof L"Document" },
+                { L"command" },
+                { L"DelegateExecute", REG_SZ, GuidStr, (lstrlenW(GuidStr) + 1) * sizeof(WCHAR) },
+            };
+            StringFromGUID2(Clsid, GuidStr, sizeof GuidStr / sizeof GuidStr[0]);
+            return HRESULT_FROM_WIN32(RegCreateTree(HKEY_LOCAL_MACHINE,
+                Records, sizeof Records / sizeof Records[0]));
+        }
+        else
+        {
+            RegDeleteTree(HKEY_LOCAL_MACHINE,
+                L"SOFTWARE\\Classes\\" SPD_SHELLEX_MOUNT_PROGID);
+            return S_OK;
+        }
     }
 };
 

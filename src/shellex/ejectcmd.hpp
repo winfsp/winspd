@@ -25,7 +25,7 @@
 #include <shellex/command.hpp>
 
 #define SPD_SHELLEX_EJECT_PROGID        "Drive"
-#define SPD_SHELLEX_EJECT_VERB          "eject"
+#define SPD_SHELLEX_EJECT_VERB          "WinSpd.Eject"
 #define SPD_SHELLEX_EJECT_VERB_DESC     "Eject"
 
 class EjectCommand : public Command
@@ -38,14 +38,30 @@ public:
     static STDMETHODIMP Register(BOOL Flag)
     {
         if (Flag)
-            return RegisterEx(Flag,
-                L"" SPD_SHELLEX_EJECT_PROGID, L"" SPD_SHELLEX_EJECT_VERB, L"" SPD_SHELLEX_EJECT_VERB_DESC,
-                TRUE, Clsid);
+        {
+            WCHAR GuidStr[40];
+            StringFromGUID2(Clsid, GuidStr, sizeof GuidStr / sizeof GuidStr[0]);
+            REGRECORD Records[] =
+            {
+                { L"SOFTWARE\\Classes" },
+                { L"" SPD_SHELLEX_EJECT_PROGID },
+                { L"shell" },
+                { L"" SPD_SHELLEX_EJECT_VERB },
+                { 0, REG_SZ, L"" SPD_SHELLEX_EJECT_VERB_DESC, sizeof L"" SPD_SHELLEX_EJECT_VERB_DESC },
+                { L"CommandStateHandler", REG_SZ, GuidStr, (lstrlenW(GuidStr) + 1) * sizeof(WCHAR) },
+                { L"MultiSelectModel", REG_SZ, L"Single", sizeof L"Single" },
+                { L"command" },
+                { L"DelegateExecute", REG_SZ, GuidStr, (lstrlenW(GuidStr) + 1) * sizeof(WCHAR) },
+            };
+            return HRESULT_FROM_WIN32(RegCreateTree(HKEY_LOCAL_MACHINE,
+                Records, sizeof Records / sizeof Records[0]));
+        }
         else
-            /* only delete Drive\shell\eject */
-            return RegisterEx(Flag,
-                L"" SPD_SHELLEX_EJECT_PROGID "\\shell\\" SPD_SHELLEX_EJECT_VERB, 0, 0,
-                TRUE, Clsid);
+        {
+            RegDeleteTree(HKEY_LOCAL_MACHINE,
+                L"SOFTWARE\\Classes\\" SPD_SHELLEX_EJECT_PROGID "\\shell\\" SPD_SHELLEX_EJECT_VERB);
+            return S_OK;
+        }
     }
 };
 
