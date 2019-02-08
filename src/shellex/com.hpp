@@ -140,9 +140,11 @@ public:
 
     /* internal interface */
     CoClass(REFCLSID Clsid, PWSTR ThreadingModel,
-        HRESULT (*Register)(BOOL Flag), HRESULT(*CreateInstance)(REFIID Iid, LPVOID *PObject)) :
+        HRESULT (STDMETHODCALLTYPE *Register)(BOOL Flag),
+        HRESULT (STDMETHODCALLTYPE *CreateInstance)(REFIID Iid, LPVOID *PObject)) :
         _Next(0), _Clsid(Clsid), _ThreadingModel(ThreadingModel),
-        _Register(Register), _CreateInstance(CreateInstance)
+        _Register(Register),
+        _CreateInstance(CreateInstance)
     {
         _Next = ClassList();
         ClassList() = this;
@@ -244,8 +246,8 @@ private:
     CoClass *_Next;
     CLSID _Clsid;
     PWSTR _ThreadingModel;
-    HRESULT (*_Register)(BOOL Flag);
-    HRESULT (*_CreateInstance)(REFIID Iid, LPVOID *PObject);
+    HRESULT (STDMETHODCALLTYPE *_Register)(BOOL Flag);
+    HRESULT (STDMETHODCALLTYPE *_CreateInstance)(REFIID Iid, LPVOID *PObject);
 };
 
 template <typename T>
