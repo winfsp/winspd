@@ -38,30 +38,25 @@ public:
     static constexpr PWSTR ThreadingModel = L"Apartment";
     static STDMETHODIMP Register(BOOL Flag)
     {
+        WCHAR GuidStr[40];
+        StringFromGUID2(Clsid, GuidStr, sizeof GuidStr / sizeof GuidStr[0]);
+        REGENTRY Entries[] =
+        {
+            { L"SOFTWARE\\Classes" },
+            { L"" SPD_SHELLEX_MOUNT_PROGID, 1 },
+            { L"shell", 1 },
+            { L"" SPD_SHELLEX_MOUNT_VERB, 1 },
+            { 0, REG_SZ, L"" SPD_SHELLEX_MOUNT_VERB_DESC, sizeof L"" SPD_SHELLEX_MOUNT_VERB_DESC },
+            { L"MultiSelectModel", REG_SZ, L"Document", sizeof L"Document" },
+            { L"command", 1 },
+            { L"DelegateExecute", REG_SZ, GuidStr, (lstrlenW(GuidStr) + 1) * sizeof(WCHAR) },
+        };
         if (Flag)
-        {
-            WCHAR GuidStr[40];
-            REGRECORD Records[] =
-            {
-                { L"SOFTWARE\\Classes" },
-                { L"" SPD_SHELLEX_MOUNT_PROGID },
-                { L"shell" },
-                { L"" SPD_SHELLEX_MOUNT_VERB },
-                { 0, REG_SZ, L"" SPD_SHELLEX_MOUNT_VERB_DESC, sizeof L"" SPD_SHELLEX_MOUNT_VERB_DESC },
-                { L"MultiSelectModel", REG_SZ, L"Document", sizeof L"Document" },
-                { L"command" },
-                { L"DelegateExecute", REG_SZ, GuidStr, (lstrlenW(GuidStr) + 1) * sizeof(WCHAR) },
-            };
-            StringFromGUID2(Clsid, GuidStr, sizeof GuidStr / sizeof GuidStr[0]);
-            return HRESULT_FROM_WIN32(RegCreateTree(HKEY_LOCAL_MACHINE,
-                Records, sizeof Records / sizeof Records[0]));
-        }
+            return HRESULT_FROM_WIN32(RegAddEntries(HKEY_LOCAL_MACHINE,
+                Entries, sizeof Entries / sizeof Entries[0]));
         else
-        {
-            RegDeleteTree(HKEY_LOCAL_MACHINE,
-                L"SOFTWARE\\Classes\\" SPD_SHELLEX_MOUNT_PROGID);
-            return S_OK;
-        }
+            return HRESULT_FROM_WIN32(RegDeleteEntries(HKEY_LOCAL_MACHINE,
+                Entries, sizeof Entries / sizeof Entries[0]));
     }
 };
 

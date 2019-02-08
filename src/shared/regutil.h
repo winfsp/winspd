@@ -26,15 +26,16 @@
 extern "C" {
 #endif
 
-typedef struct _REGRECORD
+typedef struct _REGENTRY
 {
     PWSTR Name;
     ULONG Type;
     PVOID Value;
     ULONG Size;
-} REGRECORD;
+} REGENTRY;
 
-DWORD RegCreateTree(HKEY Key, REGRECORD *Records, ULONG Count);
+DWORD RegAddEntries(HKEY Key, REGENTRY *Entries, ULONG Count);
+DWORD RegDeleteEntries(HKEY Key, REGENTRY *Entries, ULONG Count);
 
 #ifdef __cplusplus
 }

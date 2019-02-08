@@ -23,35 +23,39 @@
 #include <shared/minimal.h>
 #include <shared/regutil.h>
 
-DWORD RegCreateTree(HKEY Key, REGRECORD *Records, ULONG Count)
+DWORD RegAddEntries(HKEY Key, REGENTRY *Entries, ULONG Count)
 {
-    REGRECORD *Record;
-    HKEY RecordKey = 0, TempKey;
+    REGENTRY *Entry;
+    HKEY EntryKey = 0, TempKey;
     DWORD Error;
 
     for (ULONG I = 0; Count > I; I++)
     {
-        Record = Records + I;
-        if (0 == Record->Name && 0 == Record->Value)
+        Entry = Entries + I;
+        if (0 == Entry->Name && 0 == Entry->Value)
         {
-            if (0 != RecordKey)
-                RegCloseKey(RecordKey);
-            RecordKey = 0;
+            if (0 != EntryKey)
+                RegCloseKey(EntryKey);
+            EntryKey = 0;
         }
-        else if (0 == Record->Value)
+        else if (0 == Entry->Value)
         {
-            Error = RegCreateKeyExW(0 != RecordKey ? RecordKey : Key,
-                Record->Name, 0, 0, 0, KEY_ALL_ACCESS, 0, &TempKey, 0);
+            if (0 == Entry->Type)
+                Error = RegOpenKeyExW(0 != EntryKey ? EntryKey : Key,
+                    Entry->Name, 0, KEY_ALL_ACCESS, &TempKey);
+            else
+                Error = RegCreateKeyExW(0 != EntryKey ? EntryKey : Key,
+                    Entry->Name, 0, 0, 0, KEY_ALL_ACCESS, 0, &TempKey, 0);
             if (ERROR_SUCCESS != Error)
                 goto exit;
-            if (0 != RecordKey)
-                RegCloseKey(RecordKey);
-            RecordKey = TempKey;
+            if (0 != EntryKey)
+                RegCloseKey(EntryKey);
+            EntryKey = TempKey;
         }
         else
         {
-            Error = RegSetValueExW(0 != RecordKey ? RecordKey : Key,
-                Record->Name, 0, Record->Type, Record->Value, Record->Size);
+            Error = RegSetValueExW(0 != EntryKey ? EntryKey : Key,
+                Entry->Name, 0, Entry->Type, Entry->Value, Entry->Size);
             if (ERROR_SUCCESS != Error)
                 goto exit;
         }
@@ -60,8 +64,67 @@ DWORD RegCreateTree(HKEY Key, REGRECORD *Records, ULONG Count)
     Error = ERROR_SUCCESS;
 
 exit:
-    if (0 != RecordKey)
-        RegCloseKey(RecordKey);
+    if (0 != EntryKey)
+        RegCloseKey(EntryKey);
+
+    return Error;
+}
+
+DWORD RegDeleteEntries(HKEY Key, REGENTRY *Entries, ULONG Count)
+{
+    REGENTRY *Entry;
+    HKEY EntryKey = 0, TempKey;
+    BOOLEAN Skip = FALSE;
+    DWORD Error;
+
+    for (ULONG I = 0; Count > I; I++)
+    {
+        Entry = Entries + I;
+        if (0 == Entry->Name && 0 == Entry->Value)
+        {
+            if (0 != EntryKey)
+                RegCloseKey(EntryKey);
+            EntryKey = 0;
+            Skip = FALSE;
+        }
+        else if (0 == Entry->Value)
+        {
+            if (Skip)
+                continue;
+            if (0 == Entry->Type)
+                Error = RegOpenKeyExW(0 != EntryKey ? EntryKey : Key,
+                    Entry->Name, 0, KEY_ALL_ACCESS, &TempKey);
+            else
+            {
+                Error = RegDeleteTree(0 != EntryKey ? EntryKey : Key, Entry->Name);
+                if (ERROR_FILE_NOT_FOUND == Error)
+                    Error = ERROR_SUCCESS;
+                TempKey = 0;
+                Skip = TRUE;
+            }
+            if (ERROR_SUCCESS != Error)
+                goto exit;
+            if (0 != EntryKey)
+                RegCloseKey(EntryKey);
+            EntryKey = TempKey;
+        }
+        else
+        {
+            if (Skip)
+                continue;
+            Error = RegDeleteValue(0 != EntryKey ? EntryKey : Key, Entry->Name);
+            if (ERROR_FILE_NOT_FOUND == Error)
+                Error = ERROR_SUCCESS;
+            if (ERROR_SUCCESS != Error)
+                goto exit;
+        }
+    }
+
+    Error = ERROR_SUCCESS;
+
+exit:
+    if (0 != EntryKey)
+        RegCloseKey(EntryKey);
 
     return Error;
 }
