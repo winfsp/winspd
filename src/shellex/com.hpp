@@ -26,7 +26,7 @@
 #include <new>
 #include <type_traits>
 
-static inline ULONG GlobalRefCnt(ULONG Value)
+inline ULONG GlobalRefCnt(ULONG Value)
 {
     static LONG RefCnt;
     if (0 == Value)
