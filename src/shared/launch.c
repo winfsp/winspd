@@ -111,7 +111,7 @@ DWORD SpdLaunchStart(
     PWSTR Argv[9 + 2];
 
     if (9 < Argc)
-        return STATUS_INVALID_PARAMETER;
+        return ERROR_INVALID_PARAMETER;
 
     Argv[0] = ClassName;
     Argv[1] = InstanceName;

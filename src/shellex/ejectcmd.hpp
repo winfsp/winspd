@@ -128,15 +128,16 @@ private:
         if (!GetVolumePathNameW(Name, VolumeBuf + 4, VolumeBufSize / sizeof(WCHAR) - 4))
             return GetLastError();
 
-        int Len = lstrlenW(VolumeBuf);
-        if (L'\\' != VolumeBuf[4])
-            memmove(VolumeBuf, VolumeBuf + 4, Len * sizeof(WCHAR));
+        int Len = lstrlenW(VolumeBuf + 4);
+        if (L'\\' == VolumeBuf[4])
+            memmove(VolumeBuf, VolumeBuf + 4, (Len + 1) * sizeof(WCHAR));
         else
         {
             VolumeBuf[0] = L'\\';
             VolumeBuf[1] = L'\\';
             VolumeBuf[2] = L'.';
             VolumeBuf[3] = L'\\';
+            Len += 4;
         }
         PWSTR P = VolumeBuf + Len;
         if (VolumeBuf < P && L'\\' == P[-1])
