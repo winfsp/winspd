@@ -22,6 +22,10 @@
 #ifndef WINSPD_SHARED_MINIMAL_H_INCLUDED
 #define WINSPD_SHARED_MINIMAL_H_INCLUDED
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Eliminate dependency on the MSVCRT libraries.
  *
@@ -187,5 +191,9 @@ static inline DWORD SpdOverlappedWaitResult(BOOL Success,
         return GetLastError();
     return ERROR_SUCCESS;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

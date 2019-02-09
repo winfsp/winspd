@@ -16,6 +16,15 @@
     <ClCompile Include="..\..\..\src\shared\regutil.c">
       <Filter>Source\shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\shared\secpipe.c">
+      <Filter>Source\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\shared\launch.c">
+      <Filter>Source\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\shared\ioctl.c">
+      <Filter>Source\shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\..\src\shellex\version.rc">
@@ -44,6 +53,12 @@
       <Filter>Source\shared</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\shared\regutil.h">
+      <Filter>Source\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\shared\secpipe.h">
+      <Filter>Source\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\shared\launch.h">
       <Filter>Source\shared</Filter>
     </ClInclude>
   </ItemGroup>

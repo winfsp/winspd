@@ -23,6 +23,11 @@
 #define WINSPD_SHELLEX_EJECTCMD_HPP_INCLUDED
 
 #include <shellex/command.hpp>
+#define _NTSCSI_USER_MODE_
+#include <scsi.h>
+#undef _NTSCSI_USER_MODE_
+#include <shared/launch.h>
+#include <winspd/ioctl.h>
 
 #define SPD_SHELLEX_EJECT_PROGID        "Drive"
 #define SPD_SHELLEX_EJECT_VERB          "WinSpd.Eject"
@@ -57,6 +62,131 @@ public:
         else
             return HRESULT_FROM_WIN32(RegDeleteEntries(HKEY_LOCAL_MACHINE,
                 Entries, sizeof Entries / sizeof Entries[0]));
+    }
+
+    /* IExecuteCommand */
+    STDMETHODIMP Execute()
+    {
+        IEnumShellItems *Enum;
+        IShellItem *Item;
+        PWSTR Name;
+        HRESULT Result = S_OK;
+        if (0 != _Array && S_OK == _Array->EnumItems(&Enum))
+        {
+            while (S_OK == Enum->Next(1, &Item, 0))
+            {
+                if (S_OK == Item->GetDisplayName(SIGDN_FILESYSPATH, &Name))
+                {
+                    Result = Eject(Name);
+                    CoTaskMemFree(Name);
+                }
+                Item->Release();
+            }
+            Enum->Release();
+        }
+        return Result;
+    }
+
+    /* IExplorerCommandState */
+    STDMETHODIMP GetState(IShellItemArray *Array, BOOL OkToBeSlow, EXPCMDSTATE *CmdState)
+    {
+        *CmdState = ECS_HIDDEN;
+        IEnumShellItems *Enum;
+        IShellItem *Item;
+        PWSTR Name;
+        HRESULT Result = S_OK;
+        if (0 != Array && S_OK == Array->EnumItems(&Enum))
+        {
+            while (S_OK == Enum->Next(1, &Item, 0))
+            {
+                if (S_OK == Item->GetDisplayName(SIGDN_FILESYSPATH, &Name))
+                {
+                    *CmdState = CanEject(Name) ? ECS_ENABLED : ECS_HIDDEN;
+                    CoTaskMemFree(Name);
+                }
+                Item->Release();
+            }
+            Enum->Release();
+        }
+        return Result;
+    }
+
+private:
+    DWORD GetVolume(PWSTR Name, PWSTR VolumeBuf, ULONG VolumeBufSize)
+    {
+        if (4 > VolumeBufSize / sizeof(WCHAR))
+            return ERROR_INVALID_PARAMETER;
+
+        if (L'\0' == Name)
+            /*
+             * Quote from GetVolumePathNameW docs:
+             *     If this parameter is an empty string, "",
+             *     the function fails but the last error is set to ERROR_SUCCESS.
+             */
+            return ERROR_FILE_NOT_FOUND;
+
+        if (!GetVolumePathNameW(Name, VolumeBuf + 4, VolumeBufSize / sizeof(WCHAR) - 4))
+            return GetLastError();
+
+        int Len = lstrlenW(VolumeBuf);
+        if (L'\\' != VolumeBuf[4])
+            memmove(VolumeBuf, VolumeBuf + 4, Len * sizeof(WCHAR));
+        else
+        {
+            VolumeBuf[0] = L'\\';
+            VolumeBuf[1] = L'\\';
+            VolumeBuf[2] = L'.';
+            VolumeBuf[3] = L'\\';
+        }
+        PWSTR P = VolumeBuf + Len;
+        if (VolumeBuf < P && L'\\' == P[-1])
+            P[-1] = L'\0';
+
+        return ERROR_SUCCESS;
+    }
+    BOOL CanEject(PWSTR Name)
+    {
+        WCHAR Volume[MAX_PATH];
+        HANDLE Handle = INVALID_HANDLE_VALUE;
+        INQUIRYDATA InquiryData;
+        DWORD Error;
+        BOOL Result = FALSE;
+
+        Error = GetVolume(Name, Volume, sizeof Volume);
+        if (ERROR_SUCCESS != Error)
+            goto exit;
+
+        Error = SpdIoctlOpenDevice(Volume, &Handle);
+        if (ERROR_SUCCESS != Error)
+            goto exit;
+
+        Error = SpdIoctlScsiInquiry(Handle, 0, &InquiryData, 0);
+        if (ERROR_SUCCESS != Error)
+            goto exit;
+
+        Result = 0 == memcmp(InquiryData.ProductId,
+            SPD_IOCTL_VENDOR_ID, sizeof SPD_IOCTL_VENDOR_ID - 1);
+
+    exit:
+        if (INVALID_HANDLE_VALUE != Handle)
+            CloseHandle(Handle);
+
+        return Result;
+    }
+    HRESULT Eject(PWSTR Name)
+    {
+        WCHAR Volume[MAX_PATH];
+        DWORD Error, LauncherError;
+
+        Error = GetVolume(Name, Volume, sizeof Volume);
+        if (ERROR_SUCCESS != Error)
+            return HRESULT_FROM_WIN32(Error);
+
+        Error = SpdLaunchStop(L".Volume", Volume, &LauncherError);
+        if (ERROR_SUCCESS == Error)
+            Error = LauncherError;
+
+        return HRESULT_FROM_WIN32(Error);
     }
 };
 

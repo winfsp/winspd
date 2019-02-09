@@ -23,6 +23,7 @@
 #define WINSPD_SHELLEX_MOUNTCMD_HPP_INCLUDED
 
 #include <shellex/command.hpp>
+#include <shared/launch.h>
 #include <shared/regutil.h>
 
 #define SPD_SHELLEX_MOUNT_PROGID        "WinSpd.Mount"
@@ -57,6 +58,46 @@ public:
         else
             return HRESULT_FROM_WIN32(RegDeleteEntries(HKEY_LOCAL_MACHINE,
                 Entries, sizeof Entries / sizeof Entries[0]));
+    }
+
+    /* IExecuteCommand */
+    STDMETHODIMP Execute()
+    {
+        IEnumShellItems *Enum;
+        IShellItem *Item;
+        PWSTR Name;
+        HRESULT Result = S_OK;
+        if (0 != _Array && S_OK == _Array->EnumItems(&Enum))
+        {
+            while (S_OK == Enum->Next(1, &Item, 0))
+            {
+                if (S_OK == Item->GetDisplayName(SIGDN_FILESYSPATH, &Name))
+                {
+                    Result = Mount(Name);
+                    CoTaskMemFree(Name);
+                }
+                Item->Release();
+            }
+            Enum->Release();
+        }
+        return Result;
+    }
+
+private:
+    HRESULT Mount(PWSTR Name)
+    {
+        PWSTR ClassName = 0;
+        for (PWSTR P = Name; L'\0' != *P; P++)
+            if (L'.' == *P)
+                ClassName = P + 1;
+        if (0 == ClassName || L'\0' == ClassName)
+            return HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
+
+        DWORD Error, LauncherError;
+        Error = SpdLaunchStart(ClassName, Name, 1, &Name, &LauncherError);
+        if (ERROR_SUCCESS == Error)
+            Error = LauncherError;
+        return HRESULT_FROM_WIN32(Error);
     }
 };
 

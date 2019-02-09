@@ -22,11 +22,19 @@
 #ifndef WINSPD_SHARED_PRINTLOG_H_INCLUDED
 #define WINSPD_SHARED_PRINTLOG_H_INCLUDED
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define info(format, ...)               printlog(GetStdHandle(STD_OUTPUT_HANDLE), format, __VA_ARGS__)
 #define warn(format, ...)               printlog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__)
 #define fail(ExitCode, format, ...)     (warn(format, __VA_ARGS__), ExitProcess(ExitCode))
 
 void vprintlog(HANDLE h, const char *format, va_list ap);
 void printlog(HANDLE h, const char *format, ...);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

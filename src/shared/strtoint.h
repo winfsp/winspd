@@ -22,7 +22,15 @@
 #ifndef WINSPD_SHARED_STRTOINT_H_INCLUDED
 #define WINSPD_SHARED_STRTOINT_H_INCLUDED
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 long long strtoint(const char *p, int base, int is_signed, const char **endp);
 long long wcstoint(const wchar_t *p, int base, int is_signed, const wchar_t **endp);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

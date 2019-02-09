@@ -1,5 +1,5 @@
 /**
- * @file shared/memalign.h
+ * @file shared/secpipe.h
  *
  * @copyright 2018-2019 Bill Zissimopoulos
  */
@@ -19,15 +19,21 @@
  * associated repository.
  */
 
-#ifndef WINSPD_SHARED_MEMALIGN_H_INCLUDED
-#define WINSPD_SHARED_MEMALIGN_H_INCLUDED
+#ifndef WINSPD_SHARED_SECPIPE_H_INCLUDED
+#define WINSPD_SHARED_SECPIPE_H_INCLUDED
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP);
-VOID SpdIoctlMemAlignFree(PVOID P);
+DWORD SpdCallNamedPipeSecurely(PWSTR PipeName,
+    PVOID InBuffer, ULONG InBufferSize, PVOID OutBuffer, ULONG OutBufferSize,
+    PULONG PBytesTransferred, ULONG Timeout,
+    PSID Sid);
+DWORD SpdCallNamedPipeSecurelyEx(PWSTR PipeName,
+    PVOID InBuffer, ULONG InBufferSize, PVOID OutBuffer, ULONG OutBufferSize,
+    PULONG PBytesTransferred, ULONG Timeout, BOOLEAN AllowImpersonation,
+    PSID Sid);
 
 #ifdef __cplusplus
 }

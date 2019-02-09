@@ -86,25 +86,6 @@ public:
     }
     STDMETHODIMP Execute()
     {
-        IEnumShellItems *Enum;
-        IShellItem *Item;
-        PWSTR Name;
-        if (0 != _Array && S_OK == _Array->EnumItems(&Enum))
-        {
-            while (S_OK == Enum->Next(1, &Item, 0))
-            {
-                if (S_OK == Item->GetDisplayName(SIGDN_FILESYSPATH, &Name))
-                {
-                    OutputDebugStringA(__func__);
-                    OutputDebugStringA(" ");
-                    OutputDebugStringW(Name);
-                    OutputDebugStringA("\n");
-                    CoTaskMemFree(Name);
-                }
-                Item->Release();
-            }
-            Enum->Release();
-        }
         return S_OK;
     }
 
@@ -125,7 +106,7 @@ public:
             _Array->Release();
     }
 
-private:
+protected:
     IShellItemArray *_Array;
 };
 
