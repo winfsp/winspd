@@ -58,10 +58,10 @@ public:
         };
         if (Flag)
             return HRESULT_FROM_WIN32(RegAddEntries(HKEY_LOCAL_MACHINE,
-                Entries, sizeof Entries / sizeof Entries[0]));
+                Entries, sizeof Entries / sizeof Entries[0], 0));
         else
             return HRESULT_FROM_WIN32(RegDeleteEntries(HKEY_LOCAL_MACHINE,
-                Entries, sizeof Entries / sizeof Entries[0]));
+                Entries, sizeof Entries / sizeof Entries[0], 0));
     }
 
     /* IExecuteCommand */

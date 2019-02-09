@@ -23,11 +23,14 @@
 #include <shared/minimal.h>
 #include <shared/regutil.h>
 
-DWORD RegAddEntries(HKEY Key, REGENTRY *Entries, ULONG Count)
+DWORD RegAddEntries(HKEY Key, REGENTRY *Entries, ULONG Count, PBOOLEAN PKeyAdded)
 {
     REGENTRY *Entry;
     HKEY EntryKey = 0, TempKey;
-    DWORD Error;
+    DWORD Disposition, Error;
+
+    if (0 != PKeyAdded)
+        *PKeyAdded = FALSE;
 
     for (ULONG I = 0; Count > I; I++)
     {
@@ -44,8 +47,15 @@ DWORD RegAddEntries(HKEY Key, REGENTRY *Entries, ULONG Count)
                 Error = RegOpenKeyExW(0 != EntryKey ? EntryKey : Key,
                     Entry->Name, 0, KEY_ALL_ACCESS, &TempKey);
             else
+            {
                 Error = RegCreateKeyExW(0 != EntryKey ? EntryKey : Key,
-                    Entry->Name, 0, 0, 0, KEY_ALL_ACCESS, 0, &TempKey, 0);
+                    Entry->Name, 0, 0, 0, KEY_ALL_ACCESS, 0, &TempKey, &Disposition);
+                if (ERROR_SUCCESS == Error && REG_CREATED_NEW_KEY == Disposition)
+                {
+                    if (0 != PKeyAdded)
+                        *PKeyAdded = TRUE;
+                }
+            }
             if (ERROR_SUCCESS != Error)
                 goto exit;
             if (0 != EntryKey)
@@ -70,12 +80,15 @@ exit:
     return Error;
 }
 
-DWORD RegDeleteEntries(HKEY Key, REGENTRY *Entries, ULONG Count)
+DWORD RegDeleteEntries(HKEY Key, REGENTRY *Entries, ULONG Count, PBOOLEAN PKeyDeleted)
 {
     REGENTRY *Entry;
     HKEY EntryKey = 0, TempKey;
     BOOLEAN Skip = FALSE;
     DWORD Error;
+
+    if (0 != PKeyDeleted)
+        *PKeyDeleted = FALSE;
 
     for (ULONG I = 0; Count > I; I++)
     {
@@ -97,7 +110,12 @@ DWORD RegDeleteEntries(HKEY Key, REGENTRY *Entries, ULONG Count)
             else
             {
                 Error = RegDeleteTree(0 != EntryKey ? EntryKey : Key, Entry->Name);
-                if (ERROR_FILE_NOT_FOUND == Error)
+                if (ERROR_SUCCESS == Error)
+                {
+                    if (0 != PKeyDeleted)
+                        *PKeyDeleted = TRUE;
+                }
+                else if (ERROR_FILE_NOT_FOUND == Error)
                     Error = ERROR_SUCCESS;
                 TempKey = 0;
                 Skip = TRUE;

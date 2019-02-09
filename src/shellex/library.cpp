@@ -22,6 +22,7 @@
 #include <shellex/com.hpp>
 #include <shellex/mountcmd.hpp>
 #include <shellex/ejectcmd.hpp>
+#include <shlobj.h>
 
 CoClassOf<MountCommand> MountCommandClass;
 CoClassOf<EjectCommand> EjectCommandClass;
@@ -38,10 +39,18 @@ STDAPI DllCanUnloadNow()
 
 STDAPI DllRegisterServer()
 {
-    return CoClass::RegisterServer();
+    HRESULT Result;
+    Result = CoClass::RegisterServer();
+    if (S_OK == Result)
+        SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, 0, 0);
+    return Result;
 }
 
 STDAPI DllUnregisterServer()
 {
-    return CoClass::UnregisterServer();
+    HRESULT Result;
+    Result = CoClass::UnregisterServer();
+    if (S_OK == Result)
+        SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, 0, 0);
+    return Result;
 }

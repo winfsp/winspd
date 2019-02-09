@@ -34,8 +34,8 @@ typedef struct _REGENTRY
     ULONG Size;
 } REGENTRY;
 
-DWORD RegAddEntries(HKEY Key, REGENTRY *Entries, ULONG Count);
-DWORD RegDeleteEntries(HKEY Key, REGENTRY *Entries, ULONG Count);
+DWORD RegAddEntries(HKEY Key, REGENTRY *Entries, ULONG Count, PBOOLEAN PKeyAdded);
+DWORD RegDeleteEntries(HKEY Key, REGENTRY *Entries, ULONG Count, PBOOLEAN PKeyDeleted);
 
 #ifdef __cplusplus
 }
