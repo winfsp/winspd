@@ -84,20 +84,63 @@ public:
     }
 
 private:
+    DWORD GetFinalPathName(PWSTR Name, PWCHAR Buf, ULONG Size)
+    {
+        HANDLE Handle = INVALID_HANDLE_VALUE;
+        DWORD Error;
+
+        Handle = CreateFileW(Name, 0, 0, 0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
+        if (INVALID_HANDLE_VALUE == Handle)
+            goto exit;
+
+        Size = sizeof(WCHAR) <= Size ? (Size - sizeof(WCHAR)) / sizeof(WCHAR) : 0;
+        Error = GetFinalPathNameByHandle(Handle, Buf, Size,
+            FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+        if (0 == Error || Size < Error)
+        {
+            Error = GetLastError();
+            goto exit;
+        }
+
+        Error = ERROR_SUCCESS;
+
+    exit:
+        if (INVALID_HANDLE_VALUE != Handle)
+            CloseHandle(Handle);
+
+        return Error;
+    }
     HRESULT Mount(PWSTR Name)
     {
         PWSTR ClassName = 0;
+        WCHAR FinalPathName[4/*\\?\*/ + MAX_PATH];
+        DWORD Error, LauncherError;
+
+        Error = GetFinalPathName(Name, FinalPathName, sizeof FinalPathName);
+        if (ERROR_SUCCESS != Error)
+            goto exit;
+        Name = FinalPathName;
+
         for (PWSTR P = Name; L'\0' != *P; P++)
             if (L'.' == *P)
                 ClassName = P + 1;
         if (0 == ClassName || L'\0' == ClassName)
-            return HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
+        {
+            Error = ERROR_NO_ASSOCIATION;
+            goto exit;
+        }
 
-        DWORD Error, LauncherError;
         Error = SpdLaunchStart(ClassName, Name, 1, &Name, &LauncherError);
-        if (ERROR_SUCCESS == Error)
-            Error = LauncherError;
-        return HRESULT_FROM_WIN32(Error);
+        if (ERROR_SUCCESS != Error || ERROR_FILE_NOT_FOUND == LauncherError)
+        {
+            Error = ERROR_NO_ASSOCIATION;
+            goto exit;
+        }
+
+        Error = LauncherError;
+
+    exit:
+        return Error;
     }
 };
 
