@@ -138,18 +138,34 @@ static void scsi_inquiry_dotest(BOOLEAN UnmapSupported)
         ASSERT(ERROR_SUCCESS == Error);
 
         PVPD_IDENTIFICATION_PAGE Identification = (PVOID)DataBuffer;
-        ASSERT(VpdCodeSetAscii ==
-            ((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->CodeSet);
-        ASSERT(VpdIdentifierTypeVendorId ==
-            ((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->IdentifierType);
-        ASSERT(0 == memcmp(((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->Identifier + 0,
+        ASSERT(Identification->PageLength ==
+            sizeof(VPD_IDENTIFICATION_PAGE) + 8 + 16 + 4 + 36 +
+            sizeof(VPD_IDENTIFICATION_PAGE) + 8);
+
+        PVPD_IDENTIFICATION_DESCRIPTOR IdentificationDescriptor =
+            (PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors;
+        ASSERT(VpdCodeSetAscii == IdentificationDescriptor->CodeSet);
+        ASSERT(VpdIdentifierTypeVendorId == IdentificationDescriptor->IdentifierType);
+        ASSERT(8 + 16 + 4 + 36 == IdentificationDescriptor->IdentifierLength);
+        ASSERT(0 == memcmp(IdentificationDescriptor->Identifier + 0,
             SPD_IOCTL_VENDOR_ID, 8));
-        ASSERT(0 == memcmp(((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->Identifier + 8,
+        ASSERT(0 == memcmp(IdentificationDescriptor->Identifier + 8,
             StorageUnitParams.ProductId, 16));
-        ASSERT(0 == memcmp(((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->Identifier + 8 + 16,
+        ASSERT(0 == memcmp(IdentificationDescriptor->Identifier + 8 + 16,
             StorageUnitParams.ProductRevisionLevel, 4));
-        ASSERT(0 == memcmp(((PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors)->Identifier + 8 + 16 + 4,
+        ASSERT(0 == memcmp(IdentificationDescriptor->Identifier + 8 + 16 + 4,
             TestGuidString, 36));
+
+        IdentificationDescriptor = (PVOID)((PUINT8)IdentificationDescriptor +
+            sizeof(VPD_IDENTIFICATION_PAGE) + 8 + 16 + 4 + 36);
+        ASSERT(VpdCodeSetBinary == IdentificationDescriptor->CodeSet);
+        ASSERT(VpdIdentifierTypeVendorId == IdentificationDescriptor->IdentifierType);
+        ASSERT(8 == IdentificationDescriptor->IdentifierLength);
+        ASSERT(
+            'P' == IdentificationDescriptor->Identifier[0] &&
+            'I' == IdentificationDescriptor->Identifier[1] &&
+            'D' == IdentificationDescriptor->Identifier[2] &&
+            ' ' == IdentificationDescriptor->Identifier[3]);
     }
 
     {
