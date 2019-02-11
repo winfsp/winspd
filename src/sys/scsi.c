@@ -230,6 +230,7 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
                 sizeof StorageUnit->StorageUnitParams.ProductId +
                 sizeof StorageUnit->StorageUnitParams.ProductRevisionLevel +
                 sizeof StorageUnit->SerialNumber,
+            Identifier1Length = 8,
         };
 
         switch (Cdb->CDB6INQUIRY3.PageCode)
@@ -273,7 +274,8 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
 
         case VPD_DEVICE_IDENTIFIERS:
             if (sizeof(VPD_IDENTIFICATION_PAGE) +
-                sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + Identifier0Length > DataTransferLength)
+                sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + Identifier0Length +
+                sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + Identifier1Length > DataTransferLength)
                 return SRB_STATUS_DATA_OVERRUN;
 
             Identification = DataBuffer;
@@ -281,7 +283,9 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
             Identification->DeviceTypeQualifier = DEVICE_QUALIFIER_ACTIVE;
             Identification->PageCode = VPD_DEVICE_IDENTIFIERS;
             Identification->PageLength =
-                sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + Identifier0Length;
+                sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + Identifier0Length +
+                sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + Identifier1Length;
+
             IdentificationDescriptor = (PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors;
             IdentificationDescriptor->CodeSet = VpdCodeSetAscii;
             IdentificationDescriptor->IdentifierType = VpdIdentifierTypeVendorId;
@@ -306,8 +310,25 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
                 &StorageUnit->SerialNumber,
                 sizeof StorageUnit->SerialNumber);
 
-            SrbSetDataTransferLength(Srb, sizeof(VPD_IDENTIFICATION_PAGE) +
+            IdentificationDescriptor = (PVOID)((PUINT8)IdentificationDescriptor +
                 sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + Identifier0Length);
+            IdentificationDescriptor->CodeSet = VpdCodeSetBinary;
+            IdentificationDescriptor->IdentifierType = VpdIdentifierTypeVendorId;
+            IdentificationDescriptor->Association = VpdAssocDevice;
+            IdentificationDescriptor->IdentifierLength = Identifier1Length;
+            U32 = StorageUnit->OwnerProcessId;
+            IdentificationDescriptor->Identifier[0] = 'P';
+            IdentificationDescriptor->Identifier[1] = 'I';
+            IdentificationDescriptor->Identifier[2] = 'D';
+            IdentificationDescriptor->Identifier[3] = ' ';
+            IdentificationDescriptor->Identifier[4] = (U32 >> 24) & 0xff;
+            IdentificationDescriptor->Identifier[5] = (U32 >> 16) & 0xff;
+            IdentificationDescriptor->Identifier[6] = (U32 >> 8) & 0xff;
+            IdentificationDescriptor->Identifier[7] = U32 & 0xff;
+
+            SrbSetDataTransferLength(Srb, sizeof(VPD_IDENTIFICATION_PAGE) +
+                sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + Identifier0Length +
+                sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + Identifier1Length);
 
             return SRB_STATUS_SUCCESS;
 
