@@ -20,7 +20,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\shared\ioctl.c" />
     <ClCompile Include="..\..\..\src\shared\launch.c" />
     <ClCompile Include="..\..\..\src\shared\regutil.c" />
     <ClCompile Include="..\..\..\src\shared\secpipe.c" />

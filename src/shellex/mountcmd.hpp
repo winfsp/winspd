@@ -84,7 +84,7 @@ public:
     }
 
 private:
-    DWORD GetFinalPathName(PWSTR Name, PWCHAR Buf, ULONG Size)
+    static DWORD GetFinalPathName(PWSTR Name, PWCHAR Buf, ULONG Size)
     {
         HANDLE Handle = INVALID_HANDLE_VALUE;
         DWORD Error;

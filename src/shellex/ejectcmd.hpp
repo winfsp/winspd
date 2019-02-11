@@ -112,7 +112,7 @@ public:
     }
 
 private:
-    DWORD GetVolume(PWSTR Name, PWSTR VolumeBuf, ULONG VolumeBufSize)
+    static DWORD GetVolume(PWSTR Name, PWSTR VolumeBuf, ULONG VolumeBufSize)
     {
         if (4 > VolumeBufSize / sizeof(WCHAR))
             return ERROR_INVALID_PARAMETER;
@@ -135,7 +135,7 @@ private:
         {
             VolumeBuf[0] = L'\\';
             VolumeBuf[1] = L'\\';
-            VolumeBuf[2] = L'.';
+            VolumeBuf[2] = L'?';
             VolumeBuf[3] = L'\\';
             Len += 4;
         }
@@ -149,7 +149,13 @@ private:
     {
         WCHAR Volume[MAX_PATH];
         HANDLE Handle = INVALID_HANDLE_VALUE;
-        INQUIRYDATA InquiryData;
+        STORAGE_PROPERTY_QUERY Query;
+        DWORD BytesTransferred;
+        union
+        {
+            STORAGE_DEVICE_DESCRIPTOR V;
+            UINT8 B[sizeof(STORAGE_DEVICE_DESCRIPTOR) + 1024];
+        } DescBuf;
         DWORD Error;
         BOOL Result = FALSE;
 
@@ -157,16 +163,29 @@ private:
         if (ERROR_SUCCESS != Error)
             goto exit;
 
-        Error = SpdIoctlOpenDevice(Volume, &Handle);
-        if (ERROR_SUCCESS != Error)
+        Handle = CreateFileW(Volume, 0, 0, 0, OPEN_EXISTING, 0, 0);
+        if (INVALID_HANDLE_VALUE == Handle)
+        {
+            Error = GetLastError();
             goto exit;
+        }
 
-        Error = SpdIoctlScsiInquiry(Handle, 0, &InquiryData, 0);
-        if (ERROR_SUCCESS != Error)
+        Query.PropertyId = StorageDeviceProperty;
+        Query.QueryType = PropertyStandardQuery;
+        Query.AdditionalParameters[0] = 0;
+        memset(&DescBuf, 0, sizeof DescBuf);
+
+        if (!DeviceIoControl(Handle, IOCTL_STORAGE_QUERY_PROPERTY,
+            &Query, sizeof Query, &DescBuf, sizeof DescBuf,
+            &BytesTransferred, 0))
+        {
+            Error = GetLastError();
             goto exit;
+        }
 
-        Result = 0 == memcmp(InquiryData.ProductId,
-            SPD_IOCTL_VENDOR_ID, sizeof SPD_IOCTL_VENDOR_ID - 1);
+        if (sizeof DescBuf >= DescBuf.V.Size && 0 != DescBuf.V.VendorIdOffset)
+            Result = 0 == strcmp((const char *)((PUINT8)&DescBuf + DescBuf.V.VendorIdOffset),
+                SPD_IOCTL_VENDOR_ID);
 
     exit:
         if (INVALID_HANDLE_VALUE != Handle)
@@ -176,17 +195,23 @@ private:
     }
     HRESULT Eject(PWSTR Name)
     {
-        WCHAR Volume[MAX_PATH];
+        WCHAR Volume[4/*\\?\*/ + MAX_PATH];
         DWORD Error, LauncherError;
 
         Error = GetVolume(Name, Volume, sizeof Volume);
         if (ERROR_SUCCESS != Error)
-            return HRESULT_FROM_WIN32(Error);
+            goto exit;
 
-        Error = SpdLaunchStop(L".Volume", Volume, &LauncherError);
-        if (ERROR_SUCCESS == Error)
-            Error = LauncherError;
+        Error = SpdLaunchStop(L".volume.", Volume, &LauncherError);
+        if (ERROR_SUCCESS != Error || ERROR_FILE_NOT_FOUND == LauncherError)
+        {
+            Error = ERROR_NO_ASSOCIATION;
+            goto exit;
+        }
 
+        Error = LauncherError;
+
+    exit:
         return HRESULT_FROM_WIN32(Error);
     }
 };

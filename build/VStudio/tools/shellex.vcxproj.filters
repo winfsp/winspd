@@ -22,9 +22,6 @@
     <ClCompile Include="..\..\..\src\shared\launch.c">
       <Filter>Source\shared</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\shared\ioctl.c">
-      <Filter>Source\shared</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\..\src\shellex\version.rc">
