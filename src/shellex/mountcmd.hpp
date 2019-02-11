@@ -140,7 +140,7 @@ private:
         Error = LauncherError;
 
     exit:
-        return Error;
+        return HRESULT_FROM_WIN32(Error);
     }
 };
 
