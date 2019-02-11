@@ -145,23 +145,22 @@ private:
 
         return ERROR_SUCCESS;
     }
-    BOOL CanEject(PWSTR Name)
+    static DWORD GetVolumeOwnerProcessId(PWSTR Volume, PDWORD PProcessId)
     {
-        WCHAR Volume[MAX_PATH];
         HANDLE Handle = INVALID_HANDLE_VALUE;
         STORAGE_PROPERTY_QUERY Query;
         DWORD BytesTransferred;
         union
         {
-            STORAGE_DEVICE_DESCRIPTOR V;
-            UINT8 B[sizeof(STORAGE_DEVICE_DESCRIPTOR) + 1024];
+            STORAGE_DEVICE_DESCRIPTOR Device;
+            STORAGE_DEVICE_ID_DESCRIPTOR DeviceId;
+            UINT8 B[1024];
         } DescBuf;
+        PSTORAGE_IDENTIFIER Identifier;
+        DWORD ProcessId;
         DWORD Error;
-        BOOL Result = FALSE;
 
-        Error = GetVolume(Name, Volume, sizeof Volume);
-        if (ERROR_SUCCESS != Error)
-            goto exit;
+        *PProcessId = 0;
 
         Handle = CreateFileW(Volume, 0, 0, 0, OPEN_EXISTING, 0, 0);
         if (INVALID_HANDLE_VALUE == Handle)
@@ -183,26 +182,101 @@ private:
             goto exit;
         }
 
-        if (sizeof DescBuf >= DescBuf.V.Size && 0 != DescBuf.V.VendorIdOffset)
-            Result = 0 == strcmp((const char *)((PUINT8)&DescBuf + DescBuf.V.VendorIdOffset),
-                SPD_IOCTL_VENDOR_ID);
+        Error = ERROR_NO_ASSOCIATION;
+        if (sizeof DescBuf >= DescBuf.Device.Size && 0 != DescBuf.Device.VendorIdOffset)
+            if (0 == strcmp((const char *)((PUINT8)&DescBuf + DescBuf.Device.VendorIdOffset),
+                SPD_IOCTL_VENDOR_ID))
+                Error = ERROR_SUCCESS;
+        if (ERROR_SUCCESS != Error)
+            goto exit;
+
+        Query.PropertyId = StorageDeviceIdProperty;
+        Query.QueryType = PropertyStandardQuery;
+        Query.AdditionalParameters[0] = 0;
+        memset(&DescBuf, 0, sizeof DescBuf);
+
+        if (!DeviceIoControl(Handle, IOCTL_STORAGE_QUERY_PROPERTY,
+            &Query, sizeof Query, &DescBuf, sizeof DescBuf,
+            &BytesTransferred, 0))
+        {
+            Error = GetLastError();
+            goto exit;
+        }
+
+        Error = ERROR_NO_ASSOCIATION;
+        if (sizeof DescBuf >= DescBuf.DeviceId.Size)
+        {
+            Identifier = (PSTORAGE_IDENTIFIER)DescBuf.DeviceId.Identifiers;
+            for (ULONG I = 0; DescBuf.DeviceId.NumberOfIdentifiers > I; I++)
+            {
+                if (StorageIdCodeSetBinary == Identifier->CodeSet &&
+                    StorageIdTypeVendorSpecific == Identifier->Type &&
+                    StorageIdAssocDevice == Identifier->Association &&
+                    8 == Identifier->IdentifierSize &&
+                    'P' == Identifier->Identifier[0] &&
+                    'I' == Identifier->Identifier[1] &&
+                    'D' == Identifier->Identifier[2] &&
+                    ' ' == Identifier->Identifier[3])
+                {
+                    ProcessId =
+                        (Identifier->Identifier[0] << 24) |
+                        (Identifier->Identifier[0] << 16) |
+                        (Identifier->Identifier[0] << 8) |
+                        (Identifier->Identifier[0]);
+                    Error = ERROR_SUCCESS;
+                    break;
+                }
+                Identifier = (PSTORAGE_IDENTIFIER)((PUINT8)Identifier + Identifier->NextOffset);
+            }
+        }
+        if (ERROR_SUCCESS != Error)
+            goto exit;
+
+        *PProcessId = ProcessId;
 
     exit:
         if (INVALID_HANDLE_VALUE != Handle)
             CloseHandle(Handle);
 
+        return Error;
+    }
+    BOOL CanEject(PWSTR Name)
+    {
+        WCHAR Volume[4/*\\?\*/ + MAX_PATH];
+        DWORD ProcessId;
+        DWORD Error;
+        BOOL Result = FALSE;
+
+        Error = GetVolume(Name, Volume, sizeof Volume);
+        if (ERROR_SUCCESS != Error)
+            goto exit;
+
+        Error = GetVolumeOwnerProcessId(Volume, &ProcessId);
+        if (ERROR_SUCCESS != Error)
+            goto exit;
+
+        Result = TRUE;
+
+    exit:
         return Result;
     }
     HRESULT Eject(PWSTR Name)
     {
         WCHAR Volume[4/*\\?\*/ + MAX_PATH];
+        WCHAR ProcessIdStr[16];
+        DWORD ProcessId;
         DWORD Error, LauncherError;
 
         Error = GetVolume(Name, Volume, sizeof Volume);
         if (ERROR_SUCCESS != Error)
             goto exit;
 
-        Error = SpdLaunchStop(L".volume.", Volume, &LauncherError);
+        Error = GetVolumeOwnerProcessId(Volume, &ProcessId);
+        if (ERROR_SUCCESS != Error)
+            goto exit;
+
+        wsprintfW(ProcessIdStr, L"%08lx", ProcessId);
+        Error = SpdLaunchStop(L".pid.", ProcessIdStr, &LauncherError);
         if (ERROR_SUCCESS != Error || ERROR_FILE_NOT_FOUND == LauncherError)
         {
             Error = ERROR_NO_ASSOCIATION;
