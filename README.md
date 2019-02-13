@@ -58,7 +58,10 @@ The project source code is organized as follows:
     * :file_folder: [inc/winspd](inc/winspd): Public headers for the WinSpd API.
 * :file_folder: [src](src): WinSpd source code.
     * :file_folder: [src/dll](src/dll): Source code to the WinSpd DLL.
+    * :file_folder: [src/dotnet](src/dotnet): Source code to the .NET layer.
+    * :file_folder: [src/launcher](src/launcher): Source code to the launcher service and the launchctl utility.
     * :file_folder: [src/scsitool](src/scsitool): Source code to the scsitool command line utility.
+    * :file_folder: [src/shellex](src/shellex): Source code to the WinSpd shell extension.
     * :file_folder: [src/stgtest](src/stgtest): Source code to the stgtest storage testing tool.
     * :file_folder: [src/sys](src/sys): Source code to the WinSpd kernel driver.
 * :file_folder: [tst](tst): Source code to example storage units and test tools.
