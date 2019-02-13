@@ -20,9 +20,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{7FEAC571-EB72-4B9B-B274-7EC15719AF1B}</ProjectGuid>
+    <ProjectGuid>{191E3C10-A4D9-4A71-AC78-CCC52ECE74FB}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>launcher</RootNamespace>
+    <RootNamespace>launchctl</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -179,14 +179,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\launcher\launcher.c" />
+    <ClCompile Include="..\..\..\src\launcher\launchctl.c" />
+    <ClCompile Include="..\..\..\src\shared\printlog.c" />
+    <ClCompile Include="..\..\..\src\shared\secpipe.c" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\..\..\src\launcher\launcher-version.rc" />
+    <ResourceCompile Include="..\..\..\src\launcher\launchctl-version.rc" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\shared\launch.h" />
     <ClInclude Include="..\..\..\src\shared\minimal.h" />
+    <ClInclude Include="..\..\..\src\shared\printlog.h" />
+    <ClInclude Include="..\..\..\src\shared\secpipe.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
