@@ -39,8 +39,15 @@ public:
     static constexpr PWSTR ThreadingModel = L"Apartment";
     static STDMETHODIMP Register(BOOL Flag)
     {
+        SHSTOCKICONINFO IconInfo = { sizeof(SHSTOCKICONINFO) };
+        WCHAR DefaultIcon[MAX_PATH + 16];
+        DefaultIcon[0] = L'\0';
+        if (S_OK == SHGetStockIconInfo(SIID_DRIVEFIXED, SHGSI_ICONLOCATION, &IconInfo))
+            wsprintfW(DefaultIcon, L"%s,%d", IconInfo.szPath, IconInfo.iIcon);
+
         WCHAR GuidStr[40];
         StringFromGUID2(Clsid, GuidStr, sizeof GuidStr / sizeof GuidStr[0]);
+
         REGENTRY Entries[] =
         {
             { L"SOFTWARE\\Classes" },
@@ -51,6 +58,11 @@ public:
             { L"MultiSelectModel", REG_SZ, L"Document", sizeof L"Document" },
             { L"command", 1 },
             { L"DelegateExecute", REG_SZ, GuidStr, (lstrlenW(GuidStr) + 1) * sizeof(WCHAR) },
+            { 0 },
+            { L"SOFTWARE\\Classes" },
+            { L"" SPD_SHELLEX_MOUNT_PROGID, 1 },
+            { L"DefaultIcon", 1 },
+            { 0, REG_SZ, DefaultIcon, (lstrlenW(DefaultIcon) + 1) * sizeof(WCHAR) },
         };
         if (Flag)
             return HRESULT_FROM_WIN32(RegAddEntries(HKEY_LOCAL_MACHINE,

@@ -44,6 +44,7 @@ public:
     {
         WCHAR GuidStr[40];
         StringFromGUID2(Clsid, GuidStr, sizeof GuidStr / sizeof GuidStr[0]);
+
         REGENTRY Entries[] =
         {
             { L"SOFTWARE\\Classes" },
