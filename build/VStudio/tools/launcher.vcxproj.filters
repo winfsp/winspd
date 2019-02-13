@@ -13,6 +13,9 @@
     <ClCompile Include="..\..\..\src\launcher\launcher.c">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\shared\strtoint.c">
+      <Filter>Source\shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\..\src\launcher\launcher-version.rc">
@@ -24,6 +27,9 @@
       <Filter>Source\shared</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\shared\launch.h">
+      <Filter>Source\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\shared\strtoint.h">
       <Filter>Source\shared</Filter>
     </ClInclude>
   </ItemGroup>

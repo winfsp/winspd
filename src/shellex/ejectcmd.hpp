@@ -275,7 +275,7 @@ private:
         if (ERROR_SUCCESS != Error)
             goto exit;
 
-        wsprintfW(ProcessIdStr, L"%08lx", ProcessId);
+        wsprintfW(ProcessIdStr, L"%lu", ProcessId);
         Error = SpdLaunchStop(L".pid.", ProcessIdStr, &LauncherError);
         if (ERROR_SUCCESS != Error || ERROR_FILE_NOT_FOUND == LauncherError)
         {

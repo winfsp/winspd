@@ -22,6 +22,7 @@
 #include <windows.h>
 #include <shared/minimal.h>
 #include <shared/launch.h>
+#include <shared/strtoint.h>
 #include <aclapi.h>
 #include <sddl.h>
 
@@ -143,8 +144,37 @@ static VOID CALLBACK KillProcessWait(PVOID Context, BOOLEAN Timeout)
     MemFree(KillProcessData);
 }
 
-static SVC_INSTANCE *SvcInstanceLookup(PWSTR ClassName, PWSTR InstanceName)
+static SVC_INSTANCE *SvcInstanceLookupByPid(DWORD ProcessId)
 {
+    SVC_INSTANCE *SvcInstance;
+    PLIST_ENTRY ListEntry;
+
+    for (ListEntry = SvcInstanceList.Flink;
+        &SvcInstanceList != ListEntry;
+        ListEntry = ListEntry->Flink)
+    {
+        SvcInstance = CONTAINING_RECORD(ListEntry, SVC_INSTANCE, ListEntry);
+
+        if (ProcessId == SvcInstance->ProcessId)
+            return SvcInstance;
+    }
+
+    return 0;
+}
+
+static SVC_INSTANCE *SvcInstanceLookup(PWSTR ClassName, PWSTR InstanceName,
+    BOOLEAN AllowPidLookup)
+{
+    if (AllowPidLookup && 0 == invariant_wcsicmp(ClassName, L".pid."))
+    {
+        PWSTR Endp;
+        DWORD ProcessId;
+
+        ProcessId = (DWORD)wcstoint(InstanceName, 0, 0, &Endp);
+
+        return SvcInstanceLookupByPid(ProcessId);
+    }
+
     SVC_INSTANCE *SvcInstance;
     PLIST_ENTRY ListEntry;
 
@@ -402,7 +432,13 @@ static DWORD SvcInstanceCreate(HANDLE ClientToken,
 
     EnterCriticalSection(&SvcInstanceLock);
 
-    if (0 != SvcInstanceLookup(ClassName, InstanceName))
+    if (0 == invariant_wcsicmp(ClassName, L".pid."))
+    {
+        Error = ERROR_INVALID_PARAMETER;
+        goto exit;
+    }
+
+    if (0 != SvcInstanceLookup(ClassName, InstanceName, FALSE))
     {
         Error = ERROR_ALREADY_EXISTS;
         goto exit;
@@ -620,7 +656,7 @@ static DWORD SvcInstanceStop(HANDLE ClientToken,
 
     EnterCriticalSection(&SvcInstanceLock);
 
-    SvcInstance = SvcInstanceLookup(ClassName, InstanceName);
+    SvcInstance = SvcInstanceLookup(ClassName, InstanceName, TRUE);
     if (0 == SvcInstance)
     {
         Error = ERROR_FILE_NOT_FOUND;
@@ -651,7 +687,7 @@ static DWORD SvcInstanceGetInfo(HANDLE ClientToken,
 
     EnterCriticalSection(&SvcInstanceLock);
 
-    SvcInstance = SvcInstanceLookup(ClassName, InstanceName);
+    SvcInstance = SvcInstanceLookup(ClassName, InstanceName, TRUE);
     if (0 == SvcInstance)
     {
         Error = ERROR_FILE_NOT_FOUND;
