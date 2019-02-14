@@ -1012,6 +1012,9 @@ exit:
     SvcStatus.dwWaitHint = 0;
     SetServiceStatus(SvcHandle, &SvcStatus);
 
+    SvcLog(EVENTLOG_INFORMATION_TYPE,
+        L"The service %s has been stopped.", L"" PROGNAME);
+
     return 0;
 }
 
