@@ -41,9 +41,14 @@ NTSTATUS SpdDispatchPnp(PDEVICE_OBJECT DeviceObject, PIRP Irp)
     {
     case IRP_MN_QUERY_CAPABILITIES:
         {
-            PDEVICE_CAPABILITIES DeviceCapabilities =
-                IrpSp->Parameters.DeviceCapabilities.Capabilities;
-            SpdPnpSetDeviceCapabilities(DeviceCapabilities);
+            SCSI_ADDRESS ScsiAddress;
+            Result = SpdGetScsiAddress(DeviceObject, &ScsiAddress);
+            if (NT_SUCCESS(Result))
+            {
+                PDEVICE_CAPABILITIES DeviceCapabilities =
+                    IrpSp->Parameters.DeviceCapabilities.Capabilities;
+                SpdPnpSetDeviceCapabilities(DeviceCapabilities);
+            }
         }
         break;
 

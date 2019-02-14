@@ -62,8 +62,6 @@ static VOID SpdIoctlProvision(SPD_DEVICE_EXTENSION *DeviceExtension,
     Irp->IoStatus.Status = STATUS_SUCCESS;
     Irp->IoStatus.Information = sizeof *Params;
 
-    StorPortNotification(BusChangeDetected, DeviceExtension, (UCHAR)0);
-
 exit:;
 }
 
@@ -86,8 +84,6 @@ static VOID SpdIoctlUnprovision(SPD_DEVICE_EXTENSION *DeviceExtension,
 
     Irp->IoStatus.Status = STATUS_SUCCESS;
     Irp->IoStatus.Information = 0;
-
-    StorPortNotification(BusChangeDetected, DeviceExtension, (UCHAR)0);
 
 exit:;
 }

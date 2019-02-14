@@ -208,6 +208,8 @@ NTSTATUS SpdStorageUnitProvision(
         goto exit;
     }
 
+    StorPortNotification(BusChangeDetected, DeviceExtension, (UCHAR)0);
+
     *PBtl = Btl;
     Result = STATUS_SUCCESS;
 
@@ -281,6 +283,8 @@ NTSTATUS SpdStorageUnitUnprovision(
     /* stop the ioq and dereference the storage unit */
     SpdIoqReset(StorageUnit->Ioq, TRUE);
     SpdStorageUnitDereference(DeviceExtension, StorageUnit);
+
+    StorPortNotification(BusChangeDetected, DeviceExtension, (UCHAR)0);
 
     Result = STATUS_SUCCESS;
 
