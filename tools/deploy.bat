@@ -10,7 +10,7 @@ set TARGET=\\%TARGET_MACHINE%%TARGET_ACCOUNT%
 
 cd %~dp0..
 mkdir %TARGET% 2>nul
-for %%f in (winspd-%SUFFIX%.inf winspd-%SUFFIX%.cat winspd-%SUFFIX%.cer winspd-%SUFFIX%.sys winspd-%SUFFIX%.dll scsitool-%SUFFIX%.exe stgtest-%SUFFIX%.exe rawdisk-%SUFFIX%.exe winspd-tests-%SUFFIX%.exe) do (
+for %%f in (winspd-%SUFFIX%.inf winspd-%SUFFIX%.cat winspd-%SUFFIX%.cer winspd-%SUFFIX%.sys winspd-%SUFFIX%.dll scsitool-%SUFFIX%.exe stgtest-%SUFFIX%.exe rawdisk-%SUFFIX%.exe winspd-tests-%SUFFIX%.exe launcher-%SUFFIX%.exe launchctl-%SUFFIX%.exe) do (
     copy build\VStudio\build\%CONFIG%\%%f %TARGET% >nul
 )
 for %%f in (scsicompliance.bat) do (
@@ -29,3 +29,8 @@ copy %KitRoot%\bin\%SUFFIX%\certmgr.exe %TARGET% >nul
 echo certmgr /add /c winspd-%SUFFIX%.cer /s /r localMachine root >%TARGET%install.bat
 echo certmgr /add /c winspd-%SUFFIX%.cer /s /r localMachine TrustedPublisher >>%TARGET%install.bat
 echo devcon install winspd-%SUFFIX%.inf root\winspd >>%TARGET%install.bat
+
+echo sc create WinSpd.Launcher binPath=%%~dp0launcher-%SUFFIX%.exe >%TARGET%sc-create.bat
+echo sc start WinSpd.Launcher >%TARGET%sc-start.bat
+echo sc stop WinSpd.Launcher >%TARGET%sc-stop.bat
+echo sc delete WinSpd.Launcher >%TARGET%sc-delete.bat
