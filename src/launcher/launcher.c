@@ -643,9 +643,16 @@ static DWORD SvcInstanceStart(HANDLE ClientToken,
     PWSTR ClassName, PWSTR InstanceName, ULONG Argc, PWSTR *Argv, HANDLE Job)
 {
     SVC_INSTANCE *SvcInstance;
+    DWORD Error;
 
-    return SvcInstanceCreate(ClientToken, ClassName, InstanceName, Argc, Argv, Job,
+    Error = SvcInstanceCreate(ClientToken, ClassName, InstanceName, Argc, Argv, Job,
         &SvcInstance);
+    if (ERROR_SUCCESS != Error)
+        return Error;
+
+    SvcInstanceRelease(SvcInstance);
+
+    return ERROR_SUCCESS;
 }
 
 static DWORD SvcInstanceStop(HANDLE ClientToken,
