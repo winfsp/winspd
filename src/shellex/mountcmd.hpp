@@ -103,7 +103,10 @@ private:
 
         Handle = CreateFileW(Name, 0, 0, 0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
         if (INVALID_HANDLE_VALUE == Handle)
+        {
+            Error = GetLastError();
             goto exit;
+        }
 
         Size = sizeof(WCHAR) <= Size ? (Size - sizeof(WCHAR)) / sizeof(WCHAR) : 0;
         Error = GetFinalPathNameByHandle(Handle, Buf, Size,
