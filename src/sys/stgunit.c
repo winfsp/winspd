@@ -27,7 +27,7 @@ ULONG SpdStorageUnitCapacity = SPD_IOCTL_STORAGE_UNIT_CAPACITY;
 
 static VOID SpdDeviceExtensionNotifyRoutine(HANDLE ParentId, HANDLE ProcessId0, BOOLEAN Create);
 
-NTSTATUS SpdDeviceExtensionInit(SPD_DEVICE_EXTENSION *DeviceExtension)
+NTSTATUS SpdDeviceExtensionInit(SPD_DEVICE_EXTENSION *DeviceExtension, PVOID BusInformation)
 {
     ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql());
     ASSERT(0 != DeviceExtension);
@@ -49,6 +49,7 @@ NTSTATUS SpdDeviceExtensionInit(SPD_DEVICE_EXTENSION *DeviceExtension)
         goto exit;
 
     KeInitializeSpinLock(&DeviceExtension->SpinLock);
+    DeviceExtension->DeviceObject = BusInformation;
     DeviceExtension->StorageUnitCapacity = SpdStorageUnitCapacity;
     SpdGlobalDeviceExtension = DeviceExtension;
 

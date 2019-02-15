@@ -35,7 +35,7 @@ ULONG SpdHwFindAdapter(
         ASSERT(PASSIVE_LEVEL == KeGetCurrentIrql()));
 
     SPD_DEVICE_EXTENSION *DeviceExtension = DeviceExtension0;
-    if (NT_SUCCESS(SpdDeviceExtensionInit(DeviceExtension)))
+    if (NT_SUCCESS(SpdDeviceExtensionInit(DeviceExtension, BusInformation)))
     {
         ConfigInfo->MaximumTransferLength = SP_UNINITIALIZED_VALUE;
         ConfigInfo->NumberOfPhysicalBreaks = SP_UNINITIALIZED_VALUE;

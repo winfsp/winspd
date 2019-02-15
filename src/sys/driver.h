@@ -219,10 +219,18 @@ UCHAR SpdSrbShutdown(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbPnp(PVOID DeviceExtension, PVOID Srb);
 UCHAR SpdSrbWmi(PVOID DeviceExtension, PVOID Srb);
 NTSTATUS SpdNtStatusFromStorStatus(ULONG StorStatus);
+
+/* PnP capabilities */
+#define SpdPnpSetAdapterCapabilities(D) \
+    do                                  \
+    {                                   \
+        (D)->Removable = 1;             \
+        (D)->SilentInstall = 1;         \
+        (D)->SurpriseRemovalOK = 1;     \
+    } while (0,0)
 #define SpdPnpSetDeviceCapabilities(D)  \
     do                                  \
     {                                   \
-        (D)->EjectSupported = 1;        \
         (D)->Removable = 1;             \
         (D)->SilentInstall = 1;         \
         (D)->SurpriseRemovalOK = 1;     \
@@ -346,6 +354,7 @@ typedef struct _SPD_STORAGE_UNIT SPD_STORAGE_UNIT;
 typedef struct _SPD_DEVICE_EXTENSION
 {
     KSPIN_LOCK SpinLock;
+    PDEVICE_OBJECT DeviceObject;        /* adapter device */
     ULONG StorageUnitCount, StorageUnitCapacity;
     SPD_STORAGE_UNIT *StorageUnits[];
 } SPD_DEVICE_EXTENSION;
@@ -359,10 +368,10 @@ typedef struct _SPD_STORAGE_UNIT
     ULONG OwnerProcessId;
     SPD_IOQ *Ioq;
     /* fields not protected */
-    PDEVICE_OBJECT DeviceObject;
+    PDEVICE_OBJECT DeviceObject;        /* disk device */
     ULONG TransactProcessId;
 } SPD_STORAGE_UNIT;
-NTSTATUS SpdDeviceExtensionInit(SPD_DEVICE_EXTENSION *DeviceExtension);
+NTSTATUS SpdDeviceExtensionInit(SPD_DEVICE_EXTENSION *DeviceExtension, PVOID BusInformation);
 VOID SpdDeviceExtensionFini(SPD_DEVICE_EXTENSION *DeviceExtension);
 SPD_DEVICE_EXTENSION *SpdDeviceExtensionAcquire(VOID);
 VOID SpdDeviceExtensionRelease(SPD_DEVICE_EXTENSION *DeviceExtension);

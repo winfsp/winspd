@@ -40,23 +40,29 @@ NTSTATUS SpdDispatchPnp(PDEVICE_OBJECT DeviceObject, PIRP Irp)
     switch (MinorFunction)
     {
     case IRP_MN_QUERY_CAPABILITIES:
+        /* if this is an adapter device set our own capabilities */
         {
-            SCSI_ADDRESS ScsiAddress;
-            Result = SpdGetScsiAddress(DeviceObject, &ScsiAddress);
-            if (NT_SUCCESS(Result))
+            SPD_DEVICE_EXTENSION *DeviceExtension = SpdDeviceExtensionAcquire();
+            if (0 != DeviceExtension)
             {
-                PDEVICE_CAPABILITIES DeviceCapabilities =
-                    IrpSp->Parameters.DeviceCapabilities.Capabilities;
-                SpdPnpSetDeviceCapabilities(DeviceCapabilities);
+                if (DeviceObject == DeviceExtension->DeviceObject)
+                {
+                    PDEVICE_CAPABILITIES DeviceCapabilities =
+                        IrpSp->Parameters.DeviceCapabilities.Capabilities;
+                    SpdPnpSetAdapterCapabilities(DeviceCapabilities);
+                }
+                SpdDeviceExtensionRelease(DeviceExtension);
             }
         }
         break;
 
     case IRP_MN_START_DEVICE:
+        /* if this is a disk device associate the device object with our storage unit */
         SpdStorageUnitGlobalSetDevice(DeviceObject);
         break;
 
     case IRP_MN_REMOVE_DEVICE:
+        /* if this is a disk device unprovision the associated storage unit after StorPortDispatchPnp */
         {
             SPD_STORAGE_UNIT *StorageUnit = SpdStorageUnitGlobalReferenceByDevice(DeviceObject);
             if (0 != StorageUnit)

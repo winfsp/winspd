@@ -168,13 +168,13 @@ UCHAR SpdSrbPnp(PVOID DeviceExtension, PVOID Srb)
      * Revisit if/when we switch to STORAGE_REQUEST_BLOCK.
      */
 
-    PSCSI_PNP_REQUEST_BLOCK PnP = Srb;
+    PSCSI_PNP_REQUEST_BLOCK Pnp = Srb;
     UCHAR SrbStatus = SRB_STATUS_INVALID_REQUEST;
 
-    switch (PnP->PnPAction)
+    switch (Pnp->PnPAction)
     {
     case StorQueryCapabilities:
-        if (!FlagOn(PnP->SrbPnPFlags, SRB_PNP_FLAGS_ADAPTER_REQUEST))
+        if (!FlagOn(Pnp->SrbPnPFlags, SRB_PNP_FLAGS_ADAPTER_REQUEST))
         {
             PVOID DataBuffer = SrbGetDataBuffer(Srb);
             ULONG DataTransferLength = SrbGetDataTransferLength(Srb);
