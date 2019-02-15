@@ -288,7 +288,7 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
 
             IdentificationDescriptor = (PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors;
             IdentificationDescriptor->CodeSet = VpdCodeSetAscii;
-            IdentificationDescriptor->IdentifierType = VpdIdentifierTypeVendorId;
+            IdentificationDescriptor->IdentifierType = VpdIdentifierTypeVendorSpecific;
             IdentificationDescriptor->Association = VpdAssocDevice;
             IdentificationDescriptor->IdentifierLength = Identifier0Length;
             RtlCopyMemory(IdentificationDescriptor->Identifier,
@@ -313,7 +313,7 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
             IdentificationDescriptor = (PVOID)((PUINT8)IdentificationDescriptor +
                 sizeof(VPD_IDENTIFICATION_DESCRIPTOR) + Identifier0Length);
             IdentificationDescriptor->CodeSet = VpdCodeSetBinary;
-            IdentificationDescriptor->IdentifierType = VpdIdentifierTypeVendorId;
+            IdentificationDescriptor->IdentifierType = VpdIdentifierTypeVendorSpecific;
             IdentificationDescriptor->Association = VpdAssocDevice;
             IdentificationDescriptor->IdentifierLength = Identifier1Length;
             U32 = StorageUnit->OwnerProcessId;

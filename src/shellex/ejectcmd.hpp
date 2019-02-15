@@ -220,10 +220,10 @@ private:
                     ' ' == Identifier->Identifier[3])
                 {
                     ProcessId =
-                        (Identifier->Identifier[0] << 24) |
-                        (Identifier->Identifier[0] << 16) |
-                        (Identifier->Identifier[0] << 8) |
-                        (Identifier->Identifier[0]);
+                        (Identifier->Identifier[4] << 24) |
+                        (Identifier->Identifier[5] << 16) |
+                        (Identifier->Identifier[6] << 8) |
+                        (Identifier->Identifier[7]);
                     Error = ERROR_SUCCESS;
                     break;
                 }
