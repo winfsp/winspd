@@ -156,6 +156,32 @@ NTSTATUS SpdStorageUnitProvision(
     StorageUnit->RefCount = 1;
     RtlCopyMemory(&StorageUnit->StorageUnitParams, StorageUnitParams,
         sizeof *StorageUnitParams);
+    /* "left align" ProductId except that we allow all-NUL for testing */
+    if ('\0' != StorageUnit->StorageUnitParams.ProductId[0])
+        for (UCHAR *P = StorageUnit->StorageUnitParams.ProductId,
+            *EndP = P + sizeof StorageUnit->StorageUnitParams.ProductId,
+            Spaces = FALSE;
+            EndP > P; P++)
+        {
+            if (Spaces || ' ' > *P || *P >= 0x7f)
+            {
+                *P = ' ';
+                Spaces = TRUE;
+            }
+        }
+    /* "left align" ProductRevisionLevel except that we allow all-NUL for testing */
+    if ('\0' != StorageUnit->StorageUnitParams.ProductRevisionLevel[0])
+        for (UCHAR *P = StorageUnit->StorageUnitParams.ProductRevisionLevel,
+            *EndP = P + sizeof StorageUnit->StorageUnitParams.ProductRevisionLevel,
+            Spaces = FALSE;
+            EndP > P; P++)
+        {
+            if (Spaces || ' ' > *P || *P >= 0x7f)
+            {
+                *P = ' ';
+                Spaces = TRUE;
+            }
+        }
 #define Guid                            StorageUnit->StorageUnitParams.Guid
     RtlStringCbPrintfA(SerialNumber, sizeof SerialNumber,
         "%08lx-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
