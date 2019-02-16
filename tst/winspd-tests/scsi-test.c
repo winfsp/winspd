@@ -159,7 +159,7 @@ static void scsi_inquiry_dotest(BOOLEAN UnmapSupported)
         IdentificationDescriptor = (PVOID)((PUINT8)IdentificationDescriptor +
             sizeof(VPD_IDENTIFICATION_PAGE) + 8 + 16 + 4 + 36);
         ASSERT(VpdCodeSetBinary == IdentificationDescriptor->CodeSet);
-        ASSERT(VpdIdentifierTypeVendorId == IdentificationDescriptor->IdentifierType);
+        ASSERT(VpdIdentifierTypeVendorSpecific == IdentificationDescriptor->IdentifierType);
         ASSERT(8 == IdentificationDescriptor->IdentifierLength);
         ASSERT(
             'P' == IdentificationDescriptor->Identifier[0] &&
