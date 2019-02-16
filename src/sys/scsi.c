@@ -288,7 +288,7 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
 
             IdentificationDescriptor = (PVPD_IDENTIFICATION_DESCRIPTOR)Identification->Descriptors;
             IdentificationDescriptor->CodeSet = VpdCodeSetAscii;
-            IdentificationDescriptor->IdentifierType = VpdIdentifierTypeVendorSpecific;
+            IdentificationDescriptor->IdentifierType = VpdIdentifierTypeVendorId;
             IdentificationDescriptor->Association = VpdAssocDevice;
             IdentificationDescriptor->IdentifierLength = Identifier0Length;
             RtlCopyMemory(IdentificationDescriptor->Identifier,
