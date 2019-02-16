@@ -26,13 +26,15 @@ for /f "tokens=2,*" %%i in ('reg query %RegKey% /v %RegVal% ^| findstr %RegVal%'
 copy %KitRoot%\Tools\%SUFFIX%\devcon.exe %TARGET% >nul
 copy %KitRoot%\bin\%SUFFIX%\certmgr.exe %TARGET% >nul
 
-echo certmgr /add /c winspd-%SUFFIX%.cer /s /r localMachine root >%TARGET%install.bat
-echo certmgr /add /c winspd-%SUFFIX%.cer /s /r localMachine TrustedPublisher >>%TARGET%install.bat
-echo devcon install winspd-%SUFFIX%.inf root\winspd >>%TARGET%install.bat
+echo certmgr /add /c winspd-%SUFFIX%.cer /s /r localMachine root            > %TARGET%kminst.bat
+echo certmgr /add /c winspd-%SUFFIX%.cer /s /r localMachine TrustedPublisher>>%TARGET%kminst.bat
+echo devcon install winspd-%SUFFIX%.inf root\winspd                         >>%TARGET%kminst.bat
 
-echo sc create WinSpd.Launcher binPath=%%~dp0launcher-%SUFFIX%.exe >%TARGET%sc-create.bat
-echo sc start WinSpd.Launcher >%TARGET%sc-start.bat
-echo sc stop WinSpd.Launcher >%TARGET%sc-stop.bat
-echo sc delete WinSpd.Launcher >%TARGET%sc-delete.bat
-
-echo regsvr32 %%~dp0shellex-%SUFFIX%.dll >%TARGET%shreg.bat
+echo sc create WinSpd.Launcher binPath=%%~dp0launcher-%SUFFIX%.exe          > %TARGET%uminst.bat
+echo sc start WinSpd.Launcher                                               >>%TARGET%uminst.bat
+echo reg add HKLM\Software\WinSpd\Services\rawdisk /v Executable /d %%~dp0rawdisk-%SUFFIX%.exe /reg:32 /f   >>%TARGET%uminst.bat
+echo reg add HKLM\Software\WinSpd\Services\rawdisk /v CommandLine /d "-f %%%%1" /reg:32 /f                  >>%TARGET%uminst.bat
+echo reg add HKLM\Software\WinSpd\Services\rawdisk /v Security /d "D:P(A;;RP;;;WD)" /reg:32 /f              >>%TARGET%uminst.bat
+echo reg add HKCR\.rawdisk /ve /d WinSpd.Mount /f                           >>%TARGET%uminst.bat
+echo regsvr32 %%~dp0shellex-%SUFFIX%.dll                                    >>%TARGET%uminst.bat
+    
