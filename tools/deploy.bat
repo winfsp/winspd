@@ -35,6 +35,6 @@ echo sc start WinSpd.Launcher                                               >>%T
 echo reg add HKLM\Software\WinSpd\Services\rawdisk /v Executable /d %%~dp0rawdisk-%SUFFIX%.exe /reg:32 /f   >>%TARGET%uminst.bat
 echo reg add HKLM\Software\WinSpd\Services\rawdisk /v CommandLine /d "-f %%%%1" /reg:32 /f                  >>%TARGET%uminst.bat
 echo reg add HKLM\Software\WinSpd\Services\rawdisk /v Security /d "D:P(A;;RP;;;WD)" /reg:32 /f              >>%TARGET%uminst.bat
-echo reg add HKCR\.rawdisk /ve /d WinSpd.Mount /f                           >>%TARGET%uminst.bat
+echo reg add HKCR\.rawdisk /ve /d WinSpd.DiskFile /f                        >>%TARGET%uminst.bat
+echo reg add HKCR\.rawdisk\ShellNew /v NullFile /f                          >>%TARGET%uminst.bat
 echo regsvr32 %%~dp0shellex-%SUFFIX%.dll                                    >>%TARGET%uminst.bat
-    

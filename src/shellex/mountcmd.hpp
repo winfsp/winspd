@@ -26,7 +26,8 @@
 #include <shared/launch.h>
 #include <shared/regutil.h>
 
-#define SPD_SHELLEX_MOUNT_PROGID        "WinSpd.Mount"
+#define SPD_SHELLEX_MOUNT_PROGID        "WinSpd.DiskFile"
+#define SPD_SHELLEX_MOUNT_PROGID_DESC   "WinSpd Disk File"
 #define SPD_SHELLEX_MOUNT_VERB          "open"
 #define SPD_SHELLEX_MOUNT_VERB_DESC     "Mount"
 
@@ -52,6 +53,7 @@ public:
         {
             { L"SOFTWARE\\Classes" },
             { L"" SPD_SHELLEX_MOUNT_PROGID, 1 },
+            { 0, REG_SZ, L"" SPD_SHELLEX_MOUNT_PROGID_DESC, sizeof L"" SPD_SHELLEX_MOUNT_PROGID_DESC },
             { L"shell", 1 },
             { L"" SPD_SHELLEX_MOUNT_VERB, 1 },
             { 0, REG_SZ, L"" SPD_SHELLEX_MOUNT_VERB_DESC, sizeof L"" SPD_SHELLEX_MOUNT_VERB_DESC },
