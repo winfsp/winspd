@@ -1,5 +1,5 @@
 /**
- * @file shellex/ejectcmd.hpp
+ * @file shellex/ejectmnu.hpp
  *
  * @copyright 2018-2019 Bill Zissimopoulos
  */
@@ -19,10 +19,10 @@
  * associated repository.
  */
 
-#ifndef WINSPD_SHELLEX_EJECTCMD_HPP_INCLUDED
-#define WINSPD_SHELLEX_EJECTCMD_HPP_INCLUDED
+#ifndef WINSPD_SHELLEX_EJECTMNU_HPP_INCLUDED
+#define WINSPD_SHELLEX_EJECTMNU_HPP_INCLUDED
 
-#include <shellex/command.hpp>
+#include <shellex/ctxmenu.hpp>
 #define _NTSCSI_USER_MODE_
 #include <scsi.h>
 #undef _NTSCSI_USER_MODE_
@@ -33,7 +33,7 @@
 #define SPD_SHELLEX_EJECT_VERB          "WinSpd.Eject"
 #define SPD_SHELLEX_EJECT_VERB_DESC     "Eject"
 
-class EjectCommand : public Command
+class EjectContextMenu : public ContextMenu
 {
 public:
     // {18F72BBE-CE30-4EBA-8691-911D158A883C}
@@ -49,13 +49,9 @@ public:
         {
             { L"SOFTWARE\\Classes" },
             { L"" SPD_SHELLEX_EJECT_PROGID },
-            { L"shell" },
+            { L"shellex\\ContextMenuHandlers" },
             { L"" SPD_SHELLEX_EJECT_VERB, 1 },
-            { 0, REG_SZ, L"" SPD_SHELLEX_EJECT_VERB_DESC, sizeof L"" SPD_SHELLEX_EJECT_VERB_DESC },
-            { L"CommandStateHandler", REG_SZ, GuidStr, (lstrlenW(GuidStr) + 1) * sizeof(WCHAR) },
-            { L"MultiSelectModel", REG_SZ, L"Single", sizeof L"Single" },
-            { L"command", 1 },
-            { L"DelegateExecute", REG_SZ, GuidStr, (lstrlenW(GuidStr) + 1) * sizeof(WCHAR) },
+            { 0, REG_SZ, GuidStr, (lstrlenW(GuidStr) + 1) * sizeof(WCHAR) },
         };
         if (Flag)
             return HRESULT_FROM_WIN32(RegAddEntries(HKEY_LOCAL_MACHINE,
@@ -65,51 +61,26 @@ public:
                 Entries, sizeof Entries / sizeof Entries[0], 0));
     }
 
-    /* IExecuteCommand */
-    STDMETHODIMP Execute()
+    /* internal interface */
+    PSTR GetVerbNameA()
     {
-        IEnumShellItems *Enum;
-        IShellItem *Item;
-        PWSTR Name;
-        HRESULT Result = S_OK;
-        if (0 != _Array && S_OK == _Array->EnumItems(&Enum))
-        {
-            while (S_OK == Enum->Next(1, &Item, 0))
-            {
-                if (S_OK == Item->GetDisplayName(SIGDN_FILESYSPATH, &Name))
-                {
-                    Result = Eject(Name);
-                    CoTaskMemFree(Name);
-                }
-                Item->Release();
-            }
-            Enum->Release();
-        }
-        return Result;
+        return SPD_SHELLEX_EJECT_PROGID;
     }
-
-    /* IExplorerCommandState */
-    STDMETHODIMP GetState(IShellItemArray *Array, BOOL OkToBeSlow, EXPCMDSTATE *CmdState)
+    PWSTR GetVerbNameW()
     {
-        *CmdState = ECS_HIDDEN;
-        IEnumShellItems *Enum;
-        IShellItem *Item;
-        PWSTR Name;
-        HRESULT Result = S_OK;
-        if (0 != Array && S_OK == Array->EnumItems(&Enum))
-        {
-            while (S_OK == Enum->Next(1, &Item, 0))
-            {
-                if (S_OK == Item->GetDisplayName(SIGDN_FILESYSPATH, &Name))
-                {
-                    *CmdState = CanEject(Name) ? ECS_ENABLED : ECS_HIDDEN;
-                    CoTaskMemFree(Name);
-                }
-                Item->Release();
-            }
-            Enum->Release();
-        }
-        return Result;
+        return L"" SPD_SHELLEX_EJECT_PROGID;
+    }
+    PWSTR GetVerbTextW()
+    {
+        return L"" SPD_SHELLEX_EJECT_VERB_DESC;
+    }
+    BOOL CanInvoke()
+    {
+        return CanEject(_FileName);
+    }
+    HRESULT Invoke()
+    {
+        return Eject(_FileName);
     }
 
 private:

@@ -21,11 +21,11 @@
 
 #include <shellex/com.hpp>
 #include <shellex/mountcmd.hpp>
-#include <shellex/ejectcmd.hpp>
+#include <shellex/ejectmnu.hpp>
 #include <shlobj.h>
 
 CoClassOf<MountCommand> MountCommandClass;
-CoClassOf<EjectCommand> EjectCommandClass;
+CoClassOf<EjectContextMenu> EjectContextMenuClass;
 
 STDAPI DllGetClassObject(REFCLSID Clsid, REFIID Iid, LPVOID *PObject)
 {

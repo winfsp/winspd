@@ -38,7 +38,8 @@
     <ClInclude Include="..\..\..\src\shared\secpipe.h" />
     <ClInclude Include="..\..\..\src\shellex\com.hpp" />
     <ClInclude Include="..\..\..\src\shellex\command.hpp" />
-    <ClInclude Include="..\..\..\src\shellex\ejectcmd.hpp" />
+    <ClInclude Include="..\..\..\src\shellex\ctxmenu.hpp" />
+    <ClInclude Include="..\..\..\src\shellex\ejectmnu.hpp" />
     <ClInclude Include="..\..\..\src\shellex\mountcmd.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -133,6 +134,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <StripPrivateSymbols>$(OutDir)$(TargetName).public.pdb</StripPrivateSymbols>
       <ModuleDefinitionFile>..\..\..\src\shellex\library.def</ModuleDefinitionFile>
+      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -152,6 +154,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <StripPrivateSymbols>$(OutDir)$(TargetName).public.pdb</StripPrivateSymbols>
       <ModuleDefinitionFile>..\..\..\src\shellex\library.def</ModuleDefinitionFile>
+      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -174,6 +177,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <StripPrivateSymbols>$(OutDir)$(TargetName).public.pdb</StripPrivateSymbols>
       <ModuleDefinitionFile>..\..\..\src\shellex\library.def</ModuleDefinitionFile>
+      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -196,6 +200,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <StripPrivateSymbols>$(OutDir)$(TargetName).public.pdb</StripPrivateSymbols>
       <ModuleDefinitionFile>..\..\..\src\shellex\library.def</ModuleDefinitionFile>
+      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
