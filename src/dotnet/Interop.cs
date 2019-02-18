@@ -36,6 +36,7 @@ namespace Spd.Interop
         internal const UInt32 WriteProtected = 0x00000001;
         internal const UInt32 CacheSupported = 0x00000002;
         internal const UInt32 UnmapSupported = 0x00000004;
+        internal const UInt32 EjectDisabled = 0x00000008;
         internal const int GuidSize = 16;
         internal const int ProductIdSize = 16;
         internal const int ProductRevisionLevelSize = 4;

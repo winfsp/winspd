@@ -160,6 +160,14 @@ namespace Spd
             set { _StorageUnitParams.Flags |= (value ? StorageUnitParams.UnmapSupported : 0); }
         }
         /// <summary>
+        /// Gets or sets a value that determines whether the storage unit has UI Eject disabled.
+        /// </summary>
+        public Boolean EjectDisabled
+        {
+            get { return 0 != (_StorageUnitParams.Flags & StorageUnitParams.EjectDisabled); }
+            set { _StorageUnitParams.Flags |= (value ? StorageUnitParams.EjectDisabled : 0); }
+        }
+        /// <summary>
         /// Gets or sets the storage unit maximum transfer length for a single operation.
         /// </summary>
         public UInt32 MaxTransferLength

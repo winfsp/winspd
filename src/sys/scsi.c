@@ -320,7 +320,8 @@ static UCHAR SpdScsiInquiry(PVOID DeviceExtension, SPD_STORAGE_UNIT *StorageUnit
             IdentificationDescriptor->Identifier[0] = 'P';
             IdentificationDescriptor->Identifier[1] = 'I';
             IdentificationDescriptor->Identifier[2] = 'D';
-            IdentificationDescriptor->Identifier[3] = ' ';
+            IdentificationDescriptor->Identifier[3] =
+                StorageUnit->StorageUnitParams.EjectDisabled ? 'X' : ' ';
             IdentificationDescriptor->Identifier[4] = (U32 >> 24) & 0xff;
             IdentificationDescriptor->Identifier[5] = (U32 >> 16) & 0xff;
             IdentificationDescriptor->Identifier[6] = (U32 >> 8) & 0xff;

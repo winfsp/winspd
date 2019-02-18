@@ -73,6 +73,7 @@ typedef struct
     UINT32 WriteProtected:1;
     UINT32 CacheSupported:1;
     UINT32 UnmapSupported:1;
+    UINT32 EjectDisabled:1;             /* disables UI eject */
     UINT32 MaxTransferLength;
     UINT64 Reserved[8];
 } SPD_IOCTL_STORAGE_UNIT_PARAMS;
