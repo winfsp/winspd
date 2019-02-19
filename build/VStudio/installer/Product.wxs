@@ -37,6 +37,7 @@
         <Directory Id="TARGETDIR" Name="SourceDir">
             <Directory Id="ProgramFilesFolder">
                 <Directory Id="INSTALLDIR" Name="WinSpd">
+                    <Directory Id="SYSDIR" Name="sys" />
                     <Directory Id="BINDIR" Name="bin" />
                     <Directory Id="INCDIR" Name="inc" />
                     <Directory Id="LIBDIR" Name="lib" />
@@ -60,8 +61,11 @@
                 <File Name="License.txt" Source="..\..\..\License.txt" KeyPath="yes" />
             </Component>
         </DirectoryRef>
-        <DirectoryRef Id="BINDIR" FileSource="..\build\$(var.Configuration)">
-            <!--
+        <DirectoryRef Id="SYSDIR" FileSource="..\build\$(var.Configuration)\sysinst">
+            <Component Id="C.winspd.inf">
+                <File Name="winspd.inf" KeyPath="yes" />
+            </Component>
+
             <Component Id="C.winspd_x64.sys">
                 <File Name="winspd-x64.sys" KeyPath="yes" />
             </Component>
@@ -75,8 +79,15 @@
             <Component Id="C.winspd_x86.dll">
                 <File Name="winspd-x86.dll" KeyPath="yes" />
             </Component>
-            -->
 
+            <Component Id="C.winspd_x64.cat">
+                <File Name="winspd-x64.cat" KeyPath="yes" />
+            </Component>
+            <Component Id="C.winspd_x86.cat">
+                <File Name="winspd-x86.cat" KeyPath="yes" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="BINDIR" FileSource="..\build\$(var.Configuration)">
             <!-- On Win64 register shellex-x64.dll -->
             <Component Id="C.shellex_x64.dll.selfreg" Guid="{30F3CE85-6599-40FE-A231-D71839075FEF}">
                 <File Id="FILE.shellex_x64.dll.selfreg" Name="shellex-x64.dll" KeyPath="yes" SelfRegCost="1" />
@@ -413,13 +424,16 @@
             </Component>
         </DirectoryRef>
 
-        <ComponentGroup Id="C.WinSpd.bin">
-            <!--
+        <ComponentGroup Id="C.WinSpd.sys">
+            <ComponentRef Id="C.winspd.inf" />
             <ComponentRef Id="C.winspd_x64.sys" />
             <ComponentRef Id="C.winspd_x86.sys" />
             <ComponentRef Id="C.winspd_x64.dll" />
             <ComponentRef Id="C.winspd_x86.dll" />
-            -->
+            <ComponentRef Id="C.winspd_x64.cat" />
+            <ComponentRef Id="C.winspd_x86.cat" />
+        </ComponentGroup>
+        <ComponentGroup Id="C.WinSpd.bin">
             <ComponentRef Id="C.shellex_x64.dll.selfreg" />
             <ComponentRef Id="C.shellex_x86.dll" />
             <ComponentRef Id="C.shellex_x64.dll" />
@@ -500,6 +514,7 @@
                 AllowAdvertise="no"
                 InstallDefault="local"
                 Absent="disallow">
+                <ComponentGroupRef Id="C.WinSpd.sys" />
                 <ComponentGroupRef Id="C.WinSpd.bin" />
                 <ComponentGroupRef Id="C.WinSpd.net" />
             </Feature>
