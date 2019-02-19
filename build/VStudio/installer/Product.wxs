@@ -61,7 +61,6 @@
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="BINDIR" FileSource="..\build\$(var.Configuration)">
-
             <!--
             <Component Id="C.winspd_x64.sys">
                 <File Name="winspd-x64.sys" KeyPath="yes" />
@@ -194,6 +193,13 @@
                             Value="D:P(A;;RP;;;WD)" />
                     </RegistryKey>
                 </RegistryKey>
+                <RegistryKey
+                    Root="HKLM"
+                    Key="Software\Classes\.rawdisk64">
+                    <RegistryValue
+                        Type="string"
+                        Value="WinSpd.DiskFile" />
+                </RegistryKey>
             </Component>
             <Component Id="C.rawdisk_x86.exe">
                 <File Name="rawdisk-x86.exe" KeyPath="yes" />
@@ -215,6 +221,13 @@
                             Name="Security"
                             Value="D:P(A;;RP;;;WD)" />
                     </RegistryKey>
+                </RegistryKey>
+                <RegistryKey
+                    Root="HKLM"
+                    Key="Software\Classes\.rawdisk32">
+                    <RegistryValue
+                        Type="string"
+                        Value="WinSpd.DiskFile" />
                 </RegistryKey>
             </Component>
             <Component Id="C.rawdisk_dotnet_msil.exe">
@@ -238,6 +251,79 @@
                             Value="D:P(A;;RPWPLC;;;WD)" />
                     </RegistryKey>
                 </RegistryKey>
+                <RegistryKey
+                    Root="HKLM"
+                    Key="Software\Classes\.rawdisk-dotnet">
+                    <RegistryValue
+                        Type="string"
+                        Value="WinSpd.DiskFile" />
+                </RegistryKey>
+            </Component>
+
+            <Component Id="C.HKCR.rawdisk">
+                <RegistryKey
+                    Root="HKLM"
+                    Key="Software\Classes\.rawdisk">
+                    <RegistryValue
+                        Type="string"
+                        Value="WinSpd.DiskFile"
+                        KeyPath="yes" />
+                    <RegistryKey
+                        Key="ShellNew">
+                        <RegistryValue
+                            Type="string"
+                            Name="NullFile"
+                            Value="" />
+                    </RegistryKey>
+                </RegistryKey>
+            </Component>
+            <!-- On Win64 register .rawdisk -> rawdisk-x64.exe file association -->
+            <Component Id="C.HKCR.rawdisk.x64" Guid="{47EB9E59-716B-4E7E-8F91-DFC69605CD93}">
+                <RegistryKey
+                    Root="HKLM"
+                    Key="[P.LauncherRegistryKey]">
+                    <RegistryKey
+                        Key="rawdisk">
+                        <RegistryValue
+                            Type="string"
+                            Name="Executable"
+                            Value="[BINDIR]rawdisk-x64.exe" 
+                            KeyPath="yes" />
+                        <RegistryValue
+                            Type="string"
+                            Name="CommandLine"
+                            Value="-f %1" />
+                        <RegistryValue
+                            Type="string"
+                            Name="Security"
+                            Value="D:P(A;;RP;;;WD)" />
+                    </RegistryKey>
+                </RegistryKey>
+                <Condition>VersionNT64</Condition>
+            </Component>
+            <!-- On Win32 register .rawdisk -> rawdisk-x86.exe file association -->
+            <Component Id="C.HKCR.rawdisk.x86" Guid="{0258384B-6D45-4697-983A-985E2E29259C}">
+                <RegistryKey
+                    Root="HKLM"
+                    Key="[P.LauncherRegistryKey]">
+                    <RegistryKey
+                        Key="rawdisk">
+                        <RegistryValue
+                            Type="string"
+                            Name="Executable"
+                            Value="[BINDIR]rawdisk-x86.exe"
+                            KeyPath="yes" />
+                        <RegistryValue
+                            Type="string"
+                            Name="CommandLine"
+                            Value="-f %1" />
+                        <RegistryValue
+                            Type="string"
+                            Name="Security"
+                            Value="D:P(A;;RP;;;WD)" />
+                    </RegistryKey>
+                </RegistryKey>
+                <Condition>NOT VersionNT64</Condition>
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="INCDIR" FileSource="..\..\..\inc">
@@ -360,6 +446,9 @@
         <ComponentGroup Id="C.WinSpd.smp">
             <ComponentRef Id="C.rawdisk_x64.exe" />
             <ComponentRef Id="C.rawdisk_x86.exe" />
+            <ComponentRef Id="C.HKCR.rawdisk" />
+            <ComponentRef Id="C.HKCR.rawdisk.x64" />
+            <ComponentRef Id="C.HKCR.rawdisk.x86" />
             <ComponentRef Id="C.rawdisk.h" />
             <ComponentRef Id="C.rawdisk.c" />
             <ComponentRef Id="C.rawdisk_main.c" />
