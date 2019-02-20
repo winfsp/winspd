@@ -53,7 +53,9 @@ copy "$(OutDir)winspd-x64.dll" "$(OutDir)sysinst\winspd-x64.dll" &gt;nul
 copy "$(OutDir)winspd-x86.sys" "$(OutDir)sysinst\winspd-x86.sys" &gt;nul
 copy "$(OutDir)winspd-x86.dll" "$(OutDir)sysinst\winspd-x86.dll" &gt;nul
 call "$(SolutionDir)..\..\tools\mkcat.bat" x64 "$(OutDir)sysinst" winspd.inf winspd-x64.sys winspd-x64.dll winspd-x86.dll
-call "$(SolutionDir)..\..\tools\mkcat.bat" x86 "$(OutDir)sysinst" winspd.inf winspd-x86.sys winspd-x86.dll</PreBuildEvent>
+call "$(SolutionDir)..\..\tools\mkcat.bat" x86 "$(OutDir)sysinst" winspd.inf winspd-x86.sys winspd-x86.dll
+copy "$(OutDir)devsetup-x64.exe" "$(OutDir)sysinst\devsetup-x64.exe" &gt;nul
+copy "$(OutDir)devsetup-x86.exe" "$(OutDir)sysinst\devsetup-x86.exe" &gt;nul</PreBuildEvent>
   </PropertyGroup>
   <!--
 	To modify your build process, add your task inside one of the targets below and uncomment it.

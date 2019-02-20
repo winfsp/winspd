@@ -50,6 +50,11 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "installer", "installer", "{51C53802-A8DC-4919-B01D-E55AADD30532}"
 EndProject
 Project("{930C7802-8A8C-48F9-8165-68863BCCD9DD}") = "winspd_msi", "installer\winspd_msi.wixproj", "{862EC420-5E54-43AA-9D15-03DFAFD3B02C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3AD1D579-650D-4B20-8C18-99983DED9D23} = {3AD1D579-650D-4B20-8C18-99983DED9D23}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "devsetup", "tools\devsetup.vcxproj", "{3AD1D579-650D-4B20-8C18-99983DED9D23}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -211,6 +216,18 @@ Global
 		{862EC420-5E54-43AA-9D15-03DFAFD3B02C}.Installer.Release|x86.Build.0 = Release|x86
 		{862EC420-5E54-43AA-9D15-03DFAFD3B02C}.Release|x64.ActiveCfg = Release|x86
 		{862EC420-5E54-43AA-9D15-03DFAFD3B02C}.Release|x86.ActiveCfg = Release|x86
+		{3AD1D579-650D-4B20-8C18-99983DED9D23}.Debug|x64.ActiveCfg = Debug|x64
+		{3AD1D579-650D-4B20-8C18-99983DED9D23}.Debug|x64.Build.0 = Debug|x64
+		{3AD1D579-650D-4B20-8C18-99983DED9D23}.Debug|x86.ActiveCfg = Debug|Win32
+		{3AD1D579-650D-4B20-8C18-99983DED9D23}.Debug|x86.Build.0 = Debug|Win32
+		{3AD1D579-650D-4B20-8C18-99983DED9D23}.Installer.Debug|x64.ActiveCfg = Debug|x64
+		{3AD1D579-650D-4B20-8C18-99983DED9D23}.Installer.Debug|x86.ActiveCfg = Debug|Win32
+		{3AD1D579-650D-4B20-8C18-99983DED9D23}.Installer.Release|x64.ActiveCfg = Release|x64
+		{3AD1D579-650D-4B20-8C18-99983DED9D23}.Installer.Release|x86.ActiveCfg = Release|Win32
+		{3AD1D579-650D-4B20-8C18-99983DED9D23}.Release|x64.ActiveCfg = Release|x64
+		{3AD1D579-650D-4B20-8C18-99983DED9D23}.Release|x64.Build.0 = Release|x64
+		{3AD1D579-650D-4B20-8C18-99983DED9D23}.Release|x86.ActiveCfg = Release|Win32
+		{3AD1D579-650D-4B20-8C18-99983DED9D23}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -226,5 +243,6 @@ Global
 		{7FEAC571-EB72-4B9B-B274-7EC15719AF1B} = {F809D260-BBDF-431C-8F4B-BCD0F5BF3C01}
 		{191E3C10-A4D9-4A71-AC78-CCC52ECE74FB} = {F809D260-BBDF-431C-8F4B-BCD0F5BF3C01}
 		{862EC420-5E54-43AA-9D15-03DFAFD3B02C} = {51C53802-A8DC-4919-B01D-E55AADD30532}
+		{3AD1D579-650D-4B20-8C18-99983DED9D23} = {F809D260-BBDF-431C-8F4B-BCD0F5BF3C01}
 	EndGlobalSection
 EndGlobal
