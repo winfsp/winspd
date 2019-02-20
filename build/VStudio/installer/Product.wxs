@@ -561,5 +561,48 @@
                 Value="WelcomeDlg"
                 Order="10">NOT Installed</Publish>
         </UI>
+
+        <CustomAction
+            Id="Action.DevsetupAdd.x64"
+            Directory="SYSDIR"
+            ExeCommand='"[SYSDIR]devsetup-x64.exe" add root\winspd "[SYSDIR]winspd.inf"'
+            Execute="deferred"
+            Impersonate="no"
+            Return="check" />
+        <CustomAction
+            Id="Action.DevsetupAdd.x86"
+            Directory="SYSDIR"
+            ExeCommand='"[SYSDIR]devsetup-x86.exe" add root\winspd "[SYSDIR]winspd.inf"'
+            Execute="deferred"
+            Impersonate="no"
+            Return="check" />
+        <CustomAction
+            Id="Action.DevsetupRemove.x64"
+            Directory="SYSDIR"
+            ExeCommand='"[SYSDIR]devsetup-x64.exe" remove root\winspd'
+            Execute="deferred"
+            Impersonate="no"
+            Return="check" />
+        <CustomAction
+            Id="Action.DevsetupRemove.x86"
+            Directory="SYSDIR"
+            ExeCommand='"[SYSDIR]devsetup-x86.exe" remove root\winspd'
+            Execute="deferred"
+            Impersonate="no"
+            Return="check" />
+        <InstallExecuteSequence>
+            <Custom Action="Action.DevsetupAdd.x64" After="InstallFiles">
+                <![CDATA[VersionNT64 AND (NOT Installed)]]>
+            </Custom>
+            <Custom Action="Action.DevsetupAdd.x86" After="InstallFiles">
+                <![CDATA[(NOT VersionNT64) AND (NOT Installed)]]>
+            </Custom>
+            <Custom Action="Action.DevsetupRemove.x64" Before="RemoveFiles">
+                <![CDATA[VersionNT64 AND REMOVE]]>
+            </Custom>
+            <Custom Action="Action.DevsetupRemove.x86" Before="RemoveFiles">
+                <![CDATA[(NOT VersionNT64) AND REMOVE]]>
+            </Custom>
+        </InstallExecuteSequence>
     </Product>
 </Wix>
