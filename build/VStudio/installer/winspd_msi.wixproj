@@ -47,12 +47,12 @@
   <PropertyGroup>
     <PreBuildEvent>rmdir /s/q "$(OutDir)sysinst"
 mkdir "$(OutDir)sysinst"
-copy "$(OutDir)winspd-x64.inf" "$(OutDir)sysinst\winspd.inf" &gt;nul
+call "$(SolutionDir)..\..\tools\mkinf.bat" MyProductName:"$(MyProductName)" MyDescription:"$(MyDescription)" MyCompanyName:"$(MyCompanyName)" MyCopyright:"$(MyCopyright)" MyVersion:$(MyVersion) MyBaseName:$(MyBaseName) DllFilesWow64:dll.files.wow64 -- $(SolutionDir)..\..\src\sys\driver.inf.in $(OutDir)sysinst\winspd.inf
 copy "$(OutDir)winspd-x64.sys" "$(OutDir)sysinst\winspd-x64.sys" &gt;nul
 copy "$(OutDir)winspd-x64.dll" "$(OutDir)sysinst\winspd-x64.dll" &gt;nul
 copy "$(OutDir)winspd-x86.sys" "$(OutDir)sysinst\winspd-x86.sys" &gt;nul
 copy "$(OutDir)winspd-x86.dll" "$(OutDir)sysinst\winspd-x86.dll" &gt;nul
-call "$(SolutionDir)..\..\tools\mkcat.bat" x64 "$(OutDir)sysinst" winspd.inf winspd-x64.sys winspd-x64.dll
+call "$(SolutionDir)..\..\tools\mkcat.bat" x64 "$(OutDir)sysinst" winspd.inf winspd-x64.sys winspd-x64.dll winspd-x86.dll
 call "$(SolutionDir)..\..\tools\mkcat.bat" x86 "$(OutDir)sysinst" winspd.inf winspd-x86.sys winspd-x86.dll</PreBuildEvent>
   </PropertyGroup>
   <!--

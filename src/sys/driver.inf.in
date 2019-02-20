@@ -2,8 +2,8 @@
 Signature = "$WINDOWS NT$"
 Class = SCSIAdapter
 ClassGuid = {4d36e97b-e325-11ce-bfc1-08002be10318}
-CatalogFile.ntx86 = !BaseName!-x86.cat
-CatalogFile.ntamd64 = !BaseName!-x64.cat
+CatalogFile.ntx86 = !MyBaseName!-x86.cat
+CatalogFile.ntamd64 = !MyBaseName!-x64.cat
 Provider = %MyCompanyName%
 
 [Manufacturer]
@@ -19,17 +19,19 @@ Provider = %MyCompanyName%
 CopyFiles = sys.files.x86,dll.files.x86
 
 [install.ntamd64]
-CopyFiles = sys.files.x64,dll.files.x64
+CopyFiles = sys.files.x64,dll.files.x64,!DllFilesWow64!
 
 [sys.files.x86]
-!BaseName!-x86.sys
+!MyBaseName!-x86.sys
 [dll.files.x86]
-!BaseName!-x86.dll
+!MyBaseName!-x86.dll
 
 [sys.files.x64]
-!BaseName!-x64.sys
+!MyBaseName!-x64.sys
 [dll.files.x64]
-!BaseName!-x64.dll
+!MyBaseName!-x64.dll
+[dll.files.wow64]
+!MyBaseName!-x86.dll
 
 [install.ntx86.Services]
 AddService = !MyProductName!,%SPSVCINST_ASSOCSERVICE%,services.x86
@@ -43,7 +45,7 @@ Description = !MyDescription!
 ServiceType = %SERVICE_KERNEL_DRIVER%
 StartType = %SERVICE_DEMAND_START%
 ErrorControl = %SERVICE_ERROR_NORMAL%
-ServiceBinary = %12%\!BaseName!-x86.sys
+ServiceBinary = %12%\!MyBaseName!-x86.sys
 AddReg = reg.services
 
 [services.x64]
@@ -52,17 +54,17 @@ Description = !MyDescription!
 ServiceType = %SERVICE_KERNEL_DRIVER%
 StartType = %SERVICE_DEMAND_START%
 ErrorControl = %SERVICE_ERROR_NORMAL%
-ServiceBinary = %12%\!BaseName!-x64.sys
+ServiceBinary = %12%\!MyBaseName!-x64.sys
 AddReg = reg.services
 
 [reg.services]
 HKR,"Parameters","BusType",%REG_DWORD%,%BusTypeVirtual%
 
 [SourceDisksFiles]
-!BaseName!-x86.sys = 1
-!BaseName!-x86.dll = 1
-!BaseName!-x64.sys = 1
-!BaseName!-x64.dll = 1
+!MyBaseName!-x86.sys = 1
+!MyBaseName!-x86.dll = 1
+!MyBaseName!-x64.sys = 1
+!MyBaseName!-x64.dll = 1
 
 [SourceDisksNames]
 1 = %MyDescription%
@@ -72,6 +74,7 @@ sys.files.x86 = 12
 dll.files.x86 = 11
 sys.files.x64 = 12
 dll.files.x64 = 11
+dll.files.wow64 = 16425
 
 [Strings]
 MyProductName = !MyProductName!
@@ -79,7 +82,7 @@ MyDescription = !MyDescription!
 MyCompanyName = !MyCompanyName!
 MyCopyright = !MyCopyright!
 MyVersion = !MyVersion!
-HardwareId = "root\!BaseName!"
+HardwareId = "root\!MyBaseName!"
 
 SPSVCINST_ASSOCSERVICE = 0x00000002
 SERVICE_KERNEL_DRIVER = 0x00000001
