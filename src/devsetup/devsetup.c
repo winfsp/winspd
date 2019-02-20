@@ -22,7 +22,7 @@
 #include <windows.h>
 #include <shared/minimal.h>
 
-#define PROGNAME                        "devsetup"
+#define PROGNAME                        L"devsetup"
 
 static void usage(void)
 {
@@ -32,17 +32,63 @@ static void usage(void)
         "usage: %s COMMAND ARGS\n"
         "\n"
         "commands:\n"
-        "    install             file.inf hwid\n"
-        "    uninstall           hwid\n",
+        "    add file.inf hwid\n"
+        "    remove hwid\n",
         PROGNAME);
 
-    MessageBoxW(0, Buf, L"" PROGNAME, MB_OK);
+    MessageBoxW(0, Buf, PROGNAME, MB_ICONEXCLAMATION | MB_OK);
 
     ExitProcess(ERROR_INVALID_PARAMETER);
 }
 
+static int add(PWSTR FileName, PWSTR HardwareId)
+{
+    WCHAR Buf[1024];
+
+    wsprintfW(Buf, L"add %s %s", FileName, HardwareId);
+
+    MessageBoxW(0, Buf, PROGNAME, MB_OK);
+
+    return 0;
+}
+
+static int remove(PWSTR HardwareId)
+{
+    WCHAR Buf[1024];
+
+    wsprintfW(Buf, L"remove %s", HardwareId);
+
+    MessageBoxW(0, Buf, PROGNAME, MB_OK);
+
+    return 0;
+}
+
 int wmain(int argc, wchar_t **argv)
 {
+    argc--;
+    argv++;
+
+    if (0 == argc)
+        usage();
+
+    if (0 == invariant_wcscmp(L"add", argv[0]))
+    {
+        if (3 != argc)
+            usage();
+
+        return add(argv[1], argv[2]);
+    }
+    else
+    if (0 == invariant_wcscmp(L"remove", argv[0]))
+    {
+        if (2 != argc)
+            usage();
+
+        return remove(argv[1]);
+    }
+    else
+        usage();
+
     return 0;
 }
 
