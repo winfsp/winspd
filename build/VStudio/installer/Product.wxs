@@ -563,79 +563,158 @@
         </UI>
 
         <Binary Id="CustomActions" SourceFile="..\build\$(var.Configuration)\CustomActions.dll" />
+
         <SetProperty
-            Id="Action.DevsetupAdd.x64"
+            Id="Deferred.DevsetupAdd.x64"
             Value='"[SYSDIR]devsetup-x64.exe" add root\winspd "[SYSDIR]winspd.inf"'
-            Before="Action.DevsetupAdd.x64"
+            Before="Deferred.DevsetupAdd.x64"
             Sequence="execute" />
         <CustomAction
-            Id="Action.DevsetupAdd.x64"
+            Id="Deferred.DevsetupAdd.x64"
             BinaryKey="CustomActions"
             DllEntry="ExecuteCommand"
             Execute="deferred"
             Impersonate="no"
             Return="check" />
         <SetProperty
-            Id="Action.DevsetupAdd.x86"
+            Id="Rollback.DevsetupAdd.x64"
+            Value='"[SYSDIR]devsetup-x64.exe" remove root\winspd'
+            Before="Rollback.DevsetupAdd.x64"
+            Sequence="execute" />
+        <CustomAction
+            Id="Rollback.DevsetupAdd.x64"
+            BinaryKey="CustomActions"
+            DllEntry="ExecuteCommand"
+            Execute="rollback"
+            Impersonate="no"
+            Return="ignore" />
+        <InstallExecuteSequence>
+            <Custom Action="Rollback.DevsetupAdd.x64" After="InstallServices">
+                <![CDATA[VersionNT64 AND (NOT Installed)]]>
+            </Custom>
+            <Custom Action="Deferred.DevsetupAdd.x64" After="Rollback.DevsetupAdd.x64">
+                <![CDATA[VersionNT64 AND (NOT Installed)]]>
+            </Custom>
+        </InstallExecuteSequence>
+
+        <SetProperty
+            Id="Deferred.DevsetupAdd.x86"
             Value='"[SYSDIR]devsetup-x86.exe" add root\winspd "[SYSDIR]winspd.inf"'
-            Before="Action.DevsetupAdd.x86"
+            Before="Deferred.DevsetupAdd.x86"
             Sequence="execute" />
         <CustomAction
-            Id="Action.DevsetupAdd.x86"
+            Id="Deferred.DevsetupAdd.x86"
             BinaryKey="CustomActions"
             DllEntry="ExecuteCommand"
             Execute="deferred"
             Impersonate="no"
             Return="check" />
         <SetProperty
-            Id="Action.DevsetupRemove.x64"
-            Value='"[SYSDIR]devsetup-x64.exe" remove root\winspd"'
-            Before="Action.DevsetupRemove.x64"
+            Id="Rollback.DevsetupAdd.x86"
+            Value='"[SYSDIR]devsetup-x86.exe" remove root\winspd'
+            Before="Rollback.DevsetupAdd.x86"
             Sequence="execute" />
         <CustomAction
-            Id="Action.DevsetupRemove.x64"
+            Id="Rollback.DevsetupAdd.x86"
+            BinaryKey="CustomActions"
+            DllEntry="ExecuteCommand"
+            Execute="rollback"
+            Impersonate="no"
+            Return="ignore" />
+        <InstallExecuteSequence>
+            <Custom Action="Rollback.DevsetupAdd.x86" After="InstallServices">
+                <![CDATA[(NOT VersionNT64) AND (NOT Installed)]]>
+            </Custom>
+            <Custom Action="Deferred.DevsetupAdd.x86" After="Rollback.DevsetupAdd.x86">
+                <![CDATA[(NOT VersionNT64) AND (NOT Installed)]]>
+            </Custom>
+        </InstallExecuteSequence>
+
+        <SetProperty
+            Id="Deferred.DevsetupRemove.x64"
+            Value='"[SYSDIR]devsetup-x64.exe" remove root\winspd'
+            Before="Deferred.DevsetupRemove.x64"
+            Sequence="execute" />
+        <CustomAction
+            Id="Deferred.DevsetupRemove.x64"
             BinaryKey="CustomActions"
             DllEntry="ExecuteCommand"
             Execute="deferred"
             Impersonate="no"
             Return="check" />
         <SetProperty
-            Id="Action.DevsetupRemove.x86"
-            Value='"[SYSDIR]devsetup-x86.exe" remove root\winspd"'
-            Before="Action.DevsetupRemove.x86"
+            Id="Rollback.DevsetupRemove.x64"
+            Value='"[SYSDIR]devsetup-x64.exe" add root\winspd "[SYSDIR]winspd.inf"'
+            Before="Rollback.DevsetupRemove.x64"
             Sequence="execute" />
         <CustomAction
-            Id="Action.DevsetupRemove.x86"
+            Id="Rollback.DevsetupRemove.x64"
+            BinaryKey="CustomActions"
+            DllEntry="ExecuteCommand"
+            Execute="rollback"
+            Impersonate="no"
+            Return="check" />
+        <InstallExecuteSequence>
+            <Custom Action="Rollback.DevsetupRemove.x64" Before="DeleteServices">
+                <![CDATA[VersionNT64 AND REMOVE]]>
+            </Custom>
+            <Custom Action="Deferred.DevsetupRemove.x64" After="Rollback.DevsetupRemove.x64">
+                <![CDATA[VersionNT64 AND REMOVE]]>
+            </Custom>
+        </InstallExecuteSequence>
+
+        <SetProperty
+            Id="Deferred.DevsetupRemove.x86"
+            Value='"[SYSDIR]devsetup-x86.exe" remove root\winspd'
+            Before="Deferred.DevsetupRemove.x86"
+            Sequence="execute" />
+        <CustomAction
+            Id="Deferred.DevsetupRemove.x86"
             BinaryKey="CustomActions"
             DllEntry="ExecuteCommand"
             Execute="deferred"
             Impersonate="no"
             Return="check" />
+        <SetProperty
+            Id="Rollback.DevsetupRemove.x86"
+            Value='"[SYSDIR]devsetup-x86.exe" add root\winspd "[SYSDIR]winspd.inf"'
+            Before="Rollback.DevsetupRemove.x86"
+            Sequence="execute" />
         <CustomAction
-            Id="Action.CheckReboot"
+            Id="Rollback.DevsetupRemove.x86"
+            BinaryKey="CustomActions"
+            DllEntry="ExecuteCommand"
+            Execute="rollback"
+            Impersonate="no"
+            Return="check" />
+        <InstallExecuteSequence>
+            <Custom Action="Rollback.DevsetupRemove.x86" Before="DeleteServices">
+                <![CDATA[(NOT VersionNT64) AND REMOVE]]>
+            </Custom>
+            <Custom Action="Deferred.DevsetupRemove.x86" After="Rollback.DevsetupRemove.x86">
+                <![CDATA[(NOT VersionNT64) AND REMOVE]]>
+            </Custom>
+        </InstallExecuteSequence>
+
+        <CustomAction
+            Id="Immediate.CheckReboot"
             BinaryKey="CustomActions"
             DllEntry="CheckReboot"
             Execute="immediate"
             Return="ignore" />
         <InstallExecuteSequence>
-            <Custom Action="Action.DevsetupAdd.x64" After="StartServices">
-                <![CDATA[VersionNT64 AND (NOT Installed)]]>
-            </Custom>
-            <Custom Action="Action.DevsetupAdd.x86" After="StartServices">
-                <![CDATA[(NOT VersionNT64) AND (NOT Installed)]]>
-            </Custom>
-            <Custom Action="Action.DevsetupRemove.x64" Before="StopServices">
-                <![CDATA[VersionNT64 AND REMOVE]]>
-            </Custom>
-            <Custom Action="Action.DevsetupRemove.x86" Before="StopServices">
-                <![CDATA[(NOT VersionNT64) AND REMOVE]]>
-            </Custom>
-            <Custom Action="Action.CheckReboot" After="InstallFinalize">
+            <Custom Action="Immediate.CheckReboot" After="InstallFinalize">
                 <![CDATA[(NOT Installed) OR REMOVE]]>
             </Custom>
-            <ScheduleReboot After="Action.CheckReboot">
+            <ScheduleReboot After="Immediate.CheckReboot">
                 <![CDATA[((NOT Installed) OR REMOVE) AND (0 <> CheckReboot)]]>
             </ScheduleReboot>
         </InstallExecuteSequence>
+    
+        <!--
+            Specify WIXFAILWHENDEFERRED=1 on the msiexec cmdline for rollback testing.
+            See http://tinyurl.com/yxkaywek
+        -->
+        <CustomActionRef Id="WixFailWhenDeferred" />
     </Product>
 </Wix>

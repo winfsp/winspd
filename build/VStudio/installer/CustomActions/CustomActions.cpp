@@ -40,7 +40,7 @@ UINT __stdcall ExecuteCommand(MSIHANDLE MsiHandle)
     PWSTR CommandLine = 0;
     STARTUPINFOW StartupInfo;
     PROCESS_INFORMATION ProcessInfo;
-    DWORD ExitCode = 0;
+    DWORD ExitCode = ERROR_SUCCESS;
     DWORD RebootRequired;
 
     hr = WcaInitialize(MsiHandle, __FUNCTION__);
@@ -67,12 +67,11 @@ UINT __stdcall ExecuteCommand(MSIHANDLE MsiHandle)
 
     RebootRequired = ERROR_SUCCESS_REBOOT_REQUIRED == ExitCode;
     if (RebootRequired)
+    {
+        if (0 == GlobalFindAtomW(ATOM_REBOOT))
+            GlobalAddAtomW(ATOM_REBOOT);
         ExitCode = ERROR_SUCCESS;
-
-    if (RebootRequired)
-        GlobalAddAtomW(ATOM_REBOOT);
-    else
-        GlobalDeleteAtom(GlobalFindAtomW(ATOM_REBOOT));
+    }
 
 LExit:
     ReleaseStr(CommandLine);
