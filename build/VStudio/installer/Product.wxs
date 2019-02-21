@@ -618,19 +618,19 @@
             Execute="immediate"
             Return="ignore" />
         <InstallExecuteSequence>
-            <Custom Action="Action.DevsetupAdd.x64" After="InstallFiles">
+            <Custom Action="Action.DevsetupAdd.x64" After="StartServices">
                 <![CDATA[VersionNT64 AND (NOT Installed)]]>
             </Custom>
-            <Custom Action="Action.DevsetupAdd.x86" After="InstallFiles">
+            <Custom Action="Action.DevsetupAdd.x86" After="StartServices">
                 <![CDATA[(NOT VersionNT64) AND (NOT Installed)]]>
             </Custom>
-            <Custom Action="Action.DevsetupRemove.x64" Before="RemoveFiles">
+            <Custom Action="Action.DevsetupRemove.x64" Before="StopServices">
                 <![CDATA[VersionNT64 AND REMOVE]]>
             </Custom>
-            <Custom Action="Action.DevsetupRemove.x86" Before="RemoveFiles">
+            <Custom Action="Action.DevsetupRemove.x86" Before="StopServices">
                 <![CDATA[VersionNT64 AND REMOVE]]>
             </Custom>
-            <Custom Action="Action.CheckReboot" After="InstallFiles">
+            <Custom Action="Action.CheckReboot" After="InstallFinalize">
                 <![CDATA[(NOT Installed) OR REMOVE]]>
             </Custom>
             <ScheduleReboot After="Action.CheckReboot">
