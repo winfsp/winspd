@@ -563,110 +563,78 @@
         </UI>
 
         <Binary Id="CustomActions" SourceFile="..\build\$(var.Configuration)\CustomActions.dll" />
-
-        <CustomAction
-            Id="Params.DevsetupAdd.x64"
-            Property="ExecuteCommand"
-            Value='"[SYSDIR]devsetup-x64.exe" add root\winspd "[SYSDIR]winspd.inf"' />
+        <SetProperty
+            Id="Action.DevsetupAdd.x64"
+            Value='"[SYSDIR]devsetup-x64.exe" add root\winspd "[SYSDIR]winspd.inf"'
+            Before="Action.DevsetupAdd.x64"
+            Sequence="execute" />
         <CustomAction
             Id="Action.DevsetupAdd.x64"
             BinaryKey="CustomActions"
             DllEntry="ExecuteCommand"
             Execute="deferred"
+            Impersonate="no"
             Return="check" />
-        <CustomAction
-            Id="Error.DevsetupAdd.x64"
-            Error="Installation of the $(var.MyProductName) kernel mode components has failed." />
-
-        <CustomAction
-            Id="Params.DevsetupAdd.x86"
-            Property="ExecuteCommand"
-            Value='"[SYSDIR]devsetup-x86.exe" add root\winspd "[SYSDIR]winspd.inf"' />
+        <SetProperty
+            Id="Action.DevsetupAdd.x86"
+            Value='"[SYSDIR]devsetup-x86.exe" add root\winspd "[SYSDIR]winspd.inf"'
+            Before="Action.DevsetupAdd.x86"
+            Sequence="execute" />
         <CustomAction
             Id="Action.DevsetupAdd.x86"
             BinaryKey="CustomActions"
             DllEntry="ExecuteCommand"
             Execute="deferred"
+            Impersonate="no"
             Return="check" />
-        <CustomAction
-            Id="Error.DevsetupAdd.x86"
-            Error="Installation of the $(var.MyProductName) kernel mode components has failed." />
-
-        <CustomAction
-            Id="Params.DevsetupRemove.x64"
-            Property="ExecuteCommand"
-            Value='"[SYSDIR]devsetup-x64.exe" remove root\winspd"' />
+        <SetProperty
+            Id="Action.DevsetupRemove.x64"
+            Value='"[SYSDIR]devsetup-x64.exe" remove root\winspd"'
+            Before="Action.DevsetupRemove.x64"
+            Sequence="execute" />
         <CustomAction
             Id="Action.DevsetupRemove.x64"
             BinaryKey="CustomActions"
             DllEntry="ExecuteCommand"
             Execute="deferred"
+            Impersonate="no"
             Return="check" />
-        <CustomAction
-            Id="Error.DevsetupRemove.x64"
-            Error="Uninstallation of the $(var.MyProductName) kernel mode components has failed." />
-
-        <CustomAction
-            Id="Params.DevsetupRemove.x86"
-            Property="ExecuteCommand"
-            Value='"[SYSDIR]devsetup-x86.exe" remove root\winspd"' />
+        <SetProperty
+            Id="Action.DevsetupRemove.x86"
+            Value='"[SYSDIR]devsetup-x86.exe" remove root\winspd"'
+            Before="Action.DevsetupRemove.x86"
+            Sequence="execute" />
         <CustomAction
             Id="Action.DevsetupRemove.x86"
             BinaryKey="CustomActions"
             DllEntry="ExecuteCommand"
             Execute="deferred"
+            Impersonate="no"
             Return="check" />
         <CustomAction
-            Id="Error.DevsetupRemove.x86"
-            Error="Uninstallation of the $(var.MyProductName) kernel mode components has failed." />
-
+            Id="Action.CheckReboot"
+            BinaryKey="CustomActions"
+            DllEntry="CheckReboot"
+            Execute="immediate"
+            Return="ignore" />
         <InstallExecuteSequence>
-            <Custom Action="Params.DevsetupAdd.x64" Before="Action.DevsetupAdd.x64">
-                <![CDATA[VersionNT64 AND (NOT Installed)]]>
-            </Custom>
             <Custom Action="Action.DevsetupAdd.x64" After="InstallFiles">
                 <![CDATA[VersionNT64 AND (NOT Installed)]]>
-            </Custom>
-            <Custom Action="Error.DevsetupAdd.x64" After="Action.DevsetupAdd.x64">
-                <![CDATA[VersionNT64 AND (NOT Installed) AND
-                    (0 <> ExecuteCommand) AND (3010 <> ExecuteCommand)]]>
-            </Custom>
-
-            <Custom Action="Params.DevsetupAdd.x86" Before="Action.DevsetupAdd.x86">
-                <![CDATA[(NOT VersionNT64) AND (NOT Installed)]]>
             </Custom>
             <Custom Action="Action.DevsetupAdd.x86" After="InstallFiles">
                 <![CDATA[(NOT VersionNT64) AND (NOT Installed)]]>
             </Custom>
-            <Custom Action="Error.DevsetupAdd.x86" After="Action.DevsetupAdd.x86">
-                <![CDATA[(NOT VersionNT64) AND (NOT Installed) AND
-                    (0 <> ExecuteCommand) AND (3010 <> ExecuteCommand)]]>
-            </Custom>
-
-            <Custom Action="Params.DevsetupRemove.x64" Before="Action.DevsetupRemove.x64">
-                <![CDATA[VersionNT64 AND REMOVE]]>
-            </Custom>
             <Custom Action="Action.DevsetupRemove.x64" Before="RemoveFiles">
-                <![CDATA[VersionNT64 AND REMOVE]]>
-            </Custom>
-            <Custom Action="Error.DevsetupRemove.x64" After="Action.DevsetupRemove.x64">
-                <![CDATA[VersionNT64 AND REMOVE AND
-                    (0 <> ExecuteCommand) AND (3010 <> ExecuteCommand)]]>
-            </Custom>
-
-            <Custom Action="Params.DevsetupRemove.x86" Before="Action.DevsetupRemove.x86">
                 <![CDATA[VersionNT64 AND REMOVE]]>
             </Custom>
             <Custom Action="Action.DevsetupRemove.x86" Before="RemoveFiles">
                 <![CDATA[VersionNT64 AND REMOVE]]>
             </Custom>
-            <Custom Action="Error.DevsetupRemove.x86" After="Action.DevsetupRemove.x64">
-                <![CDATA[VersionNT64 AND REMOVE AND
-                    (0 <> ExecuteCommand) AND (3010 <> ExecuteCommand)]]>
+            <Custom Action="Action.CheckReboot" After="InstallFiles">
+                <![CDATA[(NOT Installed) OR REMOVE]]>
             </Custom>
-
-            <ScheduleReboot Before="InstallFinalize">
-                <![CDATA[(Installed OR REMOVE) AND (3010 = ExecuteCommand)]]>
+            <ScheduleReboot After="Action.CheckReboot">
+                <![CDATA[((NOT Installed) OR REMOVE) AND CheckReboot]]>
             </ScheduleReboot>
         </InstallExecuteSequence>
     </Product>

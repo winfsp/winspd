@@ -25,6 +25,8 @@
 #include <wcautil.h>
 #include <strutil.h>
 
+#define ATOM_REBOOT                     L"WinSpd.Reboot.{013E4DC9-5C90-4C4D-B97A-6AAC186AB029}"
+
 UINT __stdcall ExecuteCommand(MSIHANDLE MsiHandle)
 {
 #if 0
@@ -39,11 +41,12 @@ UINT __stdcall ExecuteCommand(MSIHANDLE MsiHandle)
     STARTUPINFOW StartupInfo;
     PROCESS_INFORMATION ProcessInfo;
     DWORD ExitCode = 0;
+    DWORD RebootRequired;
 
     hr = WcaInitialize(MsiHandle, __FUNCTION__);
     ExitOnFailure(hr, "Failed to initialize");
 
-    WcaGetProperty(L"" __FUNCTION__, &CommandLine);
+    WcaGetProperty(L"CustomActionData", &CommandLine);
     ExitOnFailure(hr, "Failed to get CommandLine");
 
     WcaLog(LOGMSG_STANDARD, "Initialized: \"%S\"", CommandLine);
@@ -62,11 +65,46 @@ UINT __stdcall ExecuteCommand(MSIHANDLE MsiHandle)
     CloseHandle(ProcessInfo.hThread);
     CloseHandle(ProcessInfo.hProcess);
 
-    WcaSetIntProperty(L"" __FUNCTION__, ExitCode);
+    RebootRequired = ERROR_SUCCESS_REBOOT_REQUIRED == ExitCode;
+    if (RebootRequired)
+        ExitCode = ERROR_SUCCESS;
+
+    if (RebootRequired)
+        GlobalAddAtomW(ATOM_REBOOT);
+    else
+        GlobalDeleteAtom(GlobalFindAtomW(ATOM_REBOOT));
 
 LExit:
     ReleaseStr(CommandLine);
 
+    err = SUCCEEDED(hr) && ERROR_SUCCESS == ExitCode ? ERROR_SUCCESS : ERROR_INSTALL_FAILURE;
+    return WcaFinalize(err);
+}
+
+UINT __stdcall CheckReboot(MSIHANDLE MsiHandle)
+{
+#if 0
+    WCHAR MessageBuf[64];
+    wsprintfW(MessageBuf, L"PID=%ld", GetCurrentProcessId());
+    MessageBoxW(0, MessageBuf, L"" __FUNCTION__ " Break", MB_OK);
+#endif
+
+    HRESULT hr = S_OK;
+    UINT err = ERROR_SUCCESS;
+    DWORD RebootRequired = FALSE;
+
+    hr = WcaInitialize(MsiHandle, __FUNCTION__);
+    ExitOnFailure(hr, "Failed to initialize");
+
+    WcaLog(LOGMSG_STANDARD, "Initialized");
+
+    SetLastError(ERROR_SUCCESS);
+    GlobalDeleteAtom(GlobalFindAtomW(ATOM_REBOOT));
+    RebootRequired = ERROR_SUCCESS == GetLastError();
+
+    WcaSetIntProperty(L"" __FUNCTION__, RebootRequired);
+
+LExit:
     err = SUCCEEDED(hr) ? ERROR_SUCCESS : ERROR_INSTALL_FAILURE;
     return WcaFinalize(err);
 }
