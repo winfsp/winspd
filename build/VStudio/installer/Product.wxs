@@ -628,13 +628,13 @@
                 <![CDATA[VersionNT64 AND REMOVE]]>
             </Custom>
             <Custom Action="Action.DevsetupRemove.x86" Before="StopServices">
-                <![CDATA[VersionNT64 AND REMOVE]]>
+                <![CDATA[(NOT VersionNT64) AND REMOVE]]>
             </Custom>
             <Custom Action="Action.CheckReboot" After="InstallFinalize">
                 <![CDATA[(NOT Installed) OR REMOVE]]>
             </Custom>
             <ScheduleReboot After="Action.CheckReboot">
-                <![CDATA[((NOT Installed) OR REMOVE) AND CheckReboot]]>
+                <![CDATA[((NOT Installed) OR REMOVE) AND (0 <> CheckReboot)]]>
             </ScheduleReboot>
         </InstallExecuteSequence>
     </Product>

@@ -46,7 +46,7 @@ UINT __stdcall ExecuteCommand(MSIHANDLE MsiHandle)
     hr = WcaInitialize(MsiHandle, __FUNCTION__);
     ExitOnFailure(hr, "Failed to initialize");
 
-    WcaGetProperty(L"CustomActionData", &CommandLine);
+    hr = WcaGetProperty(L"CustomActionData", &CommandLine);
     ExitOnFailure(hr, "Failed to get CommandLine");
 
     WcaLog(LOGMSG_STANDARD, "Initialized: \"%S\"", CommandLine);
@@ -98,9 +98,8 @@ UINT __stdcall CheckReboot(MSIHANDLE MsiHandle)
 
     WcaLog(LOGMSG_STANDARD, "Initialized");
 
-    SetLastError(ERROR_SUCCESS);
+    RebootRequired = 0 != GlobalFindAtomW(ATOM_REBOOT);
     GlobalDeleteAtom(GlobalFindAtomW(ATOM_REBOOT));
-    RebootRequired = ERROR_SUCCESS == GetLastError();
 
     WcaSetIntProperty(L"" __FUNCTION__, RebootRequired);
 
