@@ -30,7 +30,7 @@
 /*
  * Define MSITEST for MSI testing and no actual device setup.
  */
-#define MSITEST
+//#define MSITEST
 
 static int MessageBoxFormat(DWORD Type, PWSTR Caption, PWSTR Format, ...)
 {
@@ -130,14 +130,11 @@ static DWORD add(PWSTR HardwareId, PWSTR FileName)
     BOOL RebootRequired0 = FALSE, RebootRequired1 = FALSE;
     int Error;
 
+    if (0 == GetFullPathNameW(FileName, MAX_PATH, FileNameBuf, 0))
+        goto lasterr;
+
     if (ERROR_SUCCESS != enumerate(HardwareId, 0))
     {
-        if (0 == GetFullPathNameW(FileName, MAX_PATH, FileNameBuf, 0))
-            goto lasterr;
-
-        memset(HardwareIdBuf, 0, sizeof HardwareIdBuf);
-        lstrcpynW(HardwareIdBuf, HardwareId, LINE_LEN + 1);
-
         if (!SetupDiGetINFClassW(FileNameBuf, &ClassGuid, ClassName, MAX_CLASS_NAME_LEN, 0))
             goto lasterr;
 
@@ -148,6 +145,8 @@ static DWORD add(PWSTR HardwareId, PWSTR FileName)
         if (!SetupDiCreateDeviceInfoW(DiHandle, ClassName, &ClassGuid, 0, 0, DICD_GENERATE_ID, &Info))
             goto lasterr;
 
+        memset(HardwareIdBuf, 0, sizeof HardwareIdBuf);
+        lstrcpynW(HardwareIdBuf, HardwareId, LINE_LEN + 1);
         if (!SetupDiSetDeviceRegistryPropertyW(DiHandle, &Info,
             SPDRP_HARDWAREID, (PVOID)HardwareIdBuf, (lstrlenW(HardwareIdBuf) + 2) * sizeof(WCHAR)))
             goto lasterr;
@@ -155,6 +154,7 @@ static DWORD add(PWSTR HardwareId, PWSTR FileName)
         if (!SetupDiCallClassInstaller(DIF_REGISTERDEVICE, DiHandle, &Info))
             goto lasterr;
 
+        InstallParams.cbSize = sizeof InstallParams;
         if (!SetupDiGetDeviceInstallParamsW(DiHandle, &Info, &InstallParams))
             goto lasterr;
         RebootRequired0 = 0 != (InstallParams.Flags & (DI_NEEDREBOOT | DI_NEEDRESTART));
@@ -194,6 +194,7 @@ static DWORD removefn(HDEVINFO DiHandle, SP_DEVINFO_DATA *Info)
     if (!SetupDiCallClassInstaller(DIF_REMOVE, DiHandle, Info))
         goto lasterr;
 
+    InstallParams.cbSize = sizeof InstallParams;
     if (!SetupDiGetDeviceInstallParamsW(DiHandle, Info, &InstallParams))
         goto lasterr;
     RebootRequired = 0 != (InstallParams.Flags & (DI_NEEDREBOOT | DI_NEEDRESTART));
