@@ -715,6 +715,7 @@
             Specify WIXFAILWHENDEFERRED=1 on the msiexec cmdline for rollback testing.
             See http://tinyurl.com/yxkaywek
         -->
+        <Property Id="WIXFAILWHENDEFERRED" Value="0" Secure="yes" />
         <CustomActionRef Id="WixFailWhenDeferred" />
     </Product>
 </Wix>
