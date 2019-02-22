@@ -59,7 +59,7 @@ static void usage(void)
 
 #if !defined(MSITEST)
 
-static DWORD enumerate(PWSTR HardwareId, int (*Fn)(HDEVINFO DiHandle, SP_DEVINFO_DATA *Info))
+static DWORD EnumerateDevices(PWSTR HardwareId, int (*Fn)(HDEVINFO DiHandle, SP_DEVINFO_DATA *Info))
 {
     HDEVINFO DiHandle = INVALID_HANDLE_VALUE;
     SP_DEVINFO_DATA Info;
@@ -118,7 +118,7 @@ lasterr:
     goto exit;
 }
 
-static DWORD add(PWSTR HardwareId, PWSTR FileName)
+static DWORD AddDriverAndDevice(PWSTR HardwareId, PWSTR FileName)
 {
     WCHAR FileNameBuf[MAX_PATH];
     WCHAR HardwareIdBuf[LINE_LEN + 2];
@@ -133,7 +133,7 @@ static DWORD add(PWSTR HardwareId, PWSTR FileName)
     if (0 == GetFullPathNameW(FileName, MAX_PATH, FileNameBuf, 0))
         goto lasterr;
 
-    if (ERROR_SUCCESS != enumerate(HardwareId, 0))
+    if (ERROR_SUCCESS != EnumerateDevices(HardwareId, 0))
     {
         if (!SetupDiGetINFClassW(FileNameBuf, &ClassGuid, ClassName, MAX_CLASS_NAME_LEN, 0))
             goto lasterr;
@@ -176,7 +176,7 @@ lasterr:
     goto exit;
 }
 
-static DWORD removedev(HDEVINFO DiHandle, SP_DEVINFO_DATA *Info)
+static DWORD RemoveDevice(HDEVINFO DiHandle, SP_DEVINFO_DATA *Info)
 {
     SP_REMOVEDEVICE_PARAMS RemoveParams;
     SP_DEVINSTALL_PARAMS_W InstallParams;
@@ -209,7 +209,7 @@ lasterr:
     goto exit;
 }
 
-static DWORD removedrv(HDEVINFO DiHandle, SP_DEVINFO_DATA *Info)
+static DWORD RemoveDeviceAndDriver(HDEVINFO DiHandle, SP_DEVINFO_DATA *Info)
 {
     SP_DRVINFO_DATA_W DrvInfo;
     SP_DRVINFO_DETAIL_DATA_W DrvDetail;
@@ -238,7 +238,7 @@ static DWORD removedrv(HDEVINFO DiHandle, SP_DEVINFO_DATA *Info)
         SetupDiDestroyDriverInfoList(DiHandle, Info, SPDIT_COMPATDRIVER);
     }
 
-    Error = removedev(DiHandle, Info);
+    Error = RemoveDevice(DiHandle, Info);
     if (ERROR_SUCCESS_REBOOT_REQUIRED == Error)
         RebootRequired = TRUE;
     else if (ERROR_SUCCESS != Error)
@@ -253,9 +253,14 @@ exit:
     return Error;
 }
 
+static DWORD add(PWSTR HardwareId, PWSTR FileName)
+{
+    return AddDriverAndDevice(HardwareId, FileName);
+}
+
 static DWORD remove(PWSTR HardwareId)
 {
-    return enumerate(HardwareId, removedrv);
+    return EnumerateDevices(HardwareId, RemoveDeviceAndDriver);
 }
 
 #else
