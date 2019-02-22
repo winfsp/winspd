@@ -28,7 +28,7 @@ copy %KitRoot%\bin\%SUFFIX%\certmgr.exe %TARGET% >nul
 
 echo certmgr /add /c winspd-%SUFFIX%.cer /s /r localMachine root            > %TARGET%kminst.bat
 echo certmgr /add /c winspd-%SUFFIX%.cer /s /r localMachine TrustedPublisher>>%TARGET%kminst.bat
-echo devcon install winspd-%SUFFIX%.inf root\winspd                         >>%TARGET%kminst.bat
+echo devsetup-x64 add root\winspd winspd-%SUFFIX%.inf                       >>%TARGET%kminst.bat
 
 echo sc create WinSpd.Launcher binPath=%%~dp0launcher-%SUFFIX%.exe          > %TARGET%uminst.bat
 echo sc start WinSpd.Launcher                                               >>%TARGET%uminst.bat

@@ -176,7 +176,7 @@ lasterr:
     goto exit;
 }
 
-static DWORD removefn(HDEVINFO DiHandle, SP_DEVINFO_DATA *Info)
+static DWORD removedev(HDEVINFO DiHandle, SP_DEVINFO_DATA *Info)
 {
     SP_REMOVEDEVICE_PARAMS RemoveParams;
     SP_DEVINSTALL_PARAMS_W InstallParams;
@@ -209,9 +209,53 @@ lasterr:
     goto exit;
 }
 
+static DWORD removedrv(HDEVINFO DiHandle, SP_DEVINFO_DATA *Info)
+{
+    SP_DRVINFO_DATA_W DrvInfo;
+    SP_DRVINFO_DETAIL_DATA_W DrvDetail;
+    PWSTR BaseName = 0;
+    BOOL RebootRequired = FALSE;
+    DWORD Error;
+
+    if (SetupDiBuildDriverInfoList(DiHandle, Info, SPDIT_COMPATDRIVER))
+    {
+        DrvInfo.cbSize = sizeof DrvInfo;
+        for (DWORD I = 0; SetupDiEnumDriverInfoW(DiHandle, Info, SPDIT_COMPATDRIVER, I, &DrvInfo); I++)
+        {
+            DrvDetail.cbSize = sizeof DrvDetail;
+            if (!SetupDiGetDriverInfoDetailW(DiHandle, Info, &DrvInfo, &DrvDetail, sizeof DrvDetail, 0)
+                && ERROR_INSUFFICIENT_BUFFER != GetLastError())
+                continue;
+
+            BaseName = DrvDetail.InfFileName;
+            for (PWSTR P = DrvDetail.InfFileName; L'\0' != *P; P++)
+                if (L'\\' == *P)
+                    BaseName = P + 1;
+
+            break;
+        }
+
+        SetupDiDestroyDriverInfoList(DiHandle, Info, SPDIT_COMPATDRIVER);
+    }
+
+    Error = removedev(DiHandle, Info);
+    if (ERROR_SUCCESS_REBOOT_REQUIRED == Error)
+        RebootRequired = TRUE;
+    else if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    if (0 != BaseName && !SetupUninstallOEMInfW(BaseName, SUOI_FORCEDELETE, 0))
+        /* ignore errors */;
+
+    Error = RebootRequired ? ERROR_SUCCESS_REBOOT_REQUIRED : ERROR_SUCCESS;
+
+exit:
+    return Error;
+}
+
 static DWORD remove(PWSTR HardwareId)
 {
-    return enumerate(HardwareId, removefn);
+    return enumerate(HardwareId, removedrv);
 }
 
 #else
