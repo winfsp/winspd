@@ -51,7 +51,8 @@ static void usage(void)
         "\n"
         "commands:\n"
         "    add hwid file.inf\n"
-        "    remove hwid\n",
+        "    remove hwid\n"
+        "    removedev hwid\n",
         PROGNAME);
 
     ExitProcess(ERROR_INVALID_PARAMETER);
@@ -59,7 +60,7 @@ static void usage(void)
 
 #if !defined(MSITEST)
 
-static DWORD EnumerateDevices(PWSTR HardwareId, int (*Fn)(HDEVINFO DiHandle, SP_DEVINFO_DATA *Info))
+static DWORD EnumerateDevices(PWSTR HardwareId, int (*Fn)(HDEVINFO DiHandle, PSP_DEVINFO_DATA Info))
 {
     HDEVINFO DiHandle = INVALID_HANDLE_VALUE;
     SP_DEVINFO_DATA Info;
@@ -96,7 +97,6 @@ static DWORD EnumerateDevices(PWSTR HardwareId, int (*Fn)(HDEVINFO DiHandle, SP_
                 }
 
                 Found = TRUE;
-                break;
             }
     }
     if (!Found)
@@ -118,7 +118,101 @@ lasterr:
     goto exit;
 }
 
-static DWORD AddDriverAndDevice(PWSTR HardwareId, PWSTR FileName)
+static DWORD GetInstalledDriver(HDEVINFO DiHandle, PSP_DEVINFO_DATA Info,
+    PSP_DRVINFO_DATA_W DrvInfo, PSP_DRVINFO_DETAIL_DATA_W DrvDetail)
+{
+    SP_DEVINSTALL_PARAMS_W InstallParams;
+    BOOL InfoList = FALSE, Found = FALSE;
+    DWORD Error;
+
+    InstallParams.cbSize = sizeof InstallParams;
+    if (!SetupDiGetDeviceInstallParamsW(DiHandle, Info, &InstallParams))
+        goto lasterr;
+
+    InstallParams.FlagsEx |= DI_FLAGSEX_INSTALLEDDRIVER | DI_FLAGSEX_ALLOWEXCLUDEDDRVS;
+    if (!SetupDiSetDeviceInstallParamsW(DiHandle, Info, &InstallParams))
+        goto lasterr;
+
+    if (!SetupDiBuildDriverInfoList(DiHandle, Info, SPDIT_CLASSDRIVER))
+        goto lasterr;
+    InfoList = TRUE;
+
+    for (DWORD I = 0; SetupDiEnumDriverInfoW(DiHandle, Info, SPDIT_CLASSDRIVER, I, DrvInfo); I++)
+    {
+        if (!SetupDiGetDriverInfoDetailW(DiHandle, Info, DrvInfo, DrvDetail, DrvDetail->cbSize, 0)
+            && ERROR_INSUFFICIENT_BUFFER != GetLastError())
+            continue;
+
+        Found = TRUE;
+        break;
+    }
+    if (!Found)
+        goto lasterr;
+
+    Error = ERROR_SUCCESS;
+
+exit:
+    if (ERROR_NO_MORE_ITEMS == Error)
+        Error = ERROR_FILE_NOT_FOUND;
+
+    if (InfoList)
+        SetupDiDestroyDriverInfoList(DiHandle, Info, SPDIT_COMPATDRIVER);
+
+    return Error;
+
+lasterr:
+    Error = GetLastError();
+    goto exit;
+}
+
+static DWORD EnumerateDriverFiles(HDEVINFO DiHandle, PSP_DEVINFO_DATA Info,
+    PSP_DRVINFO_DATA_W DrvInfo, PSP_FILE_CALLBACK_W Fn, PVOID Data)
+{
+    HSPFILEQ QueueHandle = INVALID_HANDLE_VALUE;
+    SP_DEVINSTALL_PARAMS_W InstallParams;
+    DWORD Error, ScanResult;
+
+    if (!SetupDiSetSelectedDriver(DiHandle, Info, DrvInfo))
+        goto lasterr;
+
+    QueueHandle = SetupOpenFileQueue();
+    if (INVALID_HANDLE_VALUE == QueueHandle)
+        goto lasterr;
+
+    InstallParams.cbSize = sizeof InstallParams;
+    if (!SetupDiGetDeviceInstallParamsW(DiHandle, Info, &InstallParams))
+        goto lasterr;
+
+    InstallParams.FileQueue = QueueHandle;
+    InstallParams.Flags |= DI_NOVCP;
+    if (!SetupDiSetDeviceInstallParamsW(DiHandle, Info, &InstallParams))
+        goto lasterr;
+
+    /* this will not actually install the files; it will queue them in QueueHandle */
+    if (!SetupDiCallClassInstaller(DIF_INSTALLDEVICEFILES, DiHandle, Info))
+        goto lasterr;
+
+    /* play back the file queue */
+    if (0 == SetupScanFileQueueW(QueueHandle, SPQ_SCAN_USE_CALLBACK, 0, Fn, Data, &ScanResult))
+    {
+        Error = 0 != ScanResult ? ScanResult : GetLastError();
+        goto exit;
+    }
+
+    Error = ERROR_SUCCESS;
+
+exit:
+    if (INVALID_HANDLE_VALUE != QueueHandle)
+        SetupCloseFileQueue(QueueHandle);
+
+    return Error;
+
+lasterr:
+    Error = GetLastError();
+    goto exit;
+}
+
+static DWORD AddDevice(PWSTR HardwareId, PWSTR FileName)
 {
     WCHAR FileNameBuf[MAX_PATH];
     WCHAR HardwareIdBuf[LINE_LEN + 2];
@@ -176,7 +270,7 @@ lasterr:
     goto exit;
 }
 
-static DWORD RemoveDevice(HDEVINFO DiHandle, SP_DEVINFO_DATA *Info)
+static DWORD RemoveDevice(HDEVINFO DiHandle, PSP_DEVINFO_DATA Info)
 {
     SP_REMOVEDEVICE_PARAMS RemoveParams;
     SP_DEVINSTALL_PARAMS_W InstallParams;
@@ -209,33 +303,128 @@ lasterr:
     goto exit;
 }
 
-static DWORD RemoveDeviceAndDriver(HDEVINFO DiHandle, SP_DEVINFO_DATA *Info)
+static DWORD RemoveFile(PWSTR FileName, PBOOL RebootRequired)
+{
+    WCHAR NewFileName[MAX_PATH + 40];
+    GUID Guid;
+    HANDLE Handle;
+    DWORD Error;
+
+    UuidCreate(&Guid);
+    wsprintfW(NewFileName,
+        L"%s.%08lx%04x%04x%02x%02x%02x%02x%02x%02x%02x%02x",
+        FileName,
+        Guid.Data1, Guid.Data2, Guid.Data3,
+        Guid.Data4[0], Guid.Data4[1], Guid.Data4[2], Guid.Data4[3],
+        Guid.Data4[4], Guid.Data4[5], Guid.Data4[6], Guid.Data4[7]);
+
+    /* rename file to unique file name in same directory */
+    if (!MoveFileExW(FileName, NewFileName, 0))
+        goto lasterr;
+
+    /* open new file name with DELETE_ON_CLOSE */
+    Handle = CreateFileW(
+        NewFileName,
+        DELETE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        0,
+        OPEN_EXISTING,
+        FILE_FLAG_DELETE_ON_CLOSE,
+        0);
+    if (INVALID_HANDLE_VALUE != Handle)
+        CloseHandle(Handle);
+
+    if (INVALID_HANDLE_VALUE == Handle)
+        switch (GetLastError())
+        {
+        case ERROR_ACCESS_DENIED:
+            /* if DELETE_ON_CLOSE failed with ERROR_ACCESS_DENIED it may be STATUS_CANNOT_DELETE */
+            SetFileAttributesW(NewFileName, FILE_ATTRIBUTE_NORMAL);
+            Handle = CreateFileW(
+                NewFileName,
+                DELETE,
+                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                0,
+                OPEN_EXISTING,
+                FILE_FLAG_DELETE_ON_CLOSE,
+                0);
+            if (INVALID_HANDLE_VALUE != Handle)
+            {
+                CloseHandle(Handle);
+                break;
+            }
+            /* fall through */
+
+        case ERROR_SHARING_VIOLATION:
+            /* try one more time at reboot time */
+            if (!MoveFileExW(NewFileName, 0, MOVEFILE_DELAY_UNTIL_REBOOT))
+                goto lasterr;
+            *RebootRequired = TRUE;
+            break;
+
+        default:
+            goto lasterr;
+        }
+
+    Error = ERROR_SUCCESS;
+
+exit:
+    if (ERROR_FILE_NOT_FOUND == Error)
+        Error = ERROR_SUCCESS;
+
+    return Error;
+
+lasterr:
+    Error = GetLastError();
+    goto exit;
+}
+
+static UINT CALLBACK RemoveDeviceAndDriverCallback(
+    PVOID Context,
+    UINT Notification,
+    UINT_PTR Param1,
+    UINT_PTR Param2)
+{
+    if (SPFILENOTIFY_QUEUESCAN != Notification)
+        return ERROR_SUCCESS;
+
+    PUINT8 *PBuffer = Context, Buffer = *PBuffer;
+    PWSTR FileName = (PWSTR)Param1;
+    ULONG FileNameSize = (lstrlenW(FileName) + 1) * sizeof(WCHAR);
+    ULONG OldSize = 0 == Buffer ? sizeof(ULONG) : *(PULONG)Buffer;
+    ULONG NewSize = OldSize + FileNameSize;
+
+    Buffer = MemRealloc(Buffer, NewSize);
+    if (0 == Buffer)
+        return ERROR_NOT_ENOUGH_MEMORY;
+    *PBuffer = Buffer;
+
+    memcpy(Buffer + OldSize, FileName, FileNameSize);
+    *(PULONG)Buffer = NewSize;
+
+    return ERROR_SUCCESS;
+}
+
+static DWORD RemoveDeviceAndDriver(HDEVINFO DiHandle, PSP_DEVINFO_DATA Info)
 {
     SP_DRVINFO_DATA_W DrvInfo;
     SP_DRVINFO_DETAIL_DATA_W DrvDetail;
+    PUINT8 DriverFiles = 0;
     PWSTR BaseName = 0;
     BOOL RebootRequired = FALSE;
     DWORD Error;
 
-    if (SetupDiBuildDriverInfoList(DiHandle, Info, SPDIT_COMPATDRIVER))
+    DrvInfo.cbSize = sizeof DrvInfo;
+    DrvDetail.cbSize = sizeof DrvDetail;
+    if (ERROR_SUCCESS == GetInstalledDriver(DiHandle, Info, &DrvInfo, &DrvDetail))
     {
-        DrvInfo.cbSize = sizeof DrvInfo;
-        for (DWORD I = 0; SetupDiEnumDriverInfoW(DiHandle, Info, SPDIT_COMPATDRIVER, I, &DrvInfo); I++)
-        {
-            DrvDetail.cbSize = sizeof DrvDetail;
-            if (!SetupDiGetDriverInfoDetailW(DiHandle, Info, &DrvInfo, &DrvDetail, sizeof DrvDetail, 0)
-                && ERROR_INSUFFICIENT_BUFFER != GetLastError())
-                continue;
+        EnumerateDriverFiles(DiHandle, Info, &DrvInfo,
+            RemoveDeviceAndDriverCallback, &DriverFiles);
 
-            BaseName = DrvDetail.InfFileName;
-            for (PWSTR P = DrvDetail.InfFileName; L'\0' != *P; P++)
-                if (L'\\' == *P)
-                    BaseName = P + 1;
-
-            break;
-        }
-
-        SetupDiDestroyDriverInfoList(DiHandle, Info, SPDIT_COMPATDRIVER);
+        BaseName = DrvDetail.InfFileName;
+        for (PWSTR P = DrvDetail.InfFileName; L'\0' != *P; P++)
+            if (L'\\' == *P)
+                BaseName = P + 1;
     }
 
     Error = RemoveDevice(DiHandle, Info);
@@ -244,23 +433,38 @@ static DWORD RemoveDeviceAndDriver(HDEVINFO DiHandle, SP_DEVINFO_DATA *Info)
     else if (ERROR_SUCCESS != Error)
         goto exit;
 
-    if (0 != BaseName && !SetupUninstallOEMInfW(BaseName, SUOI_FORCEDELETE, 0))
-        /* ignore errors */;
+    /* make a best effort to delete driver files; ignore errors */
+
+    if (0 != DriverFiles)
+        for (PWSTR P = (PWSTR)(DriverFiles + sizeof(ULONG));
+            DriverFiles + *(PULONG)DriverFiles > (PUINT8)P; P += lstrlenW(P) + 1)
+            RemoveFile(P, &RebootRequired);
+
+    if (0 != BaseName)
+        SetupUninstallOEMInfW(BaseName, SUOI_FORCEDELETE, 0);
 
     Error = RebootRequired ? ERROR_SUCCESS_REBOOT_REQUIRED : ERROR_SUCCESS;
 
 exit:
+    if (0 != DriverFiles)
+        MemFree(DriverFiles);
+
     return Error;
 }
 
 static DWORD add(PWSTR HardwareId, PWSTR FileName)
 {
-    return AddDriverAndDevice(HardwareId, FileName);
+    return AddDevice(HardwareId, FileName);
 }
 
 static DWORD remove(PWSTR HardwareId)
 {
     return EnumerateDevices(HardwareId, RemoveDeviceAndDriver);
+}
+
+static DWORD removedev(PWSTR HardwareId)
+{
+    return EnumerateDevices(HardwareId, RemoveDevice);
 }
 
 #else
@@ -277,6 +481,14 @@ static DWORD remove(PWSTR HardwareId)
 {
     MessageBoxFormat(MB_ICONINFORMATION | MB_OK, PROGNAME,
         L"remove(HardwareId=%s)", HardwareId);
+
+    return ERROR_SUCCESS;
+}
+
+static DWORD removedev(PWSTR HardwareId)
+{
+    MessageBoxFormat(MB_ICONINFORMATION | MB_OK, PROGNAME,
+        L"removedev(HardwareId=%s)", HardwareId);
 
     return ERROR_SUCCESS;
 }
@@ -305,6 +517,14 @@ int wmain(int argc, wchar_t **argv)
             usage();
 
         return remove(argv[1]);
+    }
+    else
+    if (0 == invariant_wcscmp(L"removedev", argv[0]))
+    {
+        if (2 != argc)
+            usage();
+
+        return removedev(argv[1]);
     }
     else
         usage();

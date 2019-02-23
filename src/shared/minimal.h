@@ -136,7 +136,12 @@ static inline void *MemAlloc(size_t Size)
 }
 static inline void *MemRealloc(void *Pointer, size_t Size)
 {
-    return HeapReAlloc(GetProcessHeap(), 0, Pointer, Size);
+    if (0 == Pointer)
+        return HeapAlloc(GetProcessHeap(), 0, Size);
+    else if (0 == Size)
+        return HeapFree(GetProcessHeap(), 0, Pointer), 0;
+    else
+        return HeapReAlloc(GetProcessHeap(), 0, Pointer, Size);
 }
 static inline void MemFree(void *Pointer)
 {
