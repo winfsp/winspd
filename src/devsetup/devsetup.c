@@ -407,6 +407,8 @@ static UINT CALLBACK RemoveDeviceAndDriverCallback(
 
 static DWORD RemoveDeviceAndDriver(HDEVINFO DiHandle, PSP_DEVINFO_DATA Info)
 {
+    /* make a best effort to delete device and driver files; ignore errors */
+
     SP_DRVINFO_DATA_W DrvInfo;
     SP_DRVINFO_DETAIL_DATA_W DrvDetail;
     PUINT8 DriverFiles = 0;
@@ -430,10 +432,6 @@ static DWORD RemoveDeviceAndDriver(HDEVINFO DiHandle, PSP_DEVINFO_DATA Info)
     Error = RemoveDevice(DiHandle, Info);
     if (ERROR_SUCCESS_REBOOT_REQUIRED == Error)
         RebootRequired = TRUE;
-    else if (ERROR_SUCCESS != Error)
-        goto exit;
-
-    /* make a best effort to delete driver files; ignore errors */
 
     if (0 != DriverFiles)
         for (PWSTR P = (PWSTR)(DriverFiles + sizeof(ULONG));
@@ -445,7 +443,6 @@ static DWORD RemoveDeviceAndDriver(HDEVINFO DiHandle, PSP_DEVINFO_DATA Info)
 
     Error = RebootRequired ? ERROR_SUCCESS_REBOOT_REQUIRED : ERROR_SUCCESS;
 
-exit:
     if (0 != DriverFiles)
         MemFree(DriverFiles);
 
