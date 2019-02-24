@@ -74,6 +74,19 @@ if X%SignedPackage%==X (
     popd
 )
 
+if not X%SignedPackage%==X (
+    REM Recreate and resign CAT files as ones from sysdev are only good for Win10.
+    del build\%Configuration%\sysinst\*.cat
+    call "%~dp0mkcat.bat" x64 build\%Configuration%\sysinst winspd.inf winspd-x64.sys winspd-x64.dll winspd-x86.dll
+    call "%~dp0mkcat.bat" x86 build\%Configuration%\sysinst winspd.inf winspd-x86.sys winspd-x86.dll
+    for %%f in (winspd-x64.cat winspd-x86.cat) do (
+        signtool sign /ac %CrossCert% /i %Issuer% /n %Subject% /fd sha1 /t http://timestamp.digicert.com build\%Configuration%\sysinst\%%f
+        if errorlevel 1 set /a signfail=signfail+1
+        signtool sign /as /ac %CrossCert% /i %Issuer% /n %Subject% /fd sha256 /tr http://timestamp.digicert.com /td sha256 build\%Configuration%\sysinst\%%f
+        if errorlevel 1 set /a signfail=signfail+1
+    )
+)
+
 set WINSPD_BUILD_SYSINST_SUPPRESS=1
 devenv winspd.sln /build "Installer.%Configuration%|x86"
 if errorlevel 1 goto fail
