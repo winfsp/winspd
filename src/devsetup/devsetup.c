@@ -272,11 +272,16 @@ lasterr:
 
 static DWORD RemoveDevice(HDEVINFO DiHandle, PSP_DEVINFO_DATA Info)
 {
-    SP_REMOVEDEVICE_PARAMS RemoveParams;
-    SP_DEVINSTALL_PARAMS_W InstallParams;
     BOOL RebootRequired = FALSE;
     DWORD Error;
 
+#if 1
+    /* this uninstalls the device and all its children devices */
+    if (!DiUninstallDevice(0, DiHandle, Info, 0, &RebootRequired))
+        goto lasterr;
+#else
+    SP_REMOVEDEVICE_PARAMS RemoveParams;
+    SP_DEVINSTALL_PARAMS_W InstallParams;
     RemoveParams.ClassInstallHeader.cbSize = sizeof RemoveParams.ClassInstallHeader;
     RemoveParams.ClassInstallHeader.InstallFunction = DIF_REMOVE;
     RemoveParams.Scope = DI_REMOVEDEVICE_GLOBAL;
@@ -284,14 +289,13 @@ static DWORD RemoveDevice(HDEVINFO DiHandle, PSP_DEVINFO_DATA Info)
     if (!SetupDiSetClassInstallParamsW(DiHandle, Info,
         &RemoveParams.ClassInstallHeader, sizeof RemoveParams))
         goto lasterr;
-
     if (!SetupDiCallClassInstaller(DIF_REMOVE, DiHandle, Info))
         goto lasterr;
-
     InstallParams.cbSize = sizeof InstallParams;
     if (!SetupDiGetDeviceInstallParamsW(DiHandle, Info, &InstallParams))
         goto lasterr;
     RebootRequired = 0 != (InstallParams.Flags & (DI_NEEDREBOOT | DI_NEEDRESTART));
+#endif
 
     Error = RebootRequired ? ERROR_SUCCESS_REBOOT_REQUIRED : ERROR_SUCCESS;
 
