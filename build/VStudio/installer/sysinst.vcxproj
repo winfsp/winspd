@@ -45,13 +45,23 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(ProjectName).build\$(Configuration)\$(PlatformTarget)\</IntDir>
-    <NMakeBuildCommandLine>nmake /f sysinst.mak OutDir=$(OutDir) ToolsDir=$(SolutionDir)..\..\tools\ SourceInf=$(SolutionDir)..\..\src\sys\driver.inf.in MyProductName="$(MyProductName)" MyDescription="$(MyDescription)" MyCompanyName="$(MyCompanyName)" MyCopyright="$(MyCopyright)" MyVersion=$(MyVersion) MyBaseName=$(MyBaseName)</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>if "%WINSPD_BUILD_SYSINST_SUPPRESS%"=="" (
+    nmake /f sysinst.mak OutDir=$(OutDir) ToolsDir=$(SolutionDir)..\..\tools\ SourceInf=$(SolutionDir)..\..\src\sys\driver.inf.in MyProductName="$(MyProductName)" MyDescription="$(MyDescription)" MyCompanyName="$(MyCompanyName)" MyCopyright="$(MyCopyright)" MyVersion=$(MyVersion) MyBaseName=$(MyBaseName)
+) else (
+    echo Suppressing nmake /f sysinst.mak
+)
+</NMakeBuildCommandLine>
     <NMakeCleanCommandLine>nmake /f sysinst.mak clean OutDir=$(OutDir)</NMakeCleanCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(ProjectName).build\$(Configuration)\$(PlatformTarget)\</IntDir>
-    <NMakeBuildCommandLine>nmake /f sysinst.mak OutDir=$(OutDir) ToolsDir=$(SolutionDir)..\..\tools\ SourceInf=$(SolutionDir)..\..\src\sys\driver.inf.in MyProductName="$(MyProductName)" MyDescription="$(MyDescription)" MyCompanyName="$(MyCompanyName)" MyCopyright="$(MyCopyright)" MyVersion=$(MyVersion) MyBaseName=$(MyBaseName)</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>if "%WINSPD_BUILD_SYSINST_SUPPRESS%"=="" (
+    nmake /f sysinst.mak OutDir=$(OutDir) ToolsDir=$(SolutionDir)..\..\tools\ SourceInf=$(SolutionDir)..\..\src\sys\driver.inf.in MyProductName="$(MyProductName)" MyDescription="$(MyDescription)" MyCompanyName="$(MyCompanyName)" MyCopyright="$(MyCopyright)" MyVersion=$(MyVersion) MyBaseName=$(MyBaseName)
+) else (
+    echo Suppressing nmake /f sysinst.mak
+)
+</NMakeBuildCommandLine>
     <NMakeCleanCommandLine>nmake /f sysinst.mak clean OutDir=$(OutDir)</NMakeCleanCommandLine>
   </PropertyGroup>
   <ItemDefinitionGroup>
