@@ -61,3 +61,6 @@ $(OutDir)sysinst\winspd-x86.cat: \
 	$(OutDir)sysinst\winspd-x86.dll
 	call "$(ToolsDir)mkcat.bat" \
 		x86 "$(@D)" winspd.inf winspd-x86.sys winspd-x86.dll
+
+clean:
+	rmdir /s/q $(OutDir)sysinst
