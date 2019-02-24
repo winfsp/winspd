@@ -399,6 +399,12 @@
             <Component Id="C.shellex_x86.dll.pdb">
                 <File Name="shellex-x86.pdb" Source="..\build\$(var.Configuration)\shellex-x86.public.pdb" KeyPath="yes" />
             </Component>
+            <Component Id="C.devsetup_x64.pdb">
+                <File Name="devsetup-x64.pdb" Source="..\build\$(var.Configuration)\devsetup-x64.public.pdb" KeyPath="yes" />
+            </Component>
+            <Component Id="C.devsetup_x86.pdb">
+                <File Name="devsetup-x86.pdb" Source="..\build\$(var.Configuration)\devsetup-x86.public.pdb" KeyPath="yes" />
+            </Component>
             <Component Id="C.launcher_x64.pdb">
                 <File Name="launcher-x64.pdb" Source="..\build\$(var.Configuration)\launcher-x64.public.pdb" KeyPath="yes" />
             </Component>
@@ -483,6 +489,8 @@
             <ComponentRef Id="C.winspd_x64.dll.pdb" />
             <ComponentRef Id="C.shellex_x86.dll.pdb" />
             <ComponentRef Id="C.shellex_x64.dll.pdb" />
+            <ComponentRef Id="C.devsetup_x64.pdb" />
+            <ComponentRef Id="C.devsetup_x86.pdb" />
             <ComponentRef Id="C.launcher_x86.pdb" />
             <ComponentRef Id="C.launcher_x64.pdb" />
             <ComponentRef Id="C.launchctl_x64.pdb" />
