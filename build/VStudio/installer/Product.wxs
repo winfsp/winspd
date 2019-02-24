@@ -589,11 +589,15 @@
             Impersonate="no"
             Return="ignore" />
         <InstallExecuteSequence>
+            <!--
+                deferred: `devsetup add` on install or repair
+                rollback: `devsetup remove` on install only
+            -->
             <Custom Action="Rollback.DevsetupAdd.x64" After="InstallServices">
                 <![CDATA[VersionNT64 AND (NOT Installed)]]>
             </Custom>
             <Custom Action="Deferred.DevsetupAdd.x64" After="Rollback.DevsetupAdd.x64">
-                <![CDATA[VersionNT64 AND (NOT Installed)]]>
+                <![CDATA[VersionNT64 AND ((NOT Installed) OR REINSTALL)]]>
             </Custom>
         </InstallExecuteSequence>
 
@@ -622,11 +626,15 @@
             Impersonate="no"
             Return="ignore" />
         <InstallExecuteSequence>
+            <!--
+                deferred: `devsetup add` on install or repair
+                rollback: `devsetup remove` on install only
+            -->
             <Custom Action="Rollback.DevsetupAdd.x86" After="InstallServices">
                 <![CDATA[(NOT VersionNT64) AND (NOT Installed)]]>
             </Custom>
             <Custom Action="Deferred.DevsetupAdd.x86" After="Rollback.DevsetupAdd.x86">
-                <![CDATA[(NOT VersionNT64) AND (NOT Installed)]]>
+                <![CDATA[(NOT VersionNT64) AND ((NOT Installed) OR REINSTALL)]]>
             </Custom>
         </InstallExecuteSequence>
 
@@ -655,6 +663,10 @@
             Impersonate="no"
             Return="check" />
         <InstallExecuteSequence>
+            <!--
+                deferred: `devsetup remove` on uninstall
+                rollback: `devsetup add` on uninstall
+            -->
             <Custom Action="Rollback.DevsetupRemove.x64" Before="DeleteServices">
                 <![CDATA[VersionNT64 AND REMOVE]]>
             </Custom>
@@ -688,6 +700,10 @@
             Impersonate="no"
             Return="check" />
         <InstallExecuteSequence>
+            <!--
+                deferred: `devsetup remove` on uninstall
+                rollback: `devsetup add` on uninstall
+            -->
             <Custom Action="Rollback.DevsetupRemove.x86" Before="DeleteServices">
                 <![CDATA[(NOT VersionNT64) AND REMOVE]]>
             </Custom>
@@ -704,10 +720,10 @@
             Return="ignore" />
         <InstallExecuteSequence>
             <Custom Action="Immediate.CheckReboot" After="InstallFinalize">
-                <![CDATA[(NOT Installed) OR REMOVE]]>
+                <![CDATA[(NOT Installed) OR REINSTALL OR REMOVE]]>
             </Custom>
             <ScheduleReboot After="Immediate.CheckReboot">
-                <![CDATA[((NOT Installed) OR REMOVE) AND (0 <> CheckReboot)]]>
+                <![CDATA[((NOT Installed) OR REINSTALL OR REMOVE) AND (0 <> CheckReboot)]]>
             </ScheduleReboot>
         </InstallExecuteSequence>
     
