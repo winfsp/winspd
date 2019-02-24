@@ -62,6 +62,7 @@ if X%SignedPackage%==X (
     echo .Set Compress=on >>driver.ddf
     echo .Set CabinetNameTemplate=driver.cab >>driver.ddf
     echo .Set DiskDirectory1=. >>driver.ddf
+    echo .Set DestinationDir=winspd >>driver.ddf
     echo sysinst\winspd.inf >>driver.ddf
     echo sysinst\winspd-x64.sys >>driver.ddf
     echo sysinst\winspd-x64.dll >>driver.ddf
