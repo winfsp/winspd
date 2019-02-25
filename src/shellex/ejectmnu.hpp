@@ -61,6 +61,34 @@ public:
                 Entries, sizeof Entries / sizeof Entries[0], 0));
     }
 
+    /* IContextMenu */
+    STDMETHODIMP QueryContextMenu(HMENU Menu, UINT Index, UINT CmdFirst, UINT CmdLast, UINT Flags)
+    {
+        if (0 != (Flags & CMF_DEFAULTONLY))
+            return MAKE_HRESULT(SEVERITY_SUCCESS, 0, 0);
+
+        if (!CanInvoke())
+            return MAKE_HRESULT(SEVERITY_SUCCESS, 0, 0);
+
+        /* look for a separator immediately after our position and try to place ourselves over it */
+        for (int I = Index, Count = GetMenuItemCount(Menu); Count > I; I++)
+        {
+            MENUITEMINFOA MenuInfo;
+            memset(&MenuInfo, 0, sizeof MenuInfo);
+            MenuInfo.cbSize = sizeof MenuInfo;
+            MenuInfo.fMask = MIIM_FTYPE;
+            if (GetMenuItemInfoA(Menu, I, MF_BYPOSITION, &MenuInfo) &&
+                0 != (MenuInfo.fType & MFT_SEPARATOR))
+            {
+                Index = I;
+                break;
+            }
+        }
+
+        InsertMenuW(Menu, Index, MF_STRING | MF_BYPOSITION, CmdFirst, GetVerbTextW());
+        return MAKE_HRESULT(SEVERITY_SUCCESS, 0, 1);
+    }
+
     /* internal interface */
     PSTR GetVerbNameA()
     {
