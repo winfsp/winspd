@@ -208,6 +208,14 @@ VOID SpdStorageUnitSetDebugLogF(SPD_STORAGE_UNIT *StorageUnit,
 /*
  * Helpers
  */
+typedef struct _SPD_PARTITION
+{
+    UINT8 Type;                         /* partition type */
+    UINT8 Active;                       /* 0: not active (bootable); 0x80: active (bootable) */
+    UINT64 BlockAddress, BlockCount;    /* partition range */
+} SPD_PARTITION;
+DWORD SpdDefinePartitionTable(
+    SPD_PARTITION Partitions[4], ULONG Count, UINT8 Buffer[512]);
 static inline
 VOID SpdStorageUnitStatusSetSense(SPD_STORAGE_UNIT_STATUS *Status,
     UINT8 SenseKey, UINT8 ASC, PUINT64 PInformation)

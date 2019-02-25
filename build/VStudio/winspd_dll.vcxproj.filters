@@ -35,6 +35,9 @@
     <ClCompile Include="..\..\src\dll\util.c">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\dll\mbr.c">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\inc\winspd\ioctl.h">

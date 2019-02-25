@@ -202,6 +202,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\dll\debug.c" />
     <ClCompile Include="..\..\src\dll\library.c" />
+    <ClCompile Include="..\..\src\dll\mbr.c" />
     <ClCompile Include="..\..\src\dll\stghandle.c" />
     <ClCompile Include="..\..\src\dll\stgunit.c" />
     <ClCompile Include="..\..\src\dll\util.c" />

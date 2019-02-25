@@ -220,6 +220,8 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
     FILE_SET_SPARSE_BUFFER Sparse;
     DWORD BytesTransferred;
     LARGE_INTEGER FileSize;
+    BOOLEAN ZeroSize;
+    SPD_PARTITION Partition;
     SPD_STORAGE_UNIT_PARAMS StorageUnitParams;
     SPD_STORAGE_UNIT *StorageUnit = 0;
     DWORD Error;
@@ -276,7 +278,8 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
         goto exit;
     }
 
-    if (0 == FileSize.QuadPart)
+    ZeroSize = 0 == FileSize.QuadPart;
+    if (ZeroSize)
         FileSize.QuadPart = BlockCount * BlockLength;
     if (0 == FileSize.QuadPart || BlockCount * BlockLength != FileSize.QuadPart)
     {
@@ -303,6 +306,19 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
     {
         Error = GetLastError();
         goto exit;
+    }
+
+    if (ZeroSize)
+    {
+        memset(&Partition, 0, sizeof Partition);
+        Partition.Type = 7;
+        Partition.BlockAddress = 4096 >= BlockLength ? 4096 / BlockLength : 1;
+        Partition.BlockCount = BlockCount - Partition.BlockAddress;
+        if (ERROR_SUCCESS == SpdDefinePartitionTable(&Partition, 1, Pointer))
+        {
+            FlushViewOfFile(Pointer, 0);
+            FlushFileBuffers(Handle);
+        }
     }
 
     Error = SpdStorageUnitCreate(PipeName, &StorageUnitParams, &RawDiskInterface, &StorageUnit);
