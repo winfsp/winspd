@@ -107,6 +107,69 @@ private:
         if (INVALID_HANDLE_VALUE == Handle)
         {
             Error = GetLastError();
+            if (ERROR_SHARING_VIOLATION == Error)
+            {
+                WCHAR DirName[4/*\\?\*/ + MAX_PATH];
+                PWSTR BaseName, BufP;
+                HANDLE FindHandle;
+                WIN32_FIND_DATAW FindData;
+
+                BaseName = 0;
+                for (PWSTR P = Name; L'\0' != *P; P++)
+                    if (L'\\' == *P)
+                        BaseName = P + 1;
+                if (0 == BaseName ||
+                    sizeof DirName < (PUINT8)BaseName - (PUINT8)Name + sizeof(WCHAR))
+                {
+                    Error = ERROR_SHARING_VIOLATION;
+                    goto exit;
+                }
+                memcpy(DirName, Name, (PUINT8)BaseName - (PUINT8)Name);
+                DirName[BaseName - Name] = L'\0';
+
+                /* get final path of parent directory */
+                Error = GetFinalPathName(DirName, Buf, Size);
+                if (ERROR_SUCCESS != Error)
+                {
+                    Error = ERROR_SHARING_VIOLATION;
+                    goto exit;
+                }
+
+                /* get file attributes */
+                FindHandle = FindFirstFileW(Name, &FindData);
+                if (INVALID_HANDLE_VALUE == FindHandle)
+                {
+                    Error = ERROR_SHARING_VIOLATION;
+                    goto exit;
+                }
+                FindClose(FindHandle);
+
+                /*
+                 * If it is a reparse point report ERROR_SHARING_VIOLATION.
+                 * We could try to resolve the reparse point ourselves,
+                 * but we are not going to bother.
+                 */
+                if (0 != (FindData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT))
+                {
+                    Error = ERROR_SHARING_VIOLATION;
+                    goto exit;
+                }
+
+                BufP = Buf + lstrlenW(Buf);
+                if (BufP - 1 >= Buf && L'\\' == BufP[-1])
+                    BufP--;
+
+                if (Size < (BufP - Buf + 1/*'\\'*/ + lstrlenW(BaseName) + 1/*'\0'*/) * sizeof(WCHAR))
+                {
+                    Error = ERROR_INSUFFICIENT_BUFFER;
+                    goto exit;
+                }
+
+                *BufP++ = L'\\';
+                lstrcpyW(BufP, BaseName);
+
+                Error = ERROR_SUCCESS;
+            }
             goto exit;
         }
 
@@ -133,11 +196,6 @@ private:
         WCHAR FinalPathName[4/*\\?\*/ + MAX_PATH];
         DWORD Error, LauncherError;
 
-        Error = GetFinalPathName(Name, FinalPathName, sizeof FinalPathName);
-        if (ERROR_SUCCESS != Error)
-            goto exit;
-        Name = FinalPathName;
-
         for (PWSTR P = Name; L'\0' != *P; P++)
             if (L'.' == *P)
                 ClassName = P + 1;
@@ -147,10 +205,25 @@ private:
             goto exit;
         }
 
+        Error = GetFinalPathName(Name, FinalPathName, sizeof FinalPathName);
+        if (ERROR_SUCCESS != Error)
+            goto exit;
+        Name = FinalPathName;
+
         Error = SpdLaunchStart(ClassName, Name, 1, &Name, &LauncherError);
-        if (ERROR_SUCCESS != Error || ERROR_FILE_NOT_FOUND == LauncherError)
+        if (ERROR_SUCCESS != Error)
         {
             Error = ERROR_NO_ASSOCIATION;
+            goto exit;
+        }
+        if (ERROR_FILE_NOT_FOUND == LauncherError)
+        {
+            Error = ERROR_NO_ASSOCIATION;
+            goto exit;
+        }
+        if (ERROR_ALREADY_EXISTS == LauncherError)
+        {
+            Error = ERROR_SUCCESS;
             goto exit;
         }
 
