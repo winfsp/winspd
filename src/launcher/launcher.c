@@ -43,6 +43,8 @@ typedef struct
     DWORD ProcessId;
     HANDLE Process;
     HANDLE ProcessWait;
+    HANDLE VolumeHandles;
+    ULONG VolumeHandleCount;
     LIST_ENTRY ListEntry;
     WCHAR Buffer[];
 } SVC_INSTANCE;
@@ -818,6 +820,12 @@ static VOID SvcInstanceRelease(SVC_INSTANCE *SvcInstance)
         SetEvent(SvcInstanceEvent);
     LeaveCriticalSection(&SvcInstanceLock);
 
+    if (0 != SvcInstance->VolumeHandles)
+    {
+        CloseHandles(SvcInstance->VolumeHandles, SvcInstance->VolumeHandleCount);
+        MemFree(SvcInstance->VolumeHandles);
+    }
+
     if (0 != SvcInstance->ProcessWait)
         UnregisterWaitEx(SvcInstance->ProcessWait, 0);
     if (0 != SvcInstance->Process)
@@ -845,13 +853,31 @@ static DWORD SvcInstanceKill(SVC_INSTANCE *SvcInstance, BOOLEAN Force)
     ULONG Count;
     DWORD Error;
 
-    Count = sizeof Handles / sizeof Handles[0];
-    Error = OpenAndDismountVolumesForProcessId(SvcInstance->ProcessId, Handles, &Count);
+    if (0 == SvcInstance->VolumeHandles)
+    {
+        Count = sizeof Handles / sizeof Handles[0];
+        Error = OpenAndDismountVolumesForProcessId(SvcInstance->ProcessId, Handles, &Count);
+        if (ERROR_SUCCESS == Error && 0 < Count)
+        {
+            SvcInstance->VolumeHandles = MemAlloc(Count * sizeof(HANDLE));
+            if (0 != SvcInstance->VolumeHandles)
+            {
+                memcpy(SvcInstance->VolumeHandles, Handles, Count * sizeof(HANDLE));
+                SvcInstance->VolumeHandleCount = Count;
+                Count = 0;
+            }
+        }
+    }
+    else
+    {
+        Count = 0;
+        Error = ERROR_SUCCESS;
+    }
+
     if (ERROR_SUCCESS == Error || Force)
         KillProcess(SvcInstance->ProcessId, SvcInstance->Process, LAUNCHER_KILL_TIMEOUT);
 
-    if (ERROR_SUCCESS == Error)
-        CloseHandles(Handles, Count);
+    CloseHandles(Handles, Count);
 
     return Error;
 }
