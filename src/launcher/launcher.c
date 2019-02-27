@@ -870,6 +870,7 @@ static DWORD SvcInstanceKill(SVC_INSTANCE *SvcInstance, BOOLEAN Force)
     }
     else
     {
+        /* if we already have volume handles we are not going to try dismounting again! */
         Count = 0;
         Error = ERROR_SUCCESS;
     }
