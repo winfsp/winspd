@@ -23,6 +23,7 @@
 #include <shared/minimal.h>
 #include <shared/launch.h>
 #include <shared/strtoint.h>
+#include <winspd/winspd.h>
 #include <aclapi.h>
 #include <sddl.h>
 
@@ -142,6 +143,205 @@ static VOID CALLBACK KillProcessWait(PVOID Context, BOOLEAN Timeout)
     UnregisterWaitEx(KillProcessData->ProcessWait, 0);
     CloseHandle(KillProcessData->Process);
     MemFree(KillProcessData);
+}
+
+static DWORD GetVolumeOwnerProcessId(PWSTR Volume, PDWORD PProcessId)
+{
+    HANDLE Handle = INVALID_HANDLE_VALUE;
+    STORAGE_PROPERTY_QUERY Query;
+    DWORD BytesTransferred;
+    union
+    {
+        STORAGE_DEVICE_DESCRIPTOR Device;
+        STORAGE_DEVICE_ID_DESCRIPTOR DeviceId;
+        UINT8 B[1024];
+    } DescBuf;
+    PSTORAGE_IDENTIFIER Identifier;
+    DWORD ProcessId;
+    DWORD Error;
+
+    *PProcessId = 0;
+
+    Handle = CreateFileW(Volume, 0, 0, 0, OPEN_EXISTING, 0, 0);
+    if (INVALID_HANDLE_VALUE == Handle)
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    Query.PropertyId = StorageDeviceProperty;
+    Query.QueryType = PropertyStandardQuery;
+    Query.AdditionalParameters[0] = 0;
+    memset(&DescBuf, 0, sizeof DescBuf);
+
+    if (!DeviceIoControl(Handle, IOCTL_STORAGE_QUERY_PROPERTY,
+        &Query, sizeof Query, &DescBuf, sizeof DescBuf,
+        &BytesTransferred, 0))
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    Error = ERROR_NO_ASSOCIATION;
+    if (sizeof DescBuf >= DescBuf.Device.Size && 0 != DescBuf.Device.VendorIdOffset)
+        if (0 == invariant_strcmp((const char *)((PUINT8)&DescBuf + DescBuf.Device.VendorIdOffset),
+            SPD_IOCTL_VENDOR_ID))
+            Error = ERROR_SUCCESS;
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    Query.PropertyId = StorageDeviceIdProperty;
+    Query.QueryType = PropertyStandardQuery;
+    Query.AdditionalParameters[0] = 0;
+    memset(&DescBuf, 0, sizeof DescBuf);
+
+    if (!DeviceIoControl(Handle, IOCTL_STORAGE_QUERY_PROPERTY,
+        &Query, sizeof Query, &DescBuf, sizeof DescBuf,
+        &BytesTransferred, 0))
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    Error = ERROR_NO_ASSOCIATION;
+    if (sizeof DescBuf >= DescBuf.DeviceId.Size)
+    {
+        Identifier = (PSTORAGE_IDENTIFIER)DescBuf.DeviceId.Identifiers;
+        for (ULONG I = 0; DescBuf.DeviceId.NumberOfIdentifiers > I; I++)
+        {
+            if (StorageIdCodeSetBinary == Identifier->CodeSet &&
+                StorageIdTypeVendorSpecific == Identifier->Type &&
+                StorageIdAssocDevice == Identifier->Association &&
+                8 == Identifier->IdentifierSize &&
+                'P' == Identifier->Identifier[0] &&
+                'I' == Identifier->Identifier[1] &&
+                'D' == Identifier->Identifier[2] &&
+                /* allow volumes that have EjectDisabled in the launcher */
+                (' ' == Identifier->Identifier[3] || 'X' == Identifier->Identifier[3]))
+            {
+                ProcessId =
+                    (Identifier->Identifier[4] << 24) |
+                    (Identifier->Identifier[5] << 16) |
+                    (Identifier->Identifier[6] << 8) |
+                    (Identifier->Identifier[7]);
+                Error = ERROR_SUCCESS;
+                break;
+            }
+            Identifier = (PSTORAGE_IDENTIFIER)((PUINT8)Identifier + Identifier->NextOffset);
+        }
+    }
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    *PProcessId = ProcessId;
+
+exit:
+    if (INVALID_HANDLE_VALUE != Handle)
+        CloseHandle(Handle);
+
+    return Error;
+}
+
+static DWORD OpenAndDismountVolume(PWSTR Volume, PHANDLE PHandle)
+{
+    HANDLE Handle = INVALID_HANDLE_VALUE;
+    DWORD BytesTransferred;
+    DWORD Error;
+
+    *PHandle = INVALID_HANDLE_VALUE;
+
+    Handle = CreateFileW(
+        Volume,
+        GENERIC_READ | GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        0,
+        OPEN_EXISTING,
+        0,
+        0);
+    if (INVALID_HANDLE_VALUE == Handle)
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    /* lock and dismount; unlock happens at CloseHandle */
+    if (!DeviceIoControl(Handle, FSCTL_LOCK_VOLUME, 0, 0, 0, 0, &BytesTransferred, 0) ||
+        !DeviceIoControl(Handle, FSCTL_DISMOUNT_VOLUME, 0, 0, 0, 0, &BytesTransferred, 0))
+    {
+        Error = GetLastError();
+        if (ERROR_ACCESS_DENIED == Error)
+            Error = ERROR_DEVICE_IN_USE;
+
+        CloseHandle(Handle);
+        goto exit;
+    }
+
+    *PHandle = Handle;
+
+    Error = ERROR_SUCCESS;
+
+exit:
+    return Error;
+}
+
+static VOID CloseHandles(PHANDLE Handles, ULONG Count)
+{
+    for (ULONG Index = 0; Count > Index; Index++)
+        CloseHandle(Handles[Index]);
+}
+
+static DWORD OpenAndDismountVolumesForProcessId(DWORD ProcessId, PHANDLE Handles, PULONG PCount)
+{
+    HANDLE FindHandle = INVALID_HANDLE_VALUE;
+    WCHAR Volume[MAX_PATH];
+    DWORD OwnerProcessId;
+    ULONG Index = 0, Count = *PCount;
+    DWORD Error, DevicesInUse = 0;
+
+    *PCount = 0;
+
+    FindHandle = FindFirstVolumeW(Volume, MAX_PATH);
+    if (INVALID_HANDLE_VALUE == FindHandle)
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    do
+    {
+        if (Count <= Index)
+            break;
+
+        PWSTR EndP = Volume + lstrlenW(Volume);
+        if (Volume < EndP && L'\\' == EndP[-1])
+            EndP[-1] = L'\0';
+
+        Error = GetVolumeOwnerProcessId(Volume, &OwnerProcessId);
+        if (ERROR_SUCCESS != Error || ProcessId != OwnerProcessId)
+            continue;
+
+        Error = OpenAndDismountVolume(Volume, &Handles[Index]);
+        if (ERROR_SUCCESS == Error)
+            Index++;
+        else
+        if (ERROR_DEVICE_IN_USE == Error)
+            DevicesInUse++;
+
+    } while (FindNextVolumeW(FindHandle, Volume, MAX_PATH));
+
+    /* treat only non-zero DevicesInUse as error */
+    Error = 0 == DevicesInUse ? ERROR_SUCCESS : ERROR_DEVICE_IN_USE;
+
+    *PCount = Index;
+
+exit:
+    if (ERROR_SUCCESS != Error)
+        CloseHandles(Handles, Index);
+
+    if (INVALID_HANDLE_VALUE != FindHandle)
+        FindVolumeClose(FindHandle);
+
+    return Error;
 }
 
 static SVC_INSTANCE *SvcInstanceLookupByPid(DWORD ProcessId)
@@ -639,6 +839,23 @@ static VOID CALLBACK SvcInstanceTerminated(PVOID Context, BOOLEAN Timeout)
     SvcInstanceRelease(SvcInstance);
 }
 
+static DWORD SvcInstanceKill(SVC_INSTANCE *SvcInstance, BOOLEAN Force)
+{
+    HANDLE Handles[256];
+    ULONG Count;
+    DWORD Error;
+
+    Count = sizeof Handles / sizeof Handles[0];
+    Error = OpenAndDismountVolumesForProcessId(SvcInstance->ProcessId, Handles, &Count);
+    if (ERROR_SUCCESS == Error || Force)
+        KillProcess(SvcInstance->ProcessId, SvcInstance->Process, LAUNCHER_KILL_TIMEOUT);
+
+    if (ERROR_SUCCESS == Error)
+        CloseHandles(Handles, Count);
+
+    return Error;
+}
+
 static DWORD SvcInstanceStart(HANDLE ClientToken,
     PWSTR ClassName, PWSTR InstanceName, ULONG Argc, PWSTR *Argv, HANDLE Job)
 {
@@ -674,9 +891,7 @@ static DWORD SvcInstanceStop(HANDLE ClientToken,
     if (ERROR_SUCCESS != Error)
         goto exit;
 
-    KillProcess(SvcInstance->ProcessId, SvcInstance->Process, LAUNCHER_KILL_TIMEOUT);
-
-    Error = ERROR_SUCCESS;
+    Error = SvcInstanceKill(SvcInstance, FALSE);
 
 exit:
     LeaveCriticalSection(&SvcInstanceLock);
@@ -775,7 +990,7 @@ static VOID SvcInstanceStopAndWaitAll(VOID)
     {
         SvcInstance = CONTAINING_RECORD(ListEntry, SVC_INSTANCE, ListEntry);
 
-        KillProcess(SvcInstance->ProcessId, SvcInstance->Process, LAUNCHER_KILL_TIMEOUT);
+        SvcInstanceKill(SvcInstance, TRUE);
     }
 
     LeaveCriticalSection(&SvcInstanceLock);
