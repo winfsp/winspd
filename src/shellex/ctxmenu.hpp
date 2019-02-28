@@ -90,7 +90,7 @@ public:
             Invoked = TRUE;
         }
 
-        return Invoked ? Invoke() : E_FAIL;
+        return Invoked ? Invoke(Info->hwnd, 0 == (CMIC_MASK_FLAG_NO_UI & Info->fMask)) : E_FAIL;
     }
     STDMETHODIMP GetCommandString(UINT_PTR Cmd, UINT Type, UINT *Reserved, CHAR *Name, UINT Count)
     {
@@ -113,7 +113,7 @@ public:
     {
         return TRUE;
     }
-    virtual HRESULT Invoke() = 0;
+    virtual HRESULT Invoke(HWND Window, BOOL ShowUI) = 0;
 
 protected:
     PIDLIST_ABSOLUTE _FolderPidl;

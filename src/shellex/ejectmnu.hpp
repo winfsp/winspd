@@ -106,9 +106,26 @@ public:
     {
         return CanEject(_FileName);
     }
-    HRESULT Invoke()
+    HRESULT Invoke(HWND Window, BOOL ShowUI)
     {
-        return Eject(_FileName);
+        DWORD Error;
+
+        Error = Eject(_FileName);
+        if (ERROR_SUCCESS != Error && ShowUI)
+        {
+            WCHAR MessageBuf[1024];
+            WCHAR ErrorBuf[512];
+
+            if (0 == FormatMessageW(
+                FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
+                0, Error, 0, ErrorBuf, sizeof ErrorBuf / sizeof ErrorBuf[0], 0))
+                ErrorBuf[0] = '\0';
+            wsprintfW(MessageBuf, L"The volume %s cannot be ejected.\n%s", _FileName, ErrorBuf);
+
+            MessageBoxW(0, MessageBuf, L"" SPD_SHELLEX_EJECT_VERB_DESC, MB_OK | MB_ICONWARNING);
+        }
+
+        return S_OK;
     }
 
 private:
@@ -260,7 +277,7 @@ private:
     exit:
         return Result;
     }
-    HRESULT Eject(PWSTR Name)
+    DWORD Eject(PWSTR Name)
     {
         WCHAR Volume[4/*\\?\*/ + MAX_PATH];
         WCHAR ProcessIdStr[16];
@@ -286,7 +303,7 @@ private:
         Error = LauncherError;
 
     exit:
-        return HRESULT_FROM_WIN32(Error);
+        return Error;
     }
 };
 
