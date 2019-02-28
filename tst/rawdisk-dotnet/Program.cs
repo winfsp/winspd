@@ -39,6 +39,9 @@ namespace rawdisk
             _BlockCount = BlockCount;
             _BlockLength = BlockLength;
 
+            if (RawDiskFile.StartsWith("\\\\?\\"))
+                RawDiskFile = RawDiskFile.Substring(4);
+
             _Stream = new FileStream(RawDiskFile,
                 FileMode.OpenOrCreate, FileAccess.ReadWrite, 0, (int)MaxTransferLength, false);
 
