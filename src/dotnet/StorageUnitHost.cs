@@ -276,14 +276,18 @@ namespace Spd
         {
             return _StorageUnit;
         }
+        public static int SpdDefinePartitionTable(Partition[] Partitions, Byte[] Buffer)
+        {
+            return Api.SpdDefinePartitionTable(Partitions, Buffer);
+        }
         /// <summary>
         /// Sets the debug log file to use when debug logging is enabled.
         /// </summary>
         /// <param name="FileName">
         /// The debug log file name. A value of "-" means standard error output.
         /// </param>
-        /// <returns>STATUS_SUCCESS or error code.</returns>
-        public static Int32 SetDebugLogFile(String FileName)
+        /// <returns>0 or Win32 error code.</returns>
+        public static int SetDebugLogFile(String FileName)
         {
             return Api.SetDebugLogFile(FileName);
         }

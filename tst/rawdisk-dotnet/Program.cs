@@ -26,6 +26,7 @@ using System.Runtime.InteropServices;
 using Spd;
 using StorageUnitStatus = Spd.Interop.StorageUnitStatus;
 using UnmapDescriptor = Spd.Interop.UnmapDescriptor;
+using Partition = Spd.Interop.Partition;
 
 namespace rawdisk
 {
@@ -54,11 +55,28 @@ namespace rawdisk
                 IntPtr.Zero, 0, out BytesTransferred, IntPtr.Zero);
 
             UInt64 FileSize = (UInt64)_Stream.Length;
-            if (0 == FileSize)
+            bool ZeroSize = 0 == FileSize;
+            if (ZeroSize)
                 FileSize = BlockCount * BlockLength;
             if (0 == FileSize || BlockCount * BlockLength != FileSize)
                 throw new ArgumentException();
             _Stream.SetLength((long)FileSize);
+
+            if (ZeroSize)
+            {
+                Partition[] Partitions = new Partition[1];
+                Byte[] Buffer = new Byte[512];
+
+                Partitions[0].Type = 7;
+                Partitions[0].BlockAddress = 4096 >= BlockLength ? 4096 / BlockLength : 1;
+                Partitions[0].BlockCount = BlockCount - Partitions[0].BlockAddress;
+                if (0 == StorageUnitHost.SpdDefinePartitionTable(Partitions, Buffer))
+                {
+                    _Stream.Position = 0;
+                    _Stream.Write(Buffer, 0, Buffer.Length);
+                    _Stream.Flush();
+                }
+            }
         }
 
         public override void Init(Object Host0)
@@ -291,7 +309,7 @@ namespace rawdisk
                     throw new CommandLineUsageException();
 
                 if (null != DebugLogFile)
-                    if (0 > StorageUnitHost.SetDebugLogFile(DebugLogFile))
+                    if (0 != StorageUnitHost.SetDebugLogFile(DebugLogFile))
                         throw new CommandLineUsageException("cannot open debug log file");
 
                 Host = new StorageUnitHost(RawDisk = new RawDisk(RawDiskFile, BlockCount, BlockLength));

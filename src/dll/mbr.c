@@ -87,6 +87,9 @@ DWORD SpdDefinePartitionTable(
     UINT64 BlockAddress, EndBlockAddress;
     UINT32 C, H, S;
 
+    if (4 < Count)
+        return ERROR_INVALID_PARAMETER;
+
     for (ULONG I = 0; Count > I; I++)
     {
         BlockAddress = Partitions[I].BlockAddress;

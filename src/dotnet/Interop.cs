@@ -146,6 +146,14 @@ namespace Spd.Interop
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    public struct Partition
+    {
+        public Byte Type;
+        public Byte Active;
+        public UInt64 BlockAddress, BlockCount;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     internal struct StorageUnitInterface
     {
         internal struct Proto
@@ -220,6 +228,11 @@ namespace Spd.Interop
                 IntPtr StorageUnit,
                 UInt32 DebugLog);
 
+            /* helpers */
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate int SpdDefinePartitionTable(
+                IntPtr Partitions, UInt32 Count, IntPtr Buffer);
+
             /* utility */
             [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
             internal delegate void SpdDebugLog(
@@ -246,6 +259,7 @@ namespace Spd.Interop
         internal static Proto.SpdStorageUnitWaitDispatcher SpdStorageUnitWaitDispatcher;
         internal static Proto.SpdStorageUnitSetBufferAllocatorF SpdStorageUnitSetBufferAllocator;
         internal static Proto.SpdStorageUnitSetDebugLogF SpdStorageUnitSetDebugLog;
+        internal static Proto.SpdDefinePartitionTable _SpdDefinePartitionTable;
         internal static Proto.SpdDebugLog SpdDebugLog;
         internal static Proto.SpdDebugLogSetHandle SpdDebugLogSetHandle;
         internal static Proto.SpdVersion SpdVersion;
@@ -287,6 +301,16 @@ namespace Spd.Interop
                 DescriptorArray[I].BlockCount = P[I].BlockCount;
             }
             return DescriptorArray;
+        }
+
+        internal unsafe static int SpdDefinePartitionTable(Partition[] Partitions, Byte[] Buffer)
+        {
+            if (4 < Partitions.Length || 512 > Buffer.Length)
+                return 87/*ERROR_INVALID_PARAMETER*/;
+
+            fixed (Partition *P = Partitions)
+                fixed (Byte *B = Buffer)
+                    return _SpdDefinePartitionTable((IntPtr)P, (UInt32)Partitions.Length, (IntPtr)B);
         }
 
         internal static int SetDebugLogFile(String FileName)
@@ -343,6 +367,7 @@ namespace Spd.Interop
             SpdStorageUnitWaitDispatcher = GetEntryPoint<Proto.SpdStorageUnitWaitDispatcher>(Module);
             SpdStorageUnitSetBufferAllocator = GetEntryPoint<Proto.SpdStorageUnitSetBufferAllocatorF>(Module);
             SpdStorageUnitSetDebugLog = GetEntryPoint<Proto.SpdStorageUnitSetDebugLogF>(Module);
+            _SpdDefinePartitionTable = GetEntryPoint<Proto.SpdDefinePartitionTable>(Module);
             SpdDebugLog = GetEntryPoint<Proto.SpdDebugLog>(Module);
             SpdDebugLogSetHandle = GetEntryPoint<Proto.SpdDebugLogSetHandle>(Module);
             SpdVersion = GetEntryPoint<Proto.SpdVersion>(Module);
