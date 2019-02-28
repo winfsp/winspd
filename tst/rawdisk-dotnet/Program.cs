@@ -222,7 +222,7 @@ namespace rawdisk
                 String RawDiskFile = null;
                 UInt32 BlockCount = 1024 * 1024;
                 UInt32 BlockLength = 512;
-                String ProductId = "RawDisk";
+                String ProductId = "RawDisk-dotnet";
                 String ProductRevision = "1.0";
                 UInt32 WriteAllowed = 1;
                 UInt32 CacheSupported = 1;
