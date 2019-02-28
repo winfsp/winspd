@@ -266,7 +266,7 @@
                         <RegistryValue
                             Type="string"
                             Name="Security"
-                            Value="D:P(A;;RPWPLC;;;WD)" />
+                            Value="D:P(A;;RP;;;WD)" />
                     </RegistryKey>
                 </RegistryKey>
                 <RegistryKey
