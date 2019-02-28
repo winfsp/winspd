@@ -805,7 +805,7 @@ exit:
     LeaveCriticalSection(&SvcInstanceLock);
 
     SvcLog(EVENTLOG_INFORMATION_TYPE,
-        L"create %s\\%s = %ld", ClassName, InstanceName, Error);
+        L"create %s %s = %ld", ClassName, InstanceName, Error);
 
     return Error;
 }
@@ -842,7 +842,7 @@ static VOID CALLBACK SvcInstanceTerminated(PVOID Context, BOOLEAN Timeout)
     SVC_INSTANCE *SvcInstance = Context;
 
     SvcLog(EVENTLOG_INFORMATION_TYPE,
-        L"terminated %s\\%s", SvcInstance->ClassName, SvcInstance->InstanceName);
+        L"terminated %s %s", SvcInstance->ClassName, SvcInstance->InstanceName);
 
     SvcInstanceRelease(SvcInstance);
 }
