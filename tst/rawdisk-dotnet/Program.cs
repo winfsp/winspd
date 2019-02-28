@@ -102,7 +102,7 @@ namespace rawdisk
             lock (this) /* I want pread */
             {
                 _Stream.Position = (long)(BlockAddress * _BlockLength);
-                _Stream.Read(Buffer, 0, Buffer.Length);
+                _Stream.Read(Buffer, 0, (int)(BlockCount * _BlockLength));
                     /* FIX: we assume that we are reading from a file and ignore the return value */
             }
         }
@@ -113,7 +113,7 @@ namespace rawdisk
             lock (this) /* I want pwrite */
             {
                 _Stream.Position = (long)(BlockAddress * _BlockLength);
-                _Stream.Write(Buffer, 0, Buffer.Length);
+                _Stream.Write(Buffer, 0, (int)(BlockCount * _BlockLength));
             }
 
             if (Flush)
