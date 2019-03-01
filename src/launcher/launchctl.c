@@ -35,6 +35,7 @@ static void usage(void)
         "commands:\n"
         "    start               ClassName InstanceName Args...\n"
         "    stop                ClassName InstanceName\n"
+        "    stopForced          ClassName InstanceName\n"
         "    info                ClassName InstanceName\n"
         "    list\n",
         PROGNAME);
@@ -120,7 +121,7 @@ static int start(PWSTR PipeBuf, ULONG PipeBufSize,
 }
 
 static int stop(PWSTR PipeBuf, ULONG PipeBufSize,
-    PWSTR ClassName, PWSTR InstanceName)
+    PWSTR ClassName, PWSTR InstanceName, BOOLEAN Forced)
 {
     PWSTR P;
     DWORD ClassNameSize, InstanceNameSize;
@@ -132,7 +133,7 @@ static int stop(PWSTR PipeBuf, ULONG PipeBufSize,
         return ERROR_INVALID_PARAMETER;
 
     P = PipeBuf;
-    *P++ = SpdLaunchCmdStop;
+    *P++ = Forced ? SpdLaunchCmdStopForced : SpdLaunchCmdStop;
     memcpy(P, ClassName, ClassNameSize * sizeof(WCHAR)); P += ClassNameSize;
     memcpy(P, InstanceName, InstanceNameSize * sizeof(WCHAR)); P += InstanceNameSize;
 
@@ -215,7 +216,15 @@ int wmain(int argc, wchar_t **argv)
         if (3 != argc)
             usage();
 
-        return stop(PipeBuf, SPD_LAUNCH_PIPE_BUFFER_SIZE, argv[1], argv[2]);
+        return stop(PipeBuf, SPD_LAUNCH_PIPE_BUFFER_SIZE, argv[1], argv[2], FALSE);
+    }
+    else
+    if (0 == invariant_wcscmp(L"stopForced", argv[0]))
+    {
+        if (3 != argc)
+            usage();
+
+        return stop(PipeBuf, SPD_LAUNCH_PIPE_BUFFER_SIZE, argv[1], argv[2], TRUE);
     }
     else
     if (0 == invariant_wcscmp(L"info", argv[0]))

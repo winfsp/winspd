@@ -59,6 +59,7 @@ enum
 {
     SpdLaunchCmdStart                   = 'S',  /* requires: SERVICE_START */
     SpdLaunchCmdStop                    = 'T',  /* requires: SERVICE_STOP */
+    SpdLaunchCmdStopForced              = 'F',  /* requires: SERVICE_STOP */
     SpdLaunchCmdGetInfo                 = 'I',  /* requires: SERVICE_QUERY_STATUS */
     SpdLaunchCmdGetNameList             = 'L',  /* requires: none*/
     SpdLaunchCmdQuit                    = 'Q',  /* DEBUG version only */

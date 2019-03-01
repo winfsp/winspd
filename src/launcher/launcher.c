@@ -29,8 +29,8 @@
 
 #define PROGNAME                        "WinSpd.Launcher"
 
-#define LAUNCHER_PIPE_DEFAULT_TIMEOUT   (1 * 15000 + 1000)
-#define LAUNCHER_STOP_TIMEOUT           5500
+#define LAUNCHER_PIPE_DEFAULT_TIMEOUT   15000
+#define LAUNCHER_STOP_TIMEOUT           30000
 #define LAUNCHER_KILL_TIMEOUT           5000
 
 typedef struct
@@ -847,7 +847,7 @@ static VOID CALLBACK SvcInstanceTerminated(PVOID Context, BOOLEAN Timeout)
     SvcInstanceRelease(SvcInstance);
 }
 
-static DWORD SvcInstanceKill(SVC_INSTANCE *SvcInstance, BOOLEAN Force)
+static DWORD SvcInstanceKill(SVC_INSTANCE *SvcInstance, BOOLEAN Forced)
 {
     HANDLE Handles[256];
     ULONG Count;
@@ -875,7 +875,7 @@ static DWORD SvcInstanceKill(SVC_INSTANCE *SvcInstance, BOOLEAN Force)
         Error = ERROR_SUCCESS;
     }
 
-    if (ERROR_SUCCESS == Error || Force)
+    if (ERROR_SUCCESS == Error || Forced)
         KillProcess(SvcInstance->ProcessId, SvcInstance->Process, LAUNCHER_KILL_TIMEOUT);
 
     CloseHandles(Handles, Count);
@@ -900,7 +900,7 @@ static DWORD SvcInstanceStart(HANDLE ClientToken,
 }
 
 static DWORD SvcInstanceStop(HANDLE ClientToken,
-    PWSTR ClassName, PWSTR InstanceName)
+    PWSTR ClassName, PWSTR InstanceName, BOOLEAN Forced)
 {
     SVC_INSTANCE *SvcInstance;
     DWORD Error;
@@ -918,7 +918,7 @@ static DWORD SvcInstanceStop(HANDLE ClientToken,
     if (ERROR_SUCCESS != Error)
         goto exit;
 
-    Error = SvcInstanceKill(SvcInstance, FALSE);
+    Error = SvcInstanceKill(SvcInstance, Forced);
 
 exit:
     LeaveCriticalSection(&SvcInstanceLock);
@@ -1063,6 +1063,7 @@ static VOID SvcPipeTransact(HANDLE ClientToken, PWSTR PipeBuf, PULONG PSize)
     PWSTR P = PipeBuf, PipeBufEnd = PipeBuf + *PSize / sizeof(WCHAR);
     PWSTR ClassName, InstanceName;
     ULONG Argc; PWSTR Argv[9];
+    BOOLEAN Forced = FALSE;
     DWORD Error;
 
     *PSize = 0;
@@ -1083,13 +1084,16 @@ static VOID SvcPipeTransact(HANDLE ClientToken, PWSTR PipeBuf, PULONG PSize)
         SvcPipeTransactResult(Error, PipeBuf, PSize);
         break;
 
+    case SpdLaunchCmdStopForced:
+        Forced = TRUE;
+        /* fall through! */
     case SpdLaunchCmdStop:
         ClassName = SvcPipeTransactGetPart(&P, PipeBufEnd);
         InstanceName = SvcPipeTransactGetPart(&P, PipeBufEnd);
 
         Error = ERROR_INVALID_PARAMETER;
         if (0 != ClassName && 0 != InstanceName)
-            Error = SvcInstanceStop(ClientToken, ClassName, InstanceName);
+            Error = SvcInstanceStop(ClientToken, ClassName, InstanceName, Forced);
 
         SvcPipeTransactResult(Error, PipeBuf, PSize);
         break;
