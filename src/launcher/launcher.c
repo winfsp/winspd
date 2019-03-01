@@ -30,6 +30,7 @@
 #define PROGNAME                        "WinSpd.Launcher"
 
 #define LAUNCHER_PIPE_DEFAULT_TIMEOUT   15000
+#define LAUNCHER_START_TIMEOUT          30000
 #define LAUNCHER_STOP_TIMEOUT           30000
 #define LAUNCHER_KILL_TIMEOUT           5000
 
@@ -40,6 +41,7 @@ typedef struct
     PWSTR InstanceName;
     PWSTR CommandLine;
     PSECURITY_DESCRIPTOR SecurityDescriptor;
+    BOOLEAN Persistent;
     DWORD ProcessId;
     HANDLE Process;
     HANDLE ProcessWait;
@@ -394,6 +396,121 @@ static SVC_INSTANCE *SvcInstanceLookup(PWSTR ClassName, PWSTR InstanceName,
     return 0;
 }
 
+static BOOLEAN SvcInstanceSetPersistent(
+    PWSTR ClassName, PWSTR InstanceName, ULONG Argc, PWSTR *Argv,
+    PSECURITY_DESCRIPTOR SecurityDescriptor)
+{
+    HKEY RegKey = 0, ClassRegKey = 0;
+    DWORD RegSize, Persistent, ArgSize;
+    PWSTR Security = 0;
+    PWSTR ArgBuf = 0, ArgP;
+    DWORD Error;
+    BOOLEAN Result = FALSE;
+
+    Error = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"" SPD_LAUNCH_REGKEY,
+        0, SPD_LAUNCH_REGKEY_WOW64 | KEY_READ, &RegKey);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    RegSize = sizeof Persistent;
+    Error = RegGetValueW(RegKey, ClassName, L"Persistent", RRF_RT_REG_DWORD, 0,
+        &Persistent, &RegSize);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    if (!Persistent)
+        goto exit;
+
+    if (!ConvertSecurityDescriptorToStringSecurityDescriptorW(SecurityDescriptor,
+        SDDL_REVISION_1,
+        OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
+        &Security, 0))
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    ArgSize = 1;
+    for (ULONG I = 0; Argc > I; I++)
+        ArgSize += lstrlenW(Argv[I]) + 1;
+    ArgSize += lstrlenW(Security) + 1;
+    ArgSize *= sizeof(WCHAR);
+
+    ArgBuf = MemAlloc(ArgSize);
+    if (0 == ArgBuf)
+    {
+        Error = ERROR_NO_SYSTEM_RESOURCES;
+        goto exit;
+    }
+
+    ArgP = ArgBuf;
+    for (ULONG I = 0; Argc > I; I++)
+    {
+        ArgSize = lstrlen(Argv[I]) + 1;
+        memcpy(ArgP, Argv[I], ArgSize * sizeof(WCHAR));
+        ArgP += ArgSize;
+    }
+    ArgSize = lstrlen(Security) + 1;
+    memcpy(ArgP, Security, ArgSize * sizeof(WCHAR));
+    ArgP += ArgSize;
+    *ArgP++ = L'\0';
+
+    Error = RegOpenKeyExW(RegKey, ClassName,
+        0, SPD_LAUNCH_REGKEY_WOW64 | KEY_ALL_ACCESS, &ClassRegKey);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    Error = RegSetKeyValueW(ClassRegKey, L"Instances", InstanceName,
+        REG_MULTI_SZ, ArgBuf, (DWORD)((PUINT8)ArgP - (PUINT8)ArgBuf));
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    Result = TRUE;
+
+exit:
+    MemFree(ArgBuf);
+
+    LocalFree(Security);
+
+    if (0 != ClassRegKey)
+        RegCloseKey(ClassRegKey);
+
+    if (0 != RegKey)
+        RegCloseKey(RegKey);
+
+    return Result;
+}
+
+static VOID SvcInstanceDeletePersistent(
+    PWSTR ClassName, PWSTR InstanceName)
+{
+    HKEY RegKey = 0, ClassRegKey = 0;
+    DWORD Error;
+
+    Error = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"" SPD_LAUNCH_REGKEY,
+        0, SPD_LAUNCH_REGKEY_WOW64 | KEY_READ, &RegKey);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    Error = RegOpenKeyExW(RegKey, ClassName,
+        0, SPD_LAUNCH_REGKEY_WOW64 | KEY_ALL_ACCESS, &ClassRegKey);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    Error = RegDeleteKeyValueW(ClassRegKey, L"Instances", InstanceName);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    Error = ERROR_SUCCESS;
+
+exit:
+    if (0 != ClassRegKey)
+        RegCloseKey(ClassRegKey);
+
+    if (0 != RegKey)
+        RegCloseKey(RegKey);
+}
+
 static DWORD SvcInstanceAddUserRights(HANDLE Token,
     PSECURITY_DESCRIPTOR SecurityDescriptor, PSECURITY_DESCRIPTOR *PNewSecurityDescriptor)
 {
@@ -602,7 +719,7 @@ static DWORD SvcInstanceCreateProcess(
     return ERROR_SUCCESS;
 }
 
-static DWORD SvcInstanceCreate(HANDLE ClientToken,
+static DWORD SvcInstanceCreate(HANDLE ClientToken, PWSTR ExternalSecurity,
     PWSTR ClassName, PWSTR InstanceName, ULONG Argc, PWSTR *Argv0, HANDLE Job,
     SVC_INSTANCE **PSvcInstance)
 {
@@ -698,22 +815,26 @@ static DWORD SvcInstanceCreate(HANDLE ClientToken,
     if (L'D' == Security[0] && L':' == Security[1])
         Security = SecurityBuf;
 
-    if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(Security, SDDL_REVISION_1,
-        &SecurityDescriptor, 0))
+    if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        0 != ExternalSecurity ? ExternalSecurity : Security,
+        SDDL_REVISION_1, &SecurityDescriptor, 0))
     {
         Error = GetLastError();
         goto exit;
     }
 
-    Error = SvcInstanceAccessCheck(ClientToken, SERVICE_START, SecurityDescriptor);
-    if (ERROR_SUCCESS != Error)
-        goto exit;
+    if (0 != ClientToken)
+    {
+        Error = SvcInstanceAccessCheck(ClientToken, SERVICE_START, SecurityDescriptor);
+        if (ERROR_SUCCESS != Error)
+            goto exit;
 
-    Error = SvcInstanceAddUserRights(ClientToken, SecurityDescriptor, &NewSecurityDescriptor);
-    if (ERROR_SUCCESS != Error)
-        goto exit;
-    LocalFree(SecurityDescriptor);
-    SecurityDescriptor = NewSecurityDescriptor;
+        Error = SvcInstanceAddUserRights(ClientToken, SecurityDescriptor, &NewSecurityDescriptor);
+        if (ERROR_SUCCESS != Error)
+            goto exit;
+        LocalFree(SecurityDescriptor);
+        SecurityDescriptor = NewSecurityDescriptor;
+    }
 
     ClassNameSize = (lstrlenW(ClassName) + 1) * sizeof(WCHAR);
     InstanceNameSize = (lstrlenW(InstanceName) + 1) * sizeof(WCHAR);
@@ -889,10 +1010,14 @@ static DWORD SvcInstanceStart(HANDLE ClientToken,
     SVC_INSTANCE *SvcInstance;
     DWORD Error;
 
-    Error = SvcInstanceCreate(ClientToken, ClassName, InstanceName, Argc, Argv, Job,
+    Error = SvcInstanceCreate(ClientToken, 0, ClassName, InstanceName, Argc, Argv, Job,
         &SvcInstance);
     if (ERROR_SUCCESS != Error)
         return Error;
+
+    SvcInstance->Persistent = SvcInstanceSetPersistent(
+        SvcInstance->ClassName, SvcInstance->InstanceName, Argc, Argv,
+        SvcInstance->SecurityDescriptor);
 
     SvcInstanceRelease(SvcInstance);
 
@@ -919,6 +1044,9 @@ static DWORD SvcInstanceStop(HANDLE ClientToken,
         goto exit;
 
     Error = SvcInstanceKill(SvcInstance, Forced);
+    if (ERROR_SUCCESS == Error)
+        SvcInstanceDeletePersistent(
+            SvcInstance->ClassName, SvcInstance->InstanceName);
 
 exit:
     LeaveCriticalSection(&SvcInstanceLock);
@@ -1002,6 +1130,86 @@ static DWORD SvcInstanceGetNameList(HANDLE ClientToken,
     *PSize = (ULONG)(P - Buffer) * sizeof(WCHAR);
 
     return ERROR_SUCCESS;
+}
+
+static DWORD SvcInstanceStartAllPersistent(VOID)
+{
+    HKEY RegKey = 0, ClassRegKey = 0, InstancesRegKey = 0;
+    WCHAR ClassName[64], InstanceName[4/*\\?\*/ + MAX_PATH], RegValue[1024 + 512];
+    DWORD RegNameSize, RegValueSize, RegType;
+    ULONG Argc;
+    PWSTR Argv[10 + 1];
+    SVC_INSTANCE *SvcInstance;
+    DWORD Error;
+
+    Error = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"" SPD_LAUNCH_REGKEY,
+        0, SPD_LAUNCH_REGKEY_WOW64 | KEY_READ, &RegKey);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
+
+    for (ULONG I = 0;; I++)
+    {
+        RegNameSize = sizeof ClassName / sizeof ClassName[0];
+        if (ERROR_SUCCESS != RegEnumKeyExW(RegKey, I, ClassName, &RegNameSize, 0, 0, 0, 0))
+            break;
+
+        Error = RegOpenKeyExW(RegKey, ClassName,
+            0, SPD_LAUNCH_REGKEY_WOW64 | KEY_READ, &ClassRegKey);
+        if (ERROR_SUCCESS == Error)
+        {
+            Error = RegOpenKeyExW(ClassRegKey, L"Instances",
+                0, SPD_LAUNCH_REGKEY_WOW64 | KEY_READ, &InstancesRegKey);
+            if (ERROR_SUCCESS == Error)
+            {
+                for (ULONG J = 0;; J++)
+                {
+                    RegNameSize = sizeof InstanceName / sizeof InstanceName[0];
+                    RegValueSize = sizeof RegValue;
+                    if (ERROR_SUCCESS != RegEnumValueW(InstancesRegKey, J,
+                            InstanceName, &RegNameSize, 0, &RegType, (PVOID)RegValue, &RegValueSize) ||
+                        REG_MULTI_SZ != RegType)
+                        break;
+
+                    Argc = 0;
+                    for (PWSTR P = RegValue;
+                        sizeof(Argv) / sizeof(Argv[0]) > Argc &&
+                            (PUINT8)P - (PUINT8)RegValue < RegValueSize;
+                        P = P + lstrlenW(P) + 1)
+                        Argv[Argc++] = P;
+
+                    if (2 < Argc)
+                    {
+                        Argc -= 2;
+                        Error = SvcInstanceCreate(
+                            0, Argv[Argc], ClassName, InstanceName, Argc, Argv, SvcJob,
+                            &SvcInstance);
+                        if (ERROR_SUCCESS == Error)
+                            SvcInstanceRelease(SvcInstance);
+                    }
+                }
+
+                RegCloseKey(InstancesRegKey);
+                InstancesRegKey = 0;
+            }
+
+            RegCloseKey(ClassRegKey);
+            ClassRegKey = 0;
+        }
+    }
+
+    Error = ERROR_SUCCESS;
+
+exit:
+    if (0 != InstancesRegKey)
+        RegCloseKey(InstancesRegKey);
+
+    if (0 != ClassRegKey)
+        RegCloseKey(ClassRegKey);
+
+    if (0 != RegKey)
+        RegCloseKey(RegKey);
+
+    return Error;
 }
 
 static VOID SvcInstanceStopAndWaitAll(VOID)
@@ -1332,6 +1540,8 @@ static DWORD SvcOnStart(ULONG Argc, PWSTR *Argv)
 
     LocalFree(SecurityAttributes.lpSecurityDescriptor);
 
+    SvcInstanceStartAllPersistent();
+
     return ERROR_SUCCESS;
 
 fail:
@@ -1393,7 +1603,7 @@ static VOID WINAPI SvcEntry(DWORD Argc, PWSTR *Argv)
     SvcStatus.dwWin32ExitCode = ERROR_SUCCESS;
     SvcStatus.dwServiceSpecificExitCode = 0;
     SvcStatus.dwCheckPoint = 0;
-    SvcStatus.dwWaitHint = 0;
+    SvcStatus.dwWaitHint = LAUNCHER_START_TIMEOUT;
     SetServiceStatus(SvcHandle, &SvcStatus);
 
     Error = SvcOnStart(Argc, Argv);
