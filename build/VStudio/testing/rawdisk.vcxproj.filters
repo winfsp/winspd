@@ -5,9 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Source\shared">
-      <UniqueIdentifier>{31898728-4611-48d2-b066-ebc53adcc7a5}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\tst\rawdisk\rawdisk.c">
@@ -16,25 +13,10 @@
     <ClCompile Include="..\..\..\tst\rawdisk\rawdisk-main.c">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\shared\strtoint.c">
-      <Filter>Source\shared</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\shared\printlog.c">
-      <Filter>Source\shared</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\tst\rawdisk\rawdisk.h">
       <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\shared\minimal.h">
-      <Filter>Source\shared</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\shared\printlog.h">
-      <Filter>Source\shared</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\shared\strtoint.h">
-      <Filter>Source\shared</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

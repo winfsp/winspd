@@ -51,7 +51,7 @@ static ULONG argtol(wchar_t **argp, ULONG deflt)
         usage();
 
     wchar_t *endp;
-    ULONG ul = (ULONG)wcstoint(argp[0], 10, 1, &endp);
+    ULONG ul = wcstol(argp[0], &endp, 10);
     return L'\0' != argp[0][0] && L'\0' == *endp ? ul : deflt;
 }
 

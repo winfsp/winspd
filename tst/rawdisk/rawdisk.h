@@ -23,9 +23,11 @@
 #define RAWDISK_H_INCLUDED
 
 #include <winspd/winspd.h>
-#include <shared/minimal.h>
-#include <shared/printlog.h>
-#include <shared/strtoint.h>
+#include <stdio.h>
+
+#define info(format, ...)               fprintf(stdout, format, __VA_ARGS__)
+#define warn(format, ...)               fprintf(stderr, format, __VA_ARGS__)
+#define fail(ExitCode, format, ...)     (warn(format, __VA_ARGS__), exit(ExitCode))
 
 typedef struct _RAWDISK RAWDISK;
 

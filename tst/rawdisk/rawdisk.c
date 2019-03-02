@@ -253,7 +253,7 @@ DWORD RawDiskCreate(PWSTR RawDiskFile,
     StorageUnitParams.CacheSupported = CacheSupported;
     StorageUnitParams.UnmapSupported = UnmapSupported;
 
-    RawDisk = MemAlloc(sizeof *RawDisk);
+    RawDisk = malloc(sizeof *RawDisk);
     if (0 == RawDisk)
     {
         Error = ERROR_NOT_ENOUGH_MEMORY;
@@ -354,7 +354,7 @@ exit:
         if (INVALID_HANDLE_VALUE != Handle)
             CloseHandle(Handle);
 
-        MemFree(RawDisk);
+        free(RawDisk);
     }
 
     return Error;
@@ -370,7 +370,7 @@ VOID RawDiskDelete(RAWDISK *RawDisk)
     CloseHandle(RawDisk->Mapping);
     CloseHandle(RawDisk->Handle);
 
-    MemFree(RawDisk);
+    free(RawDisk);
 }
 
 SPD_STORAGE_UNIT *RawDiskStorageUnit(RAWDISK *RawDisk)

@@ -190,15 +190,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\shared\printlog.c" />
-    <ClCompile Include="..\..\..\src\shared\strtoint.c" />
     <ClCompile Include="..\..\..\tst\rawdisk\rawdisk-main.c" />
     <ClCompile Include="..\..\..\tst\rawdisk\rawdisk.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\src\shared\minimal.h" />
-    <ClInclude Include="..\..\..\src\shared\printlog.h" />
-    <ClInclude Include="..\..\..\src\shared\strtoint.h" />
     <ClInclude Include="..\..\..\tst\rawdisk\rawdisk.h" />
   </ItemGroup>
   <ItemGroup>
