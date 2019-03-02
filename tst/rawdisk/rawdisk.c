@@ -19,7 +19,12 @@
  * associated repository.
  */
 
-#include "rawdisk.h"
+#include <winspd/winspd.h>
+#include <stdio.h>
+
+#define info(format, ...)               fprintf(stdout, format, __VA_ARGS__)
+#define warn(format, ...)               fprintf(stderr, format, __VA_ARGS__)
+#define fail(ExitCode, format, ...)     (warn(format, __VA_ARGS__), exit(ExitCode))
 
 #define WARNONCE(expr)                  \
     do                                  \
@@ -376,4 +381,179 @@ VOID RawDiskDelete(RAWDISK *RawDisk)
 SPD_STORAGE_UNIT *RawDiskStorageUnit(RAWDISK *RawDisk)
 {
     return RawDisk->StorageUnit;
+}
+
+#define PROGNAME                        "rawdisk"
+
+static void usage(void)
+{
+    static char usage[] = ""
+        "usage: %s OPTIONS\n"
+        "\n"
+        "options:\n"
+        "    -f RawDiskFile                      Storage unit data file\n"
+        "    -c BlockCount                       Storage unit size in blocks\n"
+        "    -l BlockLength                      Storage unit block length\n"
+        "    -i ProductId                        1-16 chars\n"
+        "    -r ProductRevision                  1-4 chars\n"
+        "    -W 0|1                              Disable/enable writes (deflt: enable)\n"
+        "    -C 0|1                              Disable/enable cache (deflt: enable)\n"
+        "    -U 0|1                              Disable/enable unmap (deflt: enable)\n"
+        "    -d -1                               Debug flags\n"
+        "    -D DebugLogFile                     Debug log file; - for stderr\n"
+        "    -p \\\\.\\pipe\\PipeName                Listen on pipe; omit to use driver\n"
+        "";
+
+    fail(ERROR_INVALID_PARAMETER, usage, PROGNAME);
+}
+
+static ULONG argtol(wchar_t **argp, ULONG deflt)
+{
+    if (0 == argp[0])
+        usage();
+
+    wchar_t *endp;
+    ULONG ul = wcstol(argp[0], &endp, 10);
+    return L'\0' != argp[0][0] && L'\0' == *endp ? ul : deflt;
+}
+
+static wchar_t *argtos(wchar_t **argp)
+{
+    if (0 == argp[0])
+        usage();
+
+    return argp[0];
+}
+
+static SPD_GUARD ConsoleCtrlGuard = SPD_GUARD_INIT;
+
+static BOOL WINAPI ConsoleCtrlHandler(DWORD CtrlType)
+{
+    SpdGuardExecute(&ConsoleCtrlGuard, SpdStorageUnitShutdown);
+    return TRUE;
+}
+
+int wmain(int argc, wchar_t **argv)
+{
+    wchar_t **argp;
+    PWSTR RawDiskFile = 0;
+    ULONG BlockCount = 1024 * 1024;
+    ULONG BlockLength = 512;
+    PWSTR ProductId = L"RawDisk";
+    PWSTR ProductRevision = L"1.0";
+    ULONG WriteAllowed = 1;
+    ULONG CacheSupported = 1;
+    ULONG UnmapSupported = 1;
+    ULONG DebugFlags = 0;
+    PWSTR DebugLogFile = 0;
+    HANDLE DebugLogHandle = INVALID_HANDLE_VALUE;
+    PWSTR PipeName = 0;
+    RAWDISK *RawDisk = 0;
+    DWORD Error;
+
+    for (argp = argv + 1; 0 != argp[0]; argp++)
+    {
+        if (L'-' != argp[0][0])
+            break;
+        switch (argp[0][1])
+        {
+        case L'?':
+            usage();
+            break;
+        case L'c':
+            BlockCount = argtol(++argp, BlockCount);
+            break;
+        case L'C':
+            CacheSupported = argtol(++argp, CacheSupported);
+            break;
+        case L'd':
+            DebugFlags = argtol(++argp, DebugFlags);
+            break;
+        case L'D':
+            DebugLogFile = argtos(++argp);
+            break;
+        case L'f':
+            RawDiskFile = argtos(++argp);
+            break;
+        case L'i':
+            ProductId = argtos(++argp);
+            break;
+        case L'l':
+            BlockLength = argtol(++argp, BlockLength);
+            break;
+        case L'p':
+            PipeName = argtos(++argp);
+            break;
+        case L'r':
+            ProductRevision = argtos(++argp);
+            break;
+        case L'U':
+            UnmapSupported = argtol(++argp, UnmapSupported);
+            break;
+        case L'W':
+            WriteAllowed = argtol(++argp, WriteAllowed);
+            break;
+        default:
+            usage();
+            break;
+        }
+    }
+
+    if (0 != argp[0] || 0 == RawDiskFile)
+        usage();
+
+    if (0 != DebugLogFile)
+    {
+        if (L'-' == DebugLogFile[0] && L'\0' == DebugLogFile[1])
+            DebugLogHandle = GetStdHandle(STD_ERROR_HANDLE);
+        else
+            DebugLogHandle = CreateFileW(
+                DebugLogFile,
+                FILE_APPEND_DATA,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                0,
+                OPEN_ALWAYS,
+                FILE_ATTRIBUTE_NORMAL,
+                0);
+        if (INVALID_HANDLE_VALUE == DebugLogHandle)
+            fail(GetLastError(), "error: cannot open debug log file");
+
+        SpdDebugLogSetHandle(DebugLogHandle);
+    }
+
+    Error = RawDiskCreate(RawDiskFile,
+        BlockCount, BlockLength,
+        ProductId, ProductRevision,
+        !WriteAllowed,
+        !!CacheSupported,
+        !!UnmapSupported,
+        PipeName,
+        &RawDisk);
+    if (0 != Error)
+        fail(Error, "error: cannot create RawDisk: error %lu", Error);
+    Error = SpdStorageUnitStartDispatcher(RawDiskStorageUnit(RawDisk), 2);
+    if (0 != Error)
+        fail(Error, "error: cannot start RawDisk: error %lu", Error);
+
+    SpdStorageUnitSetDebugLog(RawDiskStorageUnit(RawDisk), DebugFlags);
+
+    warn("%s -f %S -c %lu -l %lu -i %S -r %S -W %u -C %u -U %u%s%S",
+        PROGNAME,
+        RawDiskFile,
+        BlockCount, BlockLength, ProductId, ProductRevision,
+        !!WriteAllowed,
+        !!CacheSupported,
+        !!UnmapSupported,
+        0 != PipeName ? " -p " : "",
+        0 != PipeName ? PipeName : L"");
+
+    SpdGuardSet(&ConsoleCtrlGuard, RawDiskStorageUnit(RawDisk));
+    SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
+    SpdStorageUnitWaitDispatcher(RawDiskStorageUnit(RawDisk));
+    SpdGuardSet(&ConsoleCtrlGuard, 0);
+
+    RawDiskDelete(RawDisk);
+    RawDisk = 0;
+
+    return 0;
 }

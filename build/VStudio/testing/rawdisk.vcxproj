@@ -190,7 +190,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\tst\rawdisk\rawdisk-main.c" />
     <ClCompile Include="..\..\..\tst\rawdisk\rawdisk.c" />
   </ItemGroup>
   <ItemGroup>

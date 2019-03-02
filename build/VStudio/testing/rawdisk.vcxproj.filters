@@ -10,9 +10,6 @@
     <ClCompile Include="..\..\..\tst\rawdisk\rawdisk.c">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\tst\rawdisk\rawdisk-main.c">
-      <Filter>Source</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\tst\rawdisk\rawdisk.h">
