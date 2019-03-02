@@ -23,15 +23,15 @@ With those prerequisites out of the way we are now ready to start creating our f
 
 NOTE: The storage unit that we will create is included as a sample with the WinSpd installer. Look in the `samples\rawdisk` directory.
 
-== THRESHOLD
-
 == Create the project skeleton
 
-We first start by creating the Visual Studio project. Choose "Win32 Console Application" and then select our preferred settings. For this project we will select empty project, because we will add all files ourselves.
+We start by creating the Visual Studio project. Choose "Win32 Console Application" and then select our preferred settings. For this project we will select empty project, because we will add all files ourselves.
 
-image::WinFsp-Tutorial/NewProject.png[Visual Studio New Project]
+image::WinSpd-Tutorial/NewProject.png[Visual Studio New Project]
 
-NOTE: A user mode file system services requests from the operating system. Therefore it becomes an important system component and must service requests timely. In general it should be a console mode application, not block for user input after it has been initialized, and not expose a GUI. This also allows the user mode file system to be converted into a Windows service easily or to be controlled by the WinFsp.Launcher service (see the WinFsp Service Architecture document).
+NOTE: A user mode storage unit services requests from the operating system. Therefore it becomes an important system component and must service requests timely. In general it should be a console mode application, not block for user input after it has been initialized, and not expose a GUI. This also allows the user mode storage unit to be converted into a Windows service easily or to be controlled by the WinSpd.Launcher service.
+
+== THRESHOLD
 
 Now create and add a file passthrough.c with the following contents:
 
