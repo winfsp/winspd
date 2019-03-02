@@ -373,6 +373,15 @@
                 <Component Id="C.rawdisk_main.c">
                     <File Name="rawdisk-main.c" KeyPath="yes" />
                 </Component>
+                <Component Id="C.rawdisk.sln">
+                    <File Name="rawdisk.sln" KeyPath="yes" />
+                </Component>
+                <Component Id="C.rawdisk.vcxproj">
+                    <File Name="rawdisk.vcxproj" KeyPath="yes" />
+                </Component>
+                <Component Id="C.rawdisk.vcxproj.filters">
+                    <File Name="rawdisk.vcxproj.filters" KeyPath="yes" />
+                </Component>
             </Directory>
             <Directory Id="SMPDIR.rawdisk_dotnet" Name="rawdisk-dotnet">
                 <Component Id="C.rawdisk_dotnet.Program.cs">
@@ -481,6 +490,9 @@
             <ComponentRef Id="C.rawdisk.h" />
             <ComponentRef Id="C.rawdisk.c" />
             <ComponentRef Id="C.rawdisk_main.c" />
+            <ComponentRef Id="C.rawdisk.sln" />
+            <ComponentRef Id="C.rawdisk.vcxproj" />
+            <ComponentRef Id="C.rawdisk.vcxproj.filters" />
         </ComponentGroup>
         <ComponentGroup Id="C.WinSpd.sym">
             <ComponentRef Id="C.winspd_x64.sys.pdb" />
