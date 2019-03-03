@@ -22,6 +22,7 @@
 #include <windows.h>
 #include <shared/minimal.h>
 #include <shared/launch.h>
+#include <shared/log.h>
 #include <shared/strtoint.h>
 #include <winspd/winspd.h>
 #include <aclapi.h>
@@ -74,31 +75,6 @@ static OVERLAPPED SvcOverlapped;
 
 static VOID CALLBACK KillProcessWait(PVOID Context, BOOLEAN Timeout);
 static VOID CALLBACK SvcInstanceTerminated(PVOID Context, BOOLEAN Timeout);
-
-static VOID SvcLog(ULONG Type, PWSTR Format, ...)
-{
-    static HANDLE SvcLogHandle;
-
-    if (0 == SvcLogHandle)
-        SvcLogHandle = RegisterEventSourceW(0, L"" PROGNAME);
-
-    if (0 != Format)
-    {
-        WCHAR Buf[1024], *Strings[2];
-            /* wvsprintfW is only safe with a 1024 WCHAR buffer */
-        va_list ap;
-
-        Strings[0] = L"" PROGNAME;
-
-        va_start(ap, Format);
-        wvsprintfW(Buf, Format, ap);
-        va_end(ap);
-        Buf[(sizeof Buf / sizeof Buf[0]) - 1] = L'\0';
-        Strings[1] = Buf;
-
-        ReportEventW(SvcLogHandle, (WORD)Type, 0, 1, 0, 2, 0, Strings, 0);
-    }
-}
 
 static VOID KillProcess(ULONG ProcessId, HANDLE Process, ULONG Timeout)
 {
@@ -877,7 +853,7 @@ static DWORD SvcInstanceCreate(HANDLE ClientToken, PWSTR ExternalSecurity,
     if (0 != Job && JobControl)
     {
         if (!AssignProcessToJobObject(Job, SvcInstance->Process))
-            SvcLog(EVENTLOG_WARNING_TYPE,
+            SpdServiceLog(EVENTLOG_WARNING_TYPE,
                 L"Ignorning error: AssignProcessToJobObject = %ld", GetLastError());
     }
 
@@ -925,7 +901,7 @@ exit:
 
     LeaveCriticalSection(&SvcInstanceLock);
 
-    SvcLog(EVENTLOG_INFORMATION_TYPE,
+    SpdServiceLog(EVENTLOG_INFORMATION_TYPE,
         L"create %s %s = %ld", ClassName, InstanceName, Error);
 
     return Error;
@@ -962,7 +938,7 @@ static VOID CALLBACK SvcInstanceTerminated(PVOID Context, BOOLEAN Timeout)
 {
     SVC_INSTANCE *SvcInstance = Context;
 
-    SvcLog(EVENTLOG_INFORMATION_TYPE,
+    SpdServiceLog(EVENTLOG_INFORMATION_TYPE,
         L"terminated %s %s", SvcInstance->ClassName, SvcInstance->InstanceName);
 
     SvcInstanceRelease(SvcInstance);
@@ -1396,7 +1372,7 @@ static DWORD WINAPI SvcPipeServer(PVOID Context)
         else if (0 != LastError &&
             ERROR_PIPE_CONNECTED != LastError && ERROR_NO_DATA != LastError)
         {
-            SvcLog(EVENTLOG_WARNING_TYPE, LoopWarningMessage,
+            SpdServiceLog(EVENTLOG_WARNING_TYPE, LoopWarningMessage,
                 L"ConnectNamedPipe", LastError);
             continue;
         }
@@ -1410,7 +1386,7 @@ static DWORD WINAPI SvcPipeServer(PVOID Context)
         {
             DisconnectNamedPipe(SvcPipe);
             if (0 != LastError)
-                SvcLog(EVENTLOG_WARNING_TYPE, LoopWarningMessage,
+                SpdServiceLog(EVENTLOG_WARNING_TYPE, LoopWarningMessage,
                     L"ReadFile", LastError);
             continue;
         }
@@ -1425,7 +1401,7 @@ static DWORD WINAPI SvcPipeServer(PVOID Context)
             {
                 CloseHandle(ClientToken);
                 DisconnectNamedPipe(SvcPipe);
-                SvcLog(EVENTLOG_WARNING_TYPE, LoopWarningMessage,
+                SpdServiceLog(EVENTLOG_WARNING_TYPE, LoopWarningMessage,
                     L"ImpersonateNamedPipeClient||OpenThreadToken", LastError);
                 continue;
             }
@@ -1433,7 +1409,7 @@ static DWORD WINAPI SvcPipeServer(PVOID Context)
             {
                 CloseHandle(ClientToken);
                 DisconnectNamedPipe(SvcPipe);
-                SvcLog(EVENTLOG_ERROR_TYPE, LoopErrorMessage,
+                SpdServiceLog(EVENTLOG_ERROR_TYPE, LoopErrorMessage,
                     L"RevertToSelf", LastError);
                 break;
             }
@@ -1451,7 +1427,7 @@ static DWORD WINAPI SvcPipeServer(PVOID Context)
         else if (0 != LastError)
         {
             DisconnectNamedPipe(SvcPipe);
-            SvcLog(EVENTLOG_WARNING_TYPE, LoopWarningMessage,
+            SpdServiceLog(EVENTLOG_WARNING_TYPE, LoopWarningMessage,
                 L"WriteFile", LastError);
             continue;
         }
@@ -1473,7 +1449,7 @@ exit:
     SvcStatus.dwWaitHint = 0;
     SetServiceStatus(SvcHandle, &SvcStatus);
 
-    SvcLog(EVENTLOG_INFORMATION_TYPE,
+    SpdServiceLog(EVENTLOG_INFORMATION_TYPE,
         L"The service %s has been stopped.", L"" PROGNAME);
 
     return 0;
@@ -1592,7 +1568,7 @@ static VOID WINAPI SvcEntry(DWORD Argc, PWSTR *Argv)
     SvcHandle = RegisterServiceCtrlHandlerExW(L"" PROGNAME, SvcCtrlHandler, 0);
     if (0 == SvcHandle)
     {
-        SvcLog(EVENTLOG_ERROR_TYPE,
+        SpdServiceLog(EVENTLOG_ERROR_TYPE,
             L"" __FUNCTION__ ": RegisterServiceCtrlHandlerW = %ld", GetLastError());
         return;
     }
@@ -1613,7 +1589,7 @@ static VOID WINAPI SvcEntry(DWORD Argc, PWSTR *Argv)
         SvcStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
         SetServiceStatus(SvcHandle, &SvcStatus);
 
-        SvcLog(EVENTLOG_INFORMATION_TYPE,
+        SpdServiceLog(EVENTLOG_INFORMATION_TYPE,
             L"The service %s has been started.", L"" PROGNAME);
     }
     else
@@ -1622,16 +1598,13 @@ static VOID WINAPI SvcEntry(DWORD Argc, PWSTR *Argv)
         SvcStatus.dwControlsAccepted = 0;
         SetServiceStatus(SvcHandle, &SvcStatus);
 
-        SvcLog(EVENTLOG_ERROR_TYPE,
+        SpdServiceLog(EVENTLOG_ERROR_TYPE,
             L"The service %s has failed to start (Error=%ld).", L"" PROGNAME, Error);
     }
 }
 
 int wmain(int argc, wchar_t **argv)
 {
-    /* init SvcLog */
-    SvcLog(0, 0);
-
     static SERVICE_TABLE_ENTRYW SvcTable[2] =
     {
         { L"" PROGNAME, SvcEntry},

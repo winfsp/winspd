@@ -263,6 +263,16 @@ VOID SpdGuardExecute(SPD_GUARD *Guard, VOID (*Func)(PVOID))
 #define SPD_GUARD_INIT                  { SRWLOCK_INIT, 0 }
 
 /*
+ * Logging
+ */
+VOID SpdPrintLog(HANDLE Handle, PWSTR Format, ...);
+VOID SpdPrintLogV(HANDLE Handle, PWSTR Format, va_list ap);
+VOID SpdEventLog(ULONG Type, PWSTR Format, ...);
+VOID SpdEventLogV(ULONG Type, PWSTR Format, va_list ap);
+VOID SpdServiceLog(ULONG Type, PWSTR Format, ...);
+VOID SpdServiceLogV(ULONG Type, PWSTR Format, va_list ap);
+
+/*
  * Utility
  */
 VOID SpdDebugLogSetHandle(HANDLE Handle);

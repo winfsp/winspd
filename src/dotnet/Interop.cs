@@ -233,6 +233,23 @@ namespace Spd.Interop
             internal delegate int SpdDefinePartitionTable(
                 IntPtr Partitions, UInt32 Count, IntPtr Buffer);
 
+            /* logging */
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate void SpdPrintLog(
+                IntPtr Handle,
+                [MarshalAs(UnmanagedType.LPWStr)] String Format,
+                [MarshalAs(UnmanagedType.LPWStr)] String Message);
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate void SpdEventLog(
+                UInt32 Type,
+                [MarshalAs(UnmanagedType.LPWStr)] String Format,
+                [MarshalAs(UnmanagedType.LPWStr)] String Message);
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate void SpdServiceLog(
+                UInt32 Type,
+                [MarshalAs(UnmanagedType.LPWStr)] String Format,
+                [MarshalAs(UnmanagedType.LPWStr)] String Message);
+
             /* utility */
             [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
             internal delegate void SpdDebugLog(
@@ -260,6 +277,9 @@ namespace Spd.Interop
         internal static Proto.SpdStorageUnitSetBufferAllocatorF SpdStorageUnitSetBufferAllocator;
         internal static Proto.SpdStorageUnitSetDebugLogF SpdStorageUnitSetDebugLog;
         internal static Proto.SpdDefinePartitionTable _SpdDefinePartitionTable;
+        internal static Proto.SpdPrintLog SpdPrintLog;
+        internal static Proto.SpdEventLog SpdEventLog;
+        internal static Proto.SpdServiceLog SpdServiceLog;
         internal static Proto.SpdDebugLog SpdDebugLog;
         internal static Proto.SpdDebugLogSetHandle SpdDebugLogSetHandle;
         internal static Proto.SpdVersion SpdVersion;
@@ -368,6 +388,9 @@ namespace Spd.Interop
             SpdStorageUnitSetBufferAllocator = GetEntryPoint<Proto.SpdStorageUnitSetBufferAllocatorF>(Module);
             SpdStorageUnitSetDebugLog = GetEntryPoint<Proto.SpdStorageUnitSetDebugLogF>(Module);
             _SpdDefinePartitionTable = GetEntryPoint<Proto.SpdDefinePartitionTable>(Module);
+            SpdPrintLog = GetEntryPoint<Proto.SpdPrintLog>(Module);
+            SpdEventLog = GetEntryPoint<Proto.SpdEventLog>(Module);
+            SpdServiceLog = GetEntryPoint<Proto.SpdServiceLog>(Module);
             SpdDebugLog = GetEntryPoint<Proto.SpdDebugLog>(Module);
             SpdDebugLogSetHandle = GetEntryPoint<Proto.SpdDebugLogSetHandle>(Module);
             SpdVersion = GetEntryPoint<Proto.SpdVersion>(Module);

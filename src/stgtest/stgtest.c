@@ -24,11 +24,18 @@
 #include <scsi.h>
 #undef _NTSCSI_USER_MODE_
 #include <shared/minimal.h>
-#include <shared/printlog.h>
+#include <shared/log.h>
 #include <shared/strtoint.h>
 #include <winspd/ioctl.h>
 
 #define PROGNAME                        "stgtest"
+
+#define info(format, ...)               \
+    SpdPrintLog(GetStdHandle(STD_OUTPUT_HANDLE), format, __VA_ARGS__)
+#define warn(format, ...)               \
+    SpdPrintLog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__)
+#define fail(ExitCode, format, ...)     \
+    (SpdPrintLog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__), ExitProcess(ExitCode))
 
 #define IsPipeHandle(Handle)            (((UINT_PTR)(Handle)) & 1)
 #define GetPipeHandle(Handle)           ((HANDLE)((UINT_PTR)(Handle) & ~1))
@@ -473,32 +480,32 @@ static VOID GenRandomBytes(PULONG PSeed, PVOID Buffer, ULONG Size)
 static void OpWarn(UINT8 OpKind, UINT64 BlockAddress, UINT32 BlockCount,
     const char *Description, const char *Detail, DWORD Error)
 {
-    const char *OpName;
+    PWSTR OpName;
     switch (OpKind)
     {
     case SpdIoctlTransactReadKind:
-        OpName = "Read";
+        OpName = L"Read";
         break;
     case SpdIoctlTransactWriteKind:
-        OpName = "Write";
+        OpName = L"Write";
         break;
     case SpdIoctlTransactFlushKind:
-        OpName = "Flush";
+        OpName = L"Flush";
         break;
     case SpdIoctlTransactUnmapKind:
-        OpName = "Unmap";
+        OpName = L"Unmap";
         break;
     default:
-        OpName = "INVLD";
+        OpName = L"INVLD";
         break;
     }
 
     if (0 != Detail)
-        warn("%s(Address=%x:%x, Count=%u): %s: %s",
+        warn(L"%s(Address=%x:%x, Count=%u): %S: %S",
             OpName, (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, BlockCount,
             Description, Detail);
     else
-        warn("%s(Address=%x:%x, Count=%u): %s: %lu",
+        warn(L"%s(Address=%x:%x, Count=%u): %S: %lu",
             OpName, (UINT32)(BlockAddress >> 32), (UINT32)BlockAddress, BlockCount,
             Description, Error);
 }
@@ -530,7 +537,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
     Error = StgOpen(PipeName, 3000, &Handle, &StorageUnitParams);
     if (ERROR_SUCCESS != Error)
     {
-        warn("cannot open %S: %lu", PipeName, Error);
+        warn(L"cannot open %s: %lu", PipeName, Error);
         goto exit;
     }
 
@@ -538,7 +545,7 @@ static int run(PWSTR PipeName, ULONG OpCount, PWSTR OpSet, UINT64 BlockAddress, 
     if (0 == DataBuffer)
     {
         Error = ERROR_NO_SYSTEM_RESOURCES;
-        warn("cannot allocate memory");
+        warn(L"cannot allocate memory");
         goto exit;
     }
 
@@ -687,7 +694,7 @@ exit:
 
 static void usage(void)
 {
-    warn(
+    warn(L""
         "usage: %s [-s Seed] \\\\.\\pipe\\PipeName\\Target OpCount [RWFU] [Address|*] [Count|*]\n"
         "usage: %s [-s Seed] \\\\.\\X: OpCount [RWFU] [Address|*] [Count|*]\n"
         "    -s Seed     Seed to use for randomness (default: time)\n"
@@ -699,7 +706,7 @@ static void usage(void)
         "    Address     Starting block address, *: random\n"
         "    Count       Block count per operation, *: random\n"
         "",
-        PROGNAME, PROGNAME);
+        L"" PROGNAME, L"" PROGNAME);
 
     ExitProcess(ERROR_INVALID_PARAMETER);
 }
@@ -740,19 +747,19 @@ int wmain(int argc, wchar_t **argv)
         BlockCount = L'*' == argv[4][0] && L'\0' == argv[4][1] ?
             -1 : (UINT32)wcstoint(argv[4], 0, 0, &endp);
 
-    char BlockAddressStr[64], BlockCountStr[64];
-    BlockAddressStr[0] = BlockCountStr[0] = '*';
-    BlockAddressStr[1] = BlockCountStr[1] = '\0';
+    WCHAR BlockAddressStr[64], BlockCountStr[64];
+    BlockAddressStr[0] = BlockCountStr[0] = L'*';
+    BlockAddressStr[1] = BlockCountStr[1] = L'\0';
     if (-1 != BlockAddress)
-        wsprintfA(BlockAddressStr, "%x:%x", (UINT32)(BlockAddress >> 32), BlockAddress);
+        wsprintfW(BlockAddressStr, L"%x:%x", (UINT32)(BlockAddress >> 32), BlockAddress);
     if (-1 != BlockCount)
-        wsprintfA(BlockCountStr, "%lu", BlockCount);
-    info("%s -s %lu %S %lu \"%S\" %s %s",
-        PROGNAME, RandomSeed, PipeName, OpCount, OpSet, BlockAddressStr, BlockCountStr);
+        wsprintfW(BlockCountStr, L"%lu", BlockCount);
+    info(L"%s -s %lu %s %lu \"%s\" %s %s",
+        L"" PROGNAME, RandomSeed, PipeName, OpCount, OpSet, BlockAddressStr, BlockCountStr);
 
     int ExitCode = run(PipeName, OpCount, OpSet, BlockAddress, BlockCount, &RandomSeed);
     if (0 == ExitCode)
-        info("OK");
+        info(L"OK");
     return ExitCode;
 }
 

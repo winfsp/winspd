@@ -20,11 +20,13 @@
  */
 
 #include <winspd/winspd.h>
-#include <stdio.h>
 
-#define info(format, ...)               fprintf(stdout, format, __VA_ARGS__)
-#define warn(format, ...)               fprintf(stderr, format, __VA_ARGS__)
-#define fail(ExitCode, format, ...)     (warn(format, __VA_ARGS__), exit(ExitCode))
+#define info(format, ...)               \
+    SpdServiceLog(EVENTLOG_INFORMATION_TYPE, format, __VA_ARGS__)
+#define warn(format, ...)               \
+    SpdServiceLog(EVENTLOG_WARNING_TYPE, format, __VA_ARGS__)
+#define fail(ExitCode, format, ...)     \
+    (SpdServiceLog(EVENTLOG_ERROR_TYPE, format, __VA_ARGS__), ExitProcess(ExitCode))
 
 #define WARNONCE(expr)                  \
     do                                  \
@@ -32,7 +34,7 @@
         static LONG Once;               \
         if (!(expr) &&                  \
             0 == InterlockedCompareExchange(&Once, 1, 0))\
-            warn("WARNONCE(%s) failed at %s:%d", #expr, __func__, __LINE__);\
+            warn(L"WARNONCE(%S) failed at %S:%d", #expr, __func__, __LINE__);\
     } while (0,0)
 
 typedef struct _RAWDISK
@@ -387,7 +389,7 @@ SPD_STORAGE_UNIT *RawDiskStorageUnit(RAWDISK *RawDisk)
 
 static void usage(void)
 {
-    static char usage[] = ""
+    static WCHAR usage[] = L""
         "usage: %s OPTIONS\n"
         "\n"
         "options:\n"
@@ -404,7 +406,7 @@ static void usage(void)
         "    -p \\\\.\\pipe\\PipeName                Listen on pipe; omit to use driver\n"
         "";
 
-    fail(ERROR_INVALID_PARAMETER, usage, PROGNAME);
+    fail(ERROR_INVALID_PARAMETER, usage, L"" PROGNAME);
 }
 
 static ULONG argtol(wchar_t **argp, ULONG deflt)
@@ -516,7 +518,7 @@ int wmain(int argc, wchar_t **argv)
                 FILE_ATTRIBUTE_NORMAL,
                 0);
         if (INVALID_HANDLE_VALUE == DebugLogHandle)
-            fail(GetLastError(), "error: cannot open debug log file");
+            fail(GetLastError(), L"error: cannot open debug log file");
 
         SpdDebugLogSetHandle(DebugLogHandle);
     }
@@ -530,21 +532,21 @@ int wmain(int argc, wchar_t **argv)
         PipeName,
         &RawDisk);
     if (0 != Error)
-        fail(Error, "error: cannot create RawDisk: error %lu", Error);
+        fail(Error, L"error: cannot create RawDisk: error %lu", Error);
     Error = SpdStorageUnitStartDispatcher(RawDiskStorageUnit(RawDisk), 2);
     if (0 != Error)
-        fail(Error, "error: cannot start RawDisk: error %lu", Error);
+        fail(Error, L"error: cannot start RawDisk: error %lu", Error);
 
     SpdStorageUnitSetDebugLog(RawDiskStorageUnit(RawDisk), DebugFlags);
 
-    warn("%s -f %S -c %lu -l %lu -i %S -r %S -W %u -C %u -U %u%s%S",
-        PROGNAME,
+    info(L"%s -f %s -c %lu -l %lu -i %s -r %s -W %u -C %u -U %u%s%s",
+        L"" PROGNAME,
         RawDiskFile,
         BlockCount, BlockLength, ProductId, ProductRevision,
         !!WriteAllowed,
         !!CacheSupported,
         !!UnmapSupported,
-        0 != PipeName ? " -p " : "",
+        0 != PipeName ? L" -p " : L"",
         0 != PipeName ? PipeName : L"");
 
     SpdGuardSet(&ConsoleCtrlGuard, RawDiskStorageUnit(RawDisk));

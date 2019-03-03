@@ -193,9 +193,6 @@
     <ClCompile Include="..\..\..\tst\rawdisk\rawdisk.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\tst\rawdisk\rawdisk.h" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\winspd_dll.vcxproj">
       <Project>{b8066540-44fd-41db-8431-12abff9233d2}</Project>
     </ProjectReference>

@@ -23,44 +23,7 @@
 #include <shared/minimal.h>
 #include <stdarg.h>
 
-static INIT_ONCE SpdDiagIdentInitOnce = INIT_ONCE_STATIC_INIT;
-static WCHAR SpdDiagIdentBuf[20];
-
-static BOOL WINAPI SpdDiagIdentInitialize(
-    PINIT_ONCE InitOnce, PVOID Parameter, PVOID *Context)
-{
-    WCHAR ModuleFileName[MAX_PATH];
-    PWSTR ModuleBaseName;
-
-    if (0 == GetModuleFileNameW(0, ModuleFileName, sizeof ModuleFileName / sizeof(WCHAR)))
-        lstrcpyW(ModuleFileName, L"UNKNOWN");
-
-    ModuleBaseName = ModuleFileName;
-    for (PWSTR P = ModuleBaseName, Dot = 0;; P++)
-    {
-        if (L'\0' == *P)
-        {
-            if (0 != Dot)
-                *Dot = L'\0';
-            break;
-        }
-        else if (L'\\' == *P)
-            ModuleBaseName = P + 1;
-        else if (L'.' == *P)
-            Dot = P;
-    }
-
-    lstrcpynW(SpdDiagIdentBuf, ModuleBaseName, sizeof SpdDiagIdentBuf / sizeof(WCHAR));
-    SpdDiagIdentBuf[(sizeof SpdDiagIdentBuf / sizeof(WCHAR)) - 1] = L'\0';
-
-    return TRUE;
-}
-
-static PWSTR SpdDiagIdent(VOID)
-{
-    InitOnceExecuteOnce(&SpdDiagIdentInitOnce, SpdDiagIdentInitialize, 0, 0);
-    return SpdDiagIdentBuf;
-}
+PWSTR SpdDiagIdent(VOID);
 
 static HANDLE SpdDebugLogHandle = INVALID_HANDLE_VALUE;
 

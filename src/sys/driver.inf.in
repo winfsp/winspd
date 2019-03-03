@@ -34,10 +34,10 @@ CopyFiles = sys.files.x64,dll.files.x64,!DllFilesWow64!
 !MyBaseName!-x86.dll
 
 [install.ntx86.Services]
-AddService = !MyProductName!,%SPSVCINST_ASSOCSERVICE%,services.x86
+AddService = !MyProductName!,%SPSVCINST_ASSOCSERVICE%,services.x86,eventlog.x86,"Application"
 
 [install.ntamd64.Services]
-AddService = !MyProductName!,%SPSVCINST_ASSOCSERVICE%,services.x64
+AddService = !MyProductName!,%SPSVCINST_ASSOCSERVICE%,services.x64,eventlog.x64,"Application"
 
 [services.x86]
 DisplayName = !MyProductName!
@@ -59,6 +59,20 @@ AddReg = reg.services
 
 [reg.services]
 HKR,"Parameters","BusType",%REG_DWORD%,%BusTypeVirtual%
+
+[eventlog.x86]
+AddReg = reg.eventlog.x86
+
+[eventlog.x64]
+AddReg = reg.eventlog.x64
+
+[reg.eventlog.x86]
+HKR,,"EventMessageFile",%REG_EXPAND_SZ%,"%%SystemRoot%%\System32\!MyBaseName!-x86.dll"
+HKR,,"TypesSupported",%REG_DWORD%,7
+
+[reg.eventlog.x64]
+HKR,,"EventMessageFile",%REG_EXPAND_SZ%,"%%SystemRoot%%\System32\!MyBaseName!-x64.dll"
+HKR,,"TypesSupported",%REG_DWORD%,7
 
 [SourceDisksFiles]
 !MyBaseName!-x86.sys = 1
@@ -88,5 +102,6 @@ SPSVCINST_ASSOCSERVICE = 0x00000002
 SERVICE_KERNEL_DRIVER = 0x00000001
 SERVICE_DEMAND_START = 0x3
 SERVICE_ERROR_NORMAL = 0x1
+REG_EXPAND_SZ=0x00020000
 REG_DWORD=0x00010001
 BusTypeVirtual=0xe

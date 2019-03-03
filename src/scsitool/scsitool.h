@@ -27,12 +27,19 @@
 #include <scsi.h>
 #undef _NTSCSI_USER_MODE_
 #include <shared/minimal.h>
+#include <shared/log.h>
 #include <shared/memalign.h>
-#include <shared/printlog.h>
 #include <shared/strtoint.h>
 #include <winspd/ioctl.h>
 
 #define PROGNAME                        "scsitool"
+
+#define info(format, ...)               \
+    SpdPrintLog(GetStdHandle(STD_OUTPUT_HANDLE), format, __VA_ARGS__)
+#define warn(format, ...)               \
+    SpdPrintLog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__)
+#define fail(ExitCode, format, ...)     \
+    (SpdPrintLog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__), ExitProcess(ExitCode))
 
 void ScsiLineText(HANDLE h, const char *format, void *buf, size_t len);
 void ScsiTableText(HANDLE h, const char *format, void *buf, size_t len);

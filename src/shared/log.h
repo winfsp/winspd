@@ -1,5 +1,5 @@
 /**
- * @file shared/printlog.c
+ * @file shared/log.h
  *
  * @copyright 2018-2019 Bill Zissimopoulos
  */
@@ -19,31 +19,24 @@
  * associated repository.
  */
 
-#include <windows.h>
-#include <shared/minimal.h>
-#include <shared/printlog.h>
+#ifndef WINSPD_SHARED_LOG_H_INCLUDED
+#define WINSPD_SHARED_LOG_H_INCLUDED
 
-void vprintlog(HANDLE h, const char *format, va_list ap)
-{
-    char buf[1024];
-        /* wvsprintf is only safe with a 1024 byte buffer */
-    size_t len;
-    DWORD BytesTransferred;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-    wvsprintfA(buf, format, ap);
-    buf[sizeof buf - 1] = '\0';
+VOID SpdPrintLog(HANDLE Handle, PWSTR Format, ...);
+VOID SpdPrintLogV(HANDLE Handle, PWSTR Format, va_list ap);
+VOID SpdEventLog(ULONG Type, PWSTR Format, ...);
+VOID SpdEventLogV(ULONG Type, PWSTR Format, va_list ap);
+VOID SpdServiceLog(ULONG Type, PWSTR Format, ...);
+VOID SpdServiceLogV(ULONG Type, PWSTR Format, va_list ap);
 
-    len = lstrlenA(buf);
-    buf[len++] = '\n';
+PWSTR SpdDiagIdent(VOID);
 
-    WriteFile(h, buf, (DWORD)len, &BytesTransferred, 0);
+#ifdef __cplusplus
 }
+#endif
 
-void printlog(HANDLE h, const char *format, ...)
-{
-    va_list ap;
-
-    va_start(ap, format);
-    vprintlog(h, format, ap);
-    va_end(ap);
-}
+#endif

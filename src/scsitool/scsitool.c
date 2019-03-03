@@ -34,7 +34,7 @@ static void ScsiPrint(const char *format, void *buf, size_t len)
 
 static void ScsiPrintSenseInfo(UCHAR ScsiStatus, UCHAR SenseInfoBuffer[32])
 {
-    info("ScsiStatus=%u", ScsiStatus);
+    info(L"ScsiStatus=%u", ScsiStatus);
 
     ScsiPrint(
         "u1  VALID\n"
@@ -127,7 +127,7 @@ static int devpath(int argc, wchar_t **argv)
     if (ERROR_SUCCESS != Error)
         goto exit;
 
-    info("%S", PathBuf);
+    info(L"%s", PathBuf);
 
 exit:
     return Error;
@@ -474,7 +474,7 @@ static int capacity16(int argc, wchar_t **argv)
 
 static void usage(void)
 {
-    fail(ERROR_INVALID_PARAMETER,
+    fail(ERROR_INVALID_PARAMETER, L""
         "usage: %s COMMAND ARGS\n"
         "\n"
         "commands:\n"
@@ -489,9 +489,8 @@ static void usage(void)
         "    mode-sense device-name [b:t:l]\n"
         "    mode-caching device-name [b:t:l]\n"
         "    capacity device-name [b:t:l]\n"
-        "    capacity16 device-name [b:t:l]\n"
-        "",
-        PROGNAME);
+        "    capacity16 device-name [b:t:l]\n",
+        L"" PROGNAME);
 }
 
 int wmain(int argc, wchar_t **argv)
@@ -551,14 +550,14 @@ int wmain(int argc, wchar_t **argv)
 
     if (ERROR_SUCCESS != Error)
     {
-        char ErrorBuf[512];
+        WCHAR ErrorBuf[512];
 
-        if (0 == FormatMessageA(
+        if (0 == FormatMessageW(
             FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
-            0, Error, 0, ErrorBuf, sizeof ErrorBuf, 0))
+            0, Error, 0, ErrorBuf, sizeof ErrorBuf / sizeof ErrorBuf[0], 0))
             ErrorBuf[0] = '\0';
 
-        warn("Error %lu%s%s", Error, '\0' != ErrorBuf[0] ? ": " : "", ErrorBuf);
+        warn(L"Error %lu%s%s", Error, '\0' != ErrorBuf[0] ? L": " : L"", ErrorBuf);
     }
 
     return Error;

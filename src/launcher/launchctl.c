@@ -22,14 +22,21 @@
 #include <windows.h>
 #include <shared/minimal.h>
 #include <shared/launch.h>
-#include <shared/printlog.h>
+#include <shared/log.h>
 #include <shared/secpipe.h>
 
 #define PROGNAME                        "launchctl"
 
+#define info(format, ...)               \
+    SpdPrintLog(GetStdHandle(STD_OUTPUT_HANDLE), format, __VA_ARGS__)
+#define warn(format, ...)               \
+    SpdPrintLog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__)
+#define fail(ExitCode, format, ...)     \
+    (SpdPrintLog(GetStdHandle(STD_ERROR_HANDLE), format, __VA_ARGS__), ExitProcess(ExitCode))
+
 static void usage(void)
 {
-    fail(ERROR_INVALID_PARAMETER,
+    fail(ERROR_INVALID_PARAMETER, L""
         "usage: %s COMMAND ARGS\n"
         "\n"
         "commands:\n"
@@ -38,7 +45,7 @@ static void usage(void)
         "    stopForced          ClassName InstanceName\n"
         "    info                ClassName InstanceName\n"
         "    list\n",
-        PROGNAME);
+        L"" PROGNAME);
 }
 
 static int call_pipe_and_report(PWSTR PipeBuf, ULONG SendSize, ULONG RecvSize)
@@ -49,13 +56,13 @@ static int call_pipe_and_report(PWSTR PipeBuf, ULONG SendSize, ULONG RecvSize)
         &BytesTransferred, NMPWAIT_USE_DEFAULT_WAIT, FALSE, SPD_LAUNCH_PIPE_OWNER);
 
     if (0 != LastError)
-        warn("KO CallNamedPipe = %ld", LastError);
+        warn(L"KO CallNamedPipe = %ld", LastError);
     else if (sizeof(WCHAR) > BytesTransferred)
-        warn("KO launcher: empty buffer");
+        warn(L"KO launcher: empty buffer");
     else if (SpdLaunchCmdSuccess == PipeBuf[0])
     {
         if (sizeof(WCHAR) == BytesTransferred)
-            info("OK");
+            info(L"OK");
         else
         {
             ULONG Count = 0;
@@ -74,7 +81,7 @@ static int call_pipe_and_report(PWSTR PipeBuf, ULONG SendSize, ULONG RecvSize)
             else
                 PipeBuf[RecvSize / sizeof(WCHAR) - 1] = L'\0';
 
-            info("OK\n%S", PipeBuf + 1);
+            info(L"OK\n%s", PipeBuf + 1);
         }
     }
     else if (SpdLaunchCmdFailure == PipeBuf[0])
@@ -84,10 +91,10 @@ static int call_pipe_and_report(PWSTR PipeBuf, ULONG SendSize, ULONG RecvSize)
         else
             PipeBuf[RecvSize / sizeof(WCHAR) - 1] = L'\0';
 
-        info("KO launcher: error %S", PipeBuf + 1);
+        info(L"KO launcher: error %s", PipeBuf + 1);
     }
     else 
-        warn("KO launcher: corrupted buffer", 0);
+        warn(L"KO launcher: corrupted buffer", 0);
 
     return LastError;
 }

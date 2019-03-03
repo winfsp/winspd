@@ -180,7 +180,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\launcher\launchctl.c" />
-    <ClCompile Include="..\..\..\src\shared\printlog.c" />
+    <ClCompile Include="..\..\..\src\shared\log.c" />
     <ClCompile Include="..\..\..\src\shared\secpipe.c" />
   </ItemGroup>
   <ItemGroup>
@@ -188,8 +188,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\shared\launch.h" />
+    <ClInclude Include="..\..\..\src\shared\log.h" />
     <ClInclude Include="..\..\..\src\shared\minimal.h" />
-    <ClInclude Include="..\..\..\src\shared\printlog.h" />
     <ClInclude Include="..\..\..\src\shared\secpipe.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

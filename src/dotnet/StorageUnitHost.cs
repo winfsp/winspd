@@ -33,6 +33,11 @@ namespace Spd
     /// </summary>
     public class StorageUnitHost : IDisposable
     {
+        /* const */
+        public const UInt32 EVENTLOG_ERROR_TYPE = 0x0001;
+        public const UInt32 EVENTLOG_WARNING_TYPE = 0x0002;
+        public const UInt32 EVENTLOG_INFORMATION_TYPE = 0x0004;
+
         /* ctor/dtor */
         /// <summary>
         /// Creates an instance of the StorageUnitHost class.
@@ -279,6 +284,10 @@ namespace Spd
         public static int SpdDefinePartitionTable(Partition[] Partitions, Byte[] Buffer)
         {
             return Api.SpdDefinePartitionTable(Partitions, Buffer);
+        }
+        public static void Log(UInt32 Type, String Message)
+        {
+            Api.SpdServiceLog(Type, "%s", Message);
         }
         /// <summary>
         /// Sets the debug log file to use when debug logging is enabled.

@@ -24,6 +24,12 @@ EXPORTS
     SpdStorageUnitSetDispatcherErrorF
     SpdStorageUnitSetDebugLogF
     SpdDefinePartitionTable
+    SpdPrintLog
+    SpdPrintLogV
+    SpdEventLog
+    SpdEventLogV
+    SpdServiceLog
+    SpdServiceLogV
     SpdDebugLogSetHandle
     SpdDebugLog
     SpdDebugLogRequest

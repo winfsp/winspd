@@ -22,10 +22,10 @@
     <ClCompile Include="..\..\..\src\shared\ioctl.c">
       <Filter>Source\shared</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\shared\printlog.c">
+    <ClCompile Include="..\..\..\src\shared\memalign.c">
       <Filter>Source\shared</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\shared\memalign.c">
+    <ClCompile Include="..\..\..\src\shared\log.c">
       <Filter>Source\shared</Filter>
     </ClCompile>
   </ItemGroup>
@@ -36,13 +36,13 @@
     <ClInclude Include="..\..\..\src\scsitool\scsitool.h">
       <Filter>Source</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\shared\printlog.h">
-      <Filter>Source\shared</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\shared\strtoint.h">
       <Filter>Source\shared</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\shared\memalign.h">
+      <Filter>Source\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\shared\log.h">
       <Filter>Source\shared</Filter>
     </ClInclude>
   </ItemGroup>

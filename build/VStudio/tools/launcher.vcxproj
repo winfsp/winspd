@@ -180,6 +180,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\launcher\launcher.c" />
+    <ClCompile Include="..\..\..\src\shared\log.c" />
     <ClCompile Include="..\..\..\src\shared\strtoint.c" />
   </ItemGroup>
   <ItemGroup>
@@ -187,6 +188,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\shared\launch.h" />
+    <ClInclude Include="..\..\..\src\shared\log.h" />
     <ClInclude Include="..\..\..\src\shared\minimal.h" />
     <ClInclude Include="..\..\..\src\shared\strtoint.h" />
   </ItemGroup>

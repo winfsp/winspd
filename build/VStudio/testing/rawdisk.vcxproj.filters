@@ -11,9 +11,4 @@
       <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\..\tst\rawdisk\rawdisk.h">
-      <Filter>Source</Filter>
-    </ClInclude>
-  </ItemGroup>
 </Project>

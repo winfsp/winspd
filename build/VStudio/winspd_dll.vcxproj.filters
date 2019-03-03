@@ -38,6 +38,9 @@
     <ClCompile Include="..\..\src\dll\mbr.c">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\log.c">
+      <Filter>Source\shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\inc\winspd\ioctl.h">
@@ -49,6 +52,9 @@
     <ClInclude Include="..\..\src\shared\minimal.h">
       <Filter>Source\shared</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\shared\log.h">
+      <Filter>Source\shared</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\dll\library.def">
@@ -57,6 +63,9 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\src\dll\version.rc">
+      <Filter>Source</Filter>
+    </ResourceCompile>
+    <ResourceCompile Include="..\..\src\dll\eventlog\eventlog.rc">
       <Filter>Source</Filter>
     </ResourceCompile>
   </ItemGroup>

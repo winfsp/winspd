@@ -19,7 +19,7 @@
     <ClCompile Include="..\..\..\src\stgtest\stgtest.c">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\shared\printlog.c">
+    <ClCompile Include="..\..\..\src\shared\log.c">
       <Filter>Source\shared</Filter>
     </ClCompile>
   </ItemGroup>
@@ -27,10 +27,10 @@
     <ClInclude Include="..\..\..\src\shared\minimal.h">
       <Filter>Source\shared</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\shared\printlog.h">
+    <ClInclude Include="..\..\..\src\shared\strtoint.h">
       <Filter>Source\shared</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\shared\strtoint.h">
+    <ClInclude Include="..\..\..\src\shared\log.h">
       <Filter>Source\shared</Filter>
     </ClInclude>
   </ItemGroup>

@@ -321,15 +321,17 @@ namespace rawdisk
                 if (0 != Host.Start(PipeName, DebugFlags))
                     throw new IOException("cannot start storage unit");
 
-                Console.Error.WriteLine("{0} -f {1} -c {2} -l {3} -i {4} -r {5} -W {6} -C {7} -U {8}{9}{10}",
-                    PROGNAME,
-                    RawDiskFile,
-                    BlockCount, BlockLength, ProductId, ProductRevision,
-                    0 != WriteAllowed ? 1 : 0,
-                    0 != CacheSupported ? 1 : 0,
-                    0 != UnmapSupported ? 1 : 0,
-                    null != PipeName ? " -p " : "",
-                    null != PipeName ? PipeName : "");
+                StorageUnitHost.Log(StorageUnitHost.EVENTLOG_INFORMATION_TYPE,
+                    String.Format(
+                        "{0} -f {1} -c {2} -l {3} -i {4} -r {5} -W {6} -C {7} -U {8}{9}{10}",
+                        PROGNAME,
+                        RawDiskFile,
+                        BlockCount, BlockLength, ProductId, ProductRevision,
+                        0 != WriteAllowed ? 1 : 0,
+                        0 != CacheSupported ? 1 : 0,
+                        0 != UnmapSupported ? 1 : 0,
+                        null != PipeName ? " -p " : "",
+                        null != PipeName ? PipeName : ""));
 
                 Console.CancelKeyPress +=
                     delegate (Object Sender, ConsoleCancelEventArgs Event)
@@ -341,24 +343,25 @@ namespace rawdisk
             }
             catch (CommandLineUsageException ex)
             {
-                Console.Error.WriteLine(
-                    "{0}" +
-                    "usage: {1} OPTIONS\n" +
-                    "\n" +
-                    "options:\n" +
-                    "    -f RawDiskFile                      Storage unit data file\n" +
-                    "    -c BlockCount                       Storage unit size in blocks\n" +
-                    "    -l BlockLength                      Storage unit block length\n" +
-                    "    -i ProductId                        1-16 chars\n" +
-                    "    -r ProductRevision                  1-4 chars\n" +
-                    "    -W 0|1                              Disable/enable writes (deflt: enable)\n" +
-                    "    -C 0|1                              Disable/enable cache (deflt: enable)\n" +
-                    "    -U 0|1                              Disable/enable unmap (deflt: enable)\n" +
-                    "    -d -1                               Debug flags\n" +
-                    "    -D DebugLogFile                     Debug log file; - for stderr\n" +
-                    "    -p \\\\.\\pipe\\PipeName                Listen on pipe; omit to use driver\n",
-                    ex.HasMessage ? ex.Message + "\n" : "",
-                    PROGNAME);
+                StorageUnitHost.Log(StorageUnitHost.EVENTLOG_ERROR_TYPE,
+                    String.Format(
+                        "{0}" +
+                        "usage: {1} OPTIONS\n" +
+                        "\n" +
+                        "options:\n" +
+                        "    -f RawDiskFile                      Storage unit data file\n" +
+                        "    -c BlockCount                       Storage unit size in blocks\n" +
+                        "    -l BlockLength                      Storage unit block length\n" +
+                        "    -i ProductId                        1-16 chars\n" +
+                        "    -r ProductRevision                  1-4 chars\n" +
+                        "    -W 0|1                              Disable/enable writes (deflt: enable)\n" +
+                        "    -C 0|1                              Disable/enable cache (deflt: enable)\n" +
+                        "    -U 0|1                              Disable/enable unmap (deflt: enable)\n" +
+                        "    -d -1                               Debug flags\n" +
+                        "    -D DebugLogFile                     Debug log file; - for stderr\n" +
+                        "    -p \\\\.\\pipe\\PipeName                Listen on pipe; omit to use driver\n",
+                        ex.HasMessage ? ex.Message + "\n" : "",
+                        PROGNAME));
                 Environment.ExitCode = 87/*ERROR_INVALID_PARAMETER*/;
             }
             catch (Exception ex)
@@ -366,7 +369,8 @@ namespace rawdisk
                 if (ex is TypeInitializationException && null != ex.InnerException)
                     ex = ex.InnerException;
 
-                Console.Error.WriteLine("{0}", ex.Message);
+                StorageUnitHost.Log(StorageUnitHost.EVENTLOG_ERROR_TYPE,
+                    ex.Message);
 
                 int hr = Marshal.GetHRForException(ex);
                 Environment.ExitCode = Marshal.GetHRForException(ex);
