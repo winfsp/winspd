@@ -364,14 +364,8 @@
         </DirectoryRef>
         <DirectoryRef Id="SMPDIR" FileSource="..\..\..\tst">
             <Directory Id="SMPDIR.rawdisk" Name="rawdisk">
-                <Component Id="C.rawdisk.h">
-                    <File Name="rawdisk.h" KeyPath="yes" />
-                </Component>
                 <Component Id="C.rawdisk.c">
                     <File Name="rawdisk.c" KeyPath="yes" />
-                </Component>
-                <Component Id="C.rawdisk_main.c">
-                    <File Name="rawdisk-main.c" KeyPath="yes" />
                 </Component>
                 <Component Id="C.rawdisk.sln">
                     <File Name="rawdisk.sln" KeyPath="yes" />
@@ -487,9 +481,7 @@
             <ComponentRef Id="C.HKCR.rawdisk" />
             <ComponentRef Id="C.HKCR.rawdisk.x64" />
             <ComponentRef Id="C.HKCR.rawdisk.x86" />
-            <ComponentRef Id="C.rawdisk.h" />
             <ComponentRef Id="C.rawdisk.c" />
-            <ComponentRef Id="C.rawdisk_main.c" />
             <ComponentRef Id="C.rawdisk.sln" />
             <ComponentRef Id="C.rawdisk.vcxproj" />
             <ComponentRef Id="C.rawdisk.vcxproj.filters" />
