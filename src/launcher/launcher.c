@@ -19,12 +19,7 @@
  * associated repository.
  */
 
-#include <windows.h>
-#include <shared/minimal.h>
-#include <shared/launch.h>
-#include <shared/log.h>
-#include <shared/strtoint.h>
-#include <winspd/winspd.h>
+#include <shared/shared.h>
 #include <aclapi.h>
 #include <sddl.h>
 
@@ -1149,7 +1144,7 @@ static DWORD SvcInstanceStartAllPersistent(VOID)
                     Argc = 0;
                     for (PWSTR P = RegValue;
                         sizeof(Argv) / sizeof(Argv[0]) > Argc &&
-                            (PUINT8)P - (PUINT8)RegValue < RegValueSize;
+                            (DWORD)((PUINT8)P - (PUINT8)RegValue) < RegValueSize;
                         P = P + lstrlenW(P) + 1)
                         Argv[Argc++] = P;
 

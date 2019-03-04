@@ -5,9 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Source\shared">
-      <UniqueIdentifier>{abbcb2ce-6766-4e82-bc7f-fc1effc5825f}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\devsetup\devsetup.c">
@@ -18,10 +15,5 @@
     <ResourceCompile Include="..\..\..\src\devsetup\devsetup-version.rc">
       <Filter>Source</Filter>
     </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\..\src\shared\minimal.h">
-      <Filter>Source\shared</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

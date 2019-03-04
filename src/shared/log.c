@@ -19,9 +19,7 @@
  * associated repository.
  */
 
-#include <windows.h>
-#include <shared/minimal.h>
-#include <shared/log.h>
+#include <shared/shared.h>
 
 VOID SpdPrintLog(HANDLE Handle, PWSTR Format, ...)
 {

@@ -19,8 +19,7 @@
  * associated repository.
  */
 
-#include <winspd/winspd.h>
-#include <shared/minimal.h>
+#include <shared/shared.h>
 
 /* Windows CHS defaults */
 #define SPT                             63  /* sectors per track */

@@ -23,8 +23,7 @@
 #define WINSPD_SHELLEX_MOUNTCMD_HPP_INCLUDED
 
 #include <shellex/command.hpp>
-#include <shared/launch.h>
-#include <shared/regutil.h>
+#include <shared/shared.h>
 
 #define SPD_SHELLEX_MOUNT_PROGID        "WinSpd.DiskFile"
 #define SPD_SHELLEX_MOUNT_PROGID_DESC   "WinSpd Disk File"

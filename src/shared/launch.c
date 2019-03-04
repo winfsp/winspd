@@ -19,10 +19,7 @@
  * associated repository.
  */
 
-#include <windows.h>
-#include <shared/minimal.h>
-#include <shared/secpipe.h>
-#include <shared/launch.h>
+#include <shared/shared.h>
 
 DWORD SpdLaunchCallLauncherPipe(
     WCHAR Command, ULONG Argc, PWSTR *Argv, ULONG *Argl,

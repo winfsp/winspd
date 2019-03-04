@@ -12,35 +12,6 @@
     <Filter Include="Include\winspd">
       <UniqueIdentifier>{bd60d71e-1fe0-477a-b3f1-5121a9881dc4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\shared">
-      <UniqueIdentifier>{5e677395-9f35-4353-a2dc-a25d7f55e818}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\..\src\dll\library.c">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\shared\ioctl.c">
-      <Filter>Source\shared</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\dll\stgunit.c">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\dll\debug.c">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\dll\stghandle.c">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\dll\util.c">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\dll\mbr.c">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\shared\log.c">
-      <Filter>Source\shared</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\inc\winspd\ioctl.h">
@@ -49,17 +20,6 @@
     <ClInclude Include="..\..\inc\winspd\winspd.h">
       <Filter>Include\winspd</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\shared\minimal.h">
-      <Filter>Source\shared</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\shared\log.h">
-      <Filter>Source\shared</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\src\dll\library.def">
-      <Filter>Source</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\src\dll\version.rc">
@@ -68,5 +28,15 @@
     <ResourceCompile Include="..\..\src\dll\eventlog\eventlog.rc">
       <Filter>Source</Filter>
     </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\dll\library.c">
+      <Filter>Source</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\dll\library.def">
+      <Filter>Source</Filter>
+    </None>
   </ItemGroup>
 </Project>

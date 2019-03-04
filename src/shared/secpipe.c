@@ -19,9 +19,7 @@
  * associated repository.
  */
 
-#include <windows.h>
-#include <shared/minimal.h>
-#include <shared/secpipe.h>
+#include <shared/shared.h>
 #include <aclapi.h>
 
 DWORD SpdCallNamedPipeSecurely(PWSTR PipeName,

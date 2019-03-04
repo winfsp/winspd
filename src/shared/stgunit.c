@@ -19,8 +19,7 @@
  * associated repository.
  */
 
-#include <winspd/winspd.h>
-#include <shared/minimal.h>
+#include <shared/shared.h>
 
 DWORD SpdStorageUnitHandleOpen(PWSTR Name,
     const SPD_IOCTL_STORAGE_UNIT_PARAMS *StorageUnitParams,

@@ -185,20 +185,17 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\src\scsitool\scsitext.c" />
     <ClCompile Include="..\..\..\src\scsitool\scsitool.c" />
-    <ClCompile Include="..\..\..\src\shared\ioctl.c" />
-    <ClCompile Include="..\..\..\src\shared\log.c" />
-    <ClCompile Include="..\..\..\src\shared\memalign.c" />
-    <ClCompile Include="..\..\..\src\shared\strtoint.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\scsitool\scsitool.h" />
-    <ClInclude Include="..\..\..\src\shared\log.h" />
-    <ClInclude Include="..\..\..\src\shared\memalign.h" />
-    <ClInclude Include="..\..\..\src\shared\minimal.h" />
-    <ClInclude Include="..\..\..\src\shared\strtoint.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\..\src\scsitool\scsitool-version.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\shared.vcxproj">
+      <Project>{149c2cb2-a6d4-4905-8a58-5cd00dcb8bad}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

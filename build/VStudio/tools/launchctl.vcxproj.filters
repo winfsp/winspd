@@ -5,38 +5,15 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Source\shared">
-      <UniqueIdentifier>{e8f7c6fa-9bc9-4b3a-8858-d37fe3c92afb}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\launcher\launchctl.c">
       <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\shared\secpipe.c">
-      <Filter>Source\shared</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\shared\log.c">
-      <Filter>Source\shared</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\..\src\launcher\launchctl-version.rc">
       <Filter>Source</Filter>
     </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\..\src\shared\minimal.h">
-      <Filter>Source\shared</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\shared\launch.h">
-      <Filter>Source\shared</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\shared\secpipe.h">
-      <Filter>Source\shared</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\shared\log.h">
-      <Filter>Source\shared</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

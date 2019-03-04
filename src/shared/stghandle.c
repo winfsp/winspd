@@ -19,8 +19,7 @@
  * associated repository.
  */
 
-#include <winspd/winspd.h>
-#include <shared/minimal.h>
+#include <shared/shared.h>
 
 #define SPD_INDEX_FROM_BTL(Btl)         SPD_IOCTL_BTL_T(Btl)
 #define SPD_BTL_FROM_INDEX(Idx)         SPD_IOCTL_BTL(0, Idx, 0)
@@ -52,7 +51,7 @@ typedef struct
 } STORAGE_UNIT;
 
 static SRWLOCK StorageUnitLock = SRWLOCK_INIT;
-STORAGE_UNIT **StorageUnits;
+static STORAGE_UNIT **StorageUnits;
 
 static inline UINT64 HashMix64(UINT64 k)
 {

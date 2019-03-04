@@ -5,9 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Source\shared">
-      <UniqueIdentifier>{64dfc8c1-e6d7-4bab-a138-29d5fd12b4ac}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\scsitool\scsitool.c">
@@ -16,34 +13,10 @@
     <ClCompile Include="..\..\..\src\scsitool\scsitext.c">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\shared\strtoint.c">
-      <Filter>Source\shared</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\shared\ioctl.c">
-      <Filter>Source\shared</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\shared\memalign.c">
-      <Filter>Source\shared</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\shared\log.c">
-      <Filter>Source\shared</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\src\shared\minimal.h">
-      <Filter>Source\shared</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\scsitool\scsitool.h">
       <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\shared\strtoint.h">
-      <Filter>Source\shared</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\shared\memalign.h">
-      <Filter>Source\shared</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\shared\log.h">
-      <Filter>Source\shared</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

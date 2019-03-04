@@ -19,8 +19,7 @@
  * associated repository.
  */
 
-#include <winspd/winspd.h>
-#include <shared/minimal.h>
+#include <shared/shared.h>
 #include <stdarg.h>
 
 PWSTR SpdDiagIdent(VOID);

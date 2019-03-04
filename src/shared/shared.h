@@ -1,5 +1,5 @@
 /**
- * @file shared/launch.h
+ * @file shared/shared.h
  *
  * @copyright 2018-2019 Bill Zissimopoulos
  */
@@ -19,12 +19,47 @@
  * associated repository.
  */
 
-#ifndef WINSPD_SHARED_LAUNCH_H_INCLUDED
-#define WINSPD_SHARED_LAUNCH_H_INCLUDED
+#ifndef WINSPD_SHARED_SHARED_H_INCLUDED
+#define WINSPD_SHARED_SHARED_H_INCLUDED
+
+#include <winspd/winspd.h>
+#include <shared/minimal.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/*
+ * Registry
+ */
+
+typedef struct _REGENTRY
+{
+    PWSTR Name;
+    ULONG Type;
+    PVOID Value;
+    ULONG Size;
+} REGENTRY;
+
+DWORD RegAddEntries(HKEY Key, REGENTRY *Entries, ULONG Count, PBOOLEAN PKeyAdded);
+DWORD RegDeleteEntries(HKEY Key, REGENTRY *Entries, ULONG Count, PBOOLEAN PKeyDeleted);
+
+/*
+ * Secure Pipes
+ */
+
+DWORD SpdCallNamedPipeSecurely(PWSTR PipeName,
+    PVOID InBuffer, ULONG InBufferSize, PVOID OutBuffer, ULONG OutBufferSize,
+    PULONG PBytesTransferred, ULONG Timeout,
+    PSID Sid);
+DWORD SpdCallNamedPipeSecurelyEx(PWSTR PipeName,
+    PVOID InBuffer, ULONG InBufferSize, PVOID OutBuffer, ULONG OutBufferSize,
+    PULONG PBytesTransferred, ULONG Timeout, BOOLEAN AllowImpersonation,
+    PSID Sid);
+
+/*
+ * Launch
+ */
 
 #define SPD_LAUNCH_REGKEY               "Software\\WinSpd\\Services"
 #define SPD_LAUNCH_REGKEY_WOW64         KEY_WOW64_32KEY
@@ -88,6 +123,24 @@ DWORD SpdLaunchGetInfo(
 DWORD SpdLaunchGetNameList(
     PWSTR Buffer, PULONG PSize,
     PDWORD PLauncherError);
+
+
+/*
+ * Diag
+ */
+PWSTR SpdDiagIdent(VOID);
+
+/*
+ * MemAlign
+ */
+DWORD SpdIoctlMemAlignAlloc(UINT32 Size, UINT32 AlignmentMask, PVOID *PP);
+VOID SpdIoctlMemAlignFree(PVOID P);
+
+/*
+ * strtoint
+ */
+long long strtoint(const char *p, int base, int is_signed, const char **endp);
+long long wcstoint(const wchar_t *p, int base, int is_signed, const wchar_t **endp);
 
 #ifdef __cplusplus
 }

@@ -19,11 +19,7 @@
  * associated repository.
  */
 
-#include <windows.h>
-#include <shared/minimal.h>
-#include <shared/launch.h>
-#include <shared/log.h>
-#include <shared/secpipe.h>
+#include <shared/shared.h>
 
 #define PROGNAME                        "launchctl"
 

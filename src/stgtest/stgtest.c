@@ -19,14 +19,7 @@
  * associated repository.
  */
 
-#include <windows.h>
-#define _NTSCSI_USER_MODE_
-#include <scsi.h>
-#undef _NTSCSI_USER_MODE_
-#include <shared/minimal.h>
-#include <shared/log.h>
-#include <shared/strtoint.h>
-#include <winspd/ioctl.h>
+#include <shared/shared.h>
 
 #define PROGNAME                        "stgtest"
 

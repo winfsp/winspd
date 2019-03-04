@@ -23,11 +23,7 @@
 #define WINSPD_SHELLEX_EJECTMNU_HPP_INCLUDED
 
 #include <shellex/ctxmenu.hpp>
-#define _NTSCSI_USER_MODE_
-#include <scsi.h>
-#undef _NTSCSI_USER_MODE_
-#include <shared/launch.h>
-#include <winspd/ioctl.h>
+#include <shared/shared.h>
 
 #define SPD_SHELLEX_EJECT_PROGID        "Drive"
 #define SPD_SHELLEX_EJECT_VERB          "WinSpd.Eject"

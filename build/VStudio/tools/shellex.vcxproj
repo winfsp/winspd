@@ -20,9 +20,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\shared\launch.c" />
-    <ClCompile Include="..\..\..\src\shared\regutil.c" />
-    <ClCompile Include="..\..\..\src\shared\secpipe.c" />
     <ClCompile Include="..\..\..\src\shellex\library.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -32,15 +29,16 @@
     <None Include="..\..\..\src\shellex\library.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\src\shared\launch.h" />
-    <ClInclude Include="..\..\..\src\shared\minimal.h" />
-    <ClInclude Include="..\..\..\src\shared\regutil.h" />
-    <ClInclude Include="..\..\..\src\shared\secpipe.h" />
     <ClInclude Include="..\..\..\src\shellex\com.hpp" />
     <ClInclude Include="..\..\..\src\shellex\command.hpp" />
     <ClInclude Include="..\..\..\src\shellex\ctxmenu.hpp" />
     <ClInclude Include="..\..\..\src\shellex\ejectmnu.hpp" />
     <ClInclude Include="..\..\..\src\shellex\mountcmd.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\shared.vcxproj">
+      <Project>{149c2cb2-a6d4-4905-8a58-5cd00dcb8bad}</Project>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{3A5F65BF-A8BA-4057-AC5A-F1EBA60EB510}</ProjectGuid>

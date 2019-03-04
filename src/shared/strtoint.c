@@ -19,8 +19,7 @@
  * associated repository.
  */
 
-#include <wchar.h>
-#include <shared/strtoint.h>
+#include <shared/shared.h>
 
 long long strtoint(const char *p, int base, int is_signed, const char **endp)
 {
