@@ -36,20 +36,26 @@ DWORD SpdStorageUnitHandleClose(HANDLE Handle);
 
 static SPD_STORAGE_UNIT_INTERFACE SpdStorageUnitNullInterface;
 
-static INIT_ONCE SpdStorageUnitInitOnce = INIT_ONCE_STATIC_INIT;
+static DWORD SpdStorageUnitTlsCount = 0;
+static SRWLOCK SpdStorageUnitTlsLock = SRWLOCK_INIT;
 static DWORD SpdStorageUnitTlsKey = TLS_OUT_OF_INDEXES;
-
-static BOOL WINAPI SpdStorageUnitInitialize(
-    PINIT_ONCE InitOnce, PVOID Parameter, PVOID *Context)
+static VOID WINAPI SpdStorageUnitTlsInit(VOID)
 {
-    SpdStorageUnitTlsKey = TlsAlloc();
-    return TRUE;
+    AcquireSRWLockExclusive(&SpdStorageUnitTlsLock);
+    if (1 == ++SpdStorageUnitTlsCount)
+        SpdStorageUnitTlsKey = TlsAlloc();
+    ReleaseSRWLockExclusive(&SpdStorageUnitTlsLock);
 }
-
-VOID SpdStorageUnitFinalize(BOOLEAN Dynamic)
+static VOID SpdStorageUnitTlsFini(VOID)
 {
-    if (Dynamic && TLS_OUT_OF_INDEXES != SpdStorageUnitTlsKey)
+    AcquireSRWLockExclusive(&SpdStorageUnitTlsLock);
+    if (0 == --SpdStorageUnitTlsCount &&
+        TLS_OUT_OF_INDEXES != SpdStorageUnitTlsKey)
+    {
         TlsFree(SpdStorageUnitTlsKey);
+        SpdStorageUnitTlsKey = TLS_OUT_OF_INDEXES;
+    }
+    ReleaseSRWLockExclusive(&SpdStorageUnitTlsLock);
 }
 
 DWORD SpdStorageUnitCreate(
@@ -68,7 +74,7 @@ DWORD SpdStorageUnitCreate(
     if (0 == Interface)
         Interface = &SpdStorageUnitNullInterface;
 
-    InitOnceExecuteOnce(&SpdStorageUnitInitOnce, SpdStorageUnitInitialize, 0, 0);
+    SpdStorageUnitTlsInit();
     if (TLS_OUT_OF_INDEXES == SpdStorageUnitTlsKey)
     {
         Error = ERROR_NO_SYSTEM_RESOURCES;
@@ -102,7 +108,10 @@ DWORD SpdStorageUnitCreate(
 
 exit:
     if (ERROR_SUCCESS != Error)
+    {
         MemFree(StorageUnit);
+        SpdStorageUnitTlsFini();
+    }
 
     return Error;
 }
@@ -112,6 +121,7 @@ VOID SpdStorageUnitDelete(SPD_STORAGE_UNIT *StorageUnit)
     SpdStorageUnitHandleShutdown(StorageUnit->Handle, &StorageUnit->StorageUnitParams.Guid);
     SpdStorageUnitHandleClose(StorageUnit->Handle);
     MemFree(StorageUnit);
+    SpdStorageUnitTlsFini();
 }
 
 VOID SpdStorageUnitShutdown(SPD_STORAGE_UNIT *StorageUnit)

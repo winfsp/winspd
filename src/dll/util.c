@@ -35,13 +35,13 @@ DWORD SpdVersion(PUINT32 PVersion)
          */
         *PVersion = 0;
 
-        extern HINSTANCE DllInstance;
+        HMODULE Module;
         WCHAR ModuleFileName[MAX_PATH];
         PVOID VersionInfo;
         DWORD Size;
         VS_FIXEDFILEINFO *FixedFileInfo = 0;
-
-        if (0 != GetModuleFileNameW(DllInstance, ModuleFileName, MAX_PATH))
+        if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, (PWSTR)SpdVersion, &Module) &&
+            0 != GetModuleFileNameW(Module, ModuleFileName, MAX_PATH))
         {
             Size = GetFileVersionInfoSizeW(ModuleFileName, &Size/*dummy*/);
             if (0 < Size)
