@@ -3,7 +3,7 @@
 setlocal
 setlocal EnableDelayedExpansion
 
-set MsiName="WinSpd - Windows Storage Port Proxy"
+set MsiName="WinSpd - Windows Storage Proxy Driver"
 set CrossCert="%~dp0DigiCert High Assurance EV Root CA.crt"
 set Issuer="DigiCert"
 set Subject="Navimatics Corporation"

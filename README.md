@@ -1,5 +1,5 @@
 <h1 align="center">
-    WinSpd &middot; Windows Storage Port Proxy
+    WinSpd &middot; Windows Storage Proxy Driver
 </h1>
 
 <p align="center">
@@ -11,18 +11,18 @@
 </p>
 
 <p align="center">
-    WinSpd enables the creation of storage units ("SCSI disks") as user mode processes (i.e. without writing any kernel mode code). These storage units are added to the Windows storage stack and appear to the Windows OS as real disks that can be formatted and accessed via a file system such as NTFS.
+    WinSpd enables the creation of storage units ("SCSI disks") in user mode (i.e. without writing any kernel mode code). Such storage units are created and served by user mode storage devices (i.e. user mode processes) and are added to the Windows OS storage stack. They appear to Windows as real disks that can be formatted and accessed via a file system such as NTFS.
     <br/>
     <br/>
-    The capture below shows a SCSI disk created via a user mode process, which is then partitioned, formatted with NTFS, assigned a drive letter and accessed normally.
+    The capture below shows a storage unit created by a user mode storage device called "rawdisk", which is then partitioned, formatted with NTFS, assigned a drive letter and accessed normally.
     <br/>
     <br/>
     <img src="doc/cap.gif"/>
 </p>
 
-## Storage Units
+## User Mode Storage Devices
 
-A WinSpd storage unit is a SCSI "direct-access block device" (as per the definition in the SCSI SBC standard). It is used to store data in logical blocks; each block contains the same amount of data (the Block Length) and has a Logical Block Address (LBA), which is a 64-bit number in a single contiguous address space. In particular WinSpd (and the SCSI standard) do not assume the traditional geometry of cylinder-head-sector (CHS) for how blocks are laid out.
+A user mode storage device is a user mode process that can create and serve storage units. As storage unit is a SCSI "direct-access block device" (as per the definition in the SCSI SBC standard) or more commonly referred to as a "SCSI disk". It is used to store data in logical blocks; each block contains the same amount of data (the Block Length) and has a Logical Block Address (LBA), which is a 64-bit number in a single contiguous address space. In particular WinSpd (and the SCSI standard) do not assume the traditional geometry of cylinder-head-sector (CHS) for how blocks are laid out.
 
 Storage units support two primary operations: read and write, and two secondary operations: flush and unmap:
 
@@ -33,7 +33,7 @@ Storage units support two primary operations: read and write, and two secondary 
 
 ## Design
 
-WinSpd is implemented as a StorPort virtual miniport (a kernel driver) and a user mode DLL. User mode storage units use the DLL to communicate with the driver via special IOCTL's. The driver creates a virtual SCSI device, which it adds to the Windows storage stack. At that point the device can be partitioned and formatted with any of the Windows file systems.
+WinSpd is implemented as a StorPort virtual miniport (a kernel driver) and a user mode DLL. User mode storage devices use the DLL to communicate with the driver via special IOCTL's. The driver creates a virtual SCSI disk for every storage unit, which it adds to the Windows storage stack. At that point the disk can be partitioned and formatted with any of the Windows file systems.
 
 The WinSpd virtual miniport implements the following SCSI commands:
 
@@ -64,7 +64,7 @@ The project source code is organized as follows:
     * :file_folder: [src/shellex](src/shellex): Source code to the WinSpd shell extension.
     * :file_folder: [src/stgtest](src/stgtest): Source code to the stgtest storage testing tool.
     * :file_folder: [src/sys](src/sys): Source code to the WinSpd kernel driver.
-* :file_folder: [tst](tst): Source code to example storage units and test tools.
+* :file_folder: [tst](tst): Source code to example user mode storage devices and test tools.
 * :file_folder: [tools](tools): Various tools for building and testing WinSpd.
 
 ## License

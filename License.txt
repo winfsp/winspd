@@ -17,7 +17,7 @@ that such software is covered by the GPLv3.
     Definition Version 1.141 (https://www.gnu.org/philosophy/free-sw.en.html)
     or the Open Source Definition Version 1.9 (https://opensource.org/osd).
 
-    2. Includes the copyright notice "WinSpd - Windows Storage Port Proxy,
+    2. Includes the copyright notice "WinSpd - Windows Storage Proxy Driver,
     Copyright (C) Bill Zissimopoulos" and a link to the WinSpd repository in
     its user-interface and any user-facing documentation.
 
