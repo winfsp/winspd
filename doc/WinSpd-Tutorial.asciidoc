@@ -19,7 +19,7 @@ When installing WinSpd make sure to choose "Developer" to ensure that all necess
 
 image::WinSpd-Tutorial/Installer.png[WinSpd Installer]
 
-With those prerequisites out of the way we are now ready to start creating our first storage unit.
+With those prerequisites out of the way we are now ready to start creating our first storage device.
 
 NOTE: The storage device that we will create is included as a sample with the WinSpd installer. Look in the `samples\rawdisk` directory.
 
@@ -43,7 +43,7 @@ int wmain(int argc, wchar_t **argv)
     return 0;
 }
 ----
-<1> Include WinFsp header file.
+<1> Include WinSpd header file.
 
 We must also set up the locations where Visual Studio can find the WinSpd headers and libraries. The following project settings must be made:
 
@@ -78,7 +78,7 @@ options:
     -p \\.\pipe\PipeName                Listen on pipe; omit to use driver
 ----
 
-The full code to handle these command line parameters is straight forward and is omitted for brevity. It can be found in the `rawdisk.c` sample file that ships with the WinSpd installer. The code sets a number of variables that are used to configure each run of the passthrough file system.
+The full code to handle these command line parameters is straight forward and is omitted for brevity. It can be found in the `rawdisk.c` sample file that ships with the WinSpd installer. The code sets a number of variables that are used to configure each run of the rawdisk storage device.
 
 .`*wmain excerpt*`
 [source,c]
@@ -122,6 +122,8 @@ The variable `DebugLogFile` is used to control the WinSpd debug logging mechanis
 ----
 
 The remaining variables are used to set up a file to act as backing storage and create and start a storage unit.
+
+The `PipeName` variable has a special purpose. It determines the channel to use for incoming requests. User mode storage devices normally use the WinSpd kernel driver in order to service operating system storage requests. As an alternative they can also service storage requests that they receive over the named pipe whose name is contained in `PipeName`. This is useful for testing as will be explained later.
 
 .`*wmain excerpt*`
 [source,c]
@@ -352,7 +354,7 @@ exit:
 <5> Set the file size to the appropriate value for the storage unit geometry. Note that if the file was successfuly set as sparse it should not occupy much actual space in the underlying file system.
 <6> Map the file in memory.
 <7> If the file was empty when it was first created we add a default partition that encompasses the whole storage unit.
-<8> Create the WinSpd `SPD_STORAGE_UNIT` object. This includes associated kernel objects.
+<8> Create the WinSpd `SPD_STORAGE_UNIT` object. If `PipeName` is `NULL` this includes associated kernel objects. If `PipeName` is not `NULL` the `SPD_STORAGE_UNIT` object will be associated with the specified named pipe, which is useful for testing.
 <9> Associate our private `RAWDISK` data structure with the WinSpd `SPD_STORAGE_UNIT` object.
 
 .`*RawDiskDelete*`
@@ -391,7 +393,7 @@ static BOOL WINAPI ConsoleCtrlHandler(DWORD CtrlType)
 
 We can now run the program from Visual Studio or the command line. The program starts and services storage requests from the operating system. However because we have not yet implemented any storage request handlers all requests will be failed. This is demonstrated by the `diskpart` session below. Press Ctrl-C to stop the storage device.
 
-image::WinSpd-Tutorial/FirstRun.png[First run]
+image::WinSpd-Tutorial/DiskpartError.png[Diskpart error]
 
 NOTE: Pressing Ctrl-C orderly stops the storage device (by calling `ConsoleCtrlHandler`). It is however possible to forcibly stop a storage device, e.g. by killing the process in the debugger. This is fine with WinSpd as *all associated resources will be automatically cleaned up*. This includes resources that WinSpd knows about such as associated kernel objects and memory, etc. It does not include resources that it has no knowledge about such as temporary files, network registrations, etc.
 
@@ -659,6 +661,150 @@ error:
     return TRUE;
 }
 ----
+
+== Testing the storage device
+
+=== Testing during development
+
+During development of a user mode storage device it is often advantageous to test our work without fully integrating the device with the operating system. This is so because of two reasons: (1) it avoids the need to develop with administrator privileges (integrating the storage device with the operating system requires such privileges) and (2) it maximizes development system stability.
+
+For this purpose WinSpd provides the option to listen for requests on a named pipe when creating an `SPD_STORAGE_UNIT` object. Any program can be used to send requests to the specified named pipe, but WinSpd already includes one called `stgtest`.
+
+.`*stgtest usage*`
+----
+usage: stgtest [-s Seed] \\.\pipe\PipeName\Target OpCount [RWFU] [Address|*] [Count|*]
+usage: stgtest [-s Seed] \\.\X: OpCount [RWFU] [Address|*] [Count|*]
+    -s Seed     Seed to use for randomness (default: time)
+    PipeName    Name of storage unit pipe
+    Target      SCSI target id (usually 0)
+    X:          Volume drive (must use RAW file system; requires admin)
+    OpCount     Operation count
+    RWFU        One or more: R: Read, W: Write, F: Flush, U: Unmap
+    Address     Starting block address, *: random
+    Count       Block count per operation, *: random
+----
+
+To test our rawdisk storage unit make the following project setting:
+
+- Debugging > Command Arguments: `-f $(OutDir)test.rawdisk -p \\.\pipe\rawdisk`
+
+Now run the rawdisk storage device under Visual Studio and then from a command prompt try:
+
+.`*stgtest invocation*`
+----
+>stgtest-x64 \\.\pipe\rawdisk\0 1000 WR
+stgtest -s 20308937 \\.\pipe\rawdisk\0 1000 "WR" 0:0 0
+OK
+----
+
+This will send 1000 total requests with a pattern of `Write`, `Read` starting at block address 0; `stgtest` checks that anything that it writes with `Write` is what it reads back with `Read`. It is also possible to send requests at random block addresses and with random block counts.
+
+Note that the pipe name used with `stgtest` is `\\.\pipe\rawdisk\0` and not `\\.\pipe\rawdisk` as we specified when launching `rawdisk`. This is because a single user mode storage device may service multiple storage units. The first storage unit is accessible via the pipe name `\\.\pipe\rawdisk\0`, the second via the name `\\.\pipe\rawdisk\1` and so on.
+
+=== Testing the integration with the operating system
+
+`Stgtest` can also be used to test a storage unit that has been mounted (integrated) with the operating system. For this purpose it uses the Windows RAW file system, which is a simple file system that views a whole volume / partition as a single file. Windows uses the RAW file system when it does not recognize any other file system in a particular disk partition.
+
+WARNING: `Stgtest` writes random data over a storage unit. Do not use to test a storage unit that has been formatted with a file system.
+
+To test our rawdisk storage unit when mounted with the operating system make the following project setting:
+
+- Debugging > Command Arguments: `-f $(OutDir)test.rawdisk`
+
+Make sure to delete any `test.rawdisk` file that is found in the Visual Studio output directory (`$(OutDir)`). Recall that rawdisk uses the `SpdDefinePartitionTable` API to create a partition table if it is started with an empty or non-existent file. This is useful because Windows mounts partitioned disks automatically. Alternatively you can use `diskpart` to partition when needed.
+
+If we now attempt to run the rawdisk storage device this will likely fail with error 5, which is the Windows error code for "Access Denied". This happens because mounting a storage unit requires administrator privileges.
+
+Restart Visual Studio with Administrator privileges and run the rawdisk storage device again.
+
+image::WinSpd-Tutorial/FirstRun.png[First run]
+
+Windows Explorer will likely open up offering to format the new disk:
+
+image::WinSpd-Tutorial/Explorer.png[Explorer]
+
+The new disk is also visible in the Windows Device Manager:
+
+image::WinSpd-Tutorial/DeviceManager.png[Device Manager]
+
+We can now try the following from an Administrator command prompt:
+
+.`*stgtest invocation*`
+----
+>stgtest-x64.exe \\.\E: 1000 WR
+stgtest -s 24754015 \\.\E: 1000 "WR" 0:0 0
+OK
+----
+
+== THRESHOLD
+
+
+
+
+
+
+NOTE: Recall that rawdisk uses the `SpdDefinePartitionTable` API to create a partition table if it is started with an empty or non-existent file. If this happens Windows immediately recognizes the disk and prompts you to format it. If that is the case cancel the format prompts. To avoid the format prompts altogether you can comment out the code that calls `SpdDefinePartitionTable` on empty files.
+
+We can now use `diskpart` as administrators to manage the new disk:
+
+.`*diskpart usage*`
+----
+>diskpart
+
+Microsoft DiskPart version 10.0.14393.0
+
+Copyright (C) 1999-2013 Microsoft Corporation.
+On computer: WINDOWS
+
+DISKPART> list disk
+
+  Disk ###  Status         Size     Free     Dyn  Gpt
+  --------  -------------  -------  -------  ---  ---
+  Disk 0    Online           80 GB  1024 KB
+  Disk 1    Online          512 MB   512 MB
+
+DISKPART> select disk 1
+
+Disk 1 is now the selected disk.
+
+DISKPART> clean
+
+DiskPart succeeded in cleaning the disk.
+
+DISKPART> create partition primary
+
+DiskPart succeeded in creating the specified partition.
+
+DISKPART> detail disk
+
+WinSpd RawDisk SCSI Disk Device
+Disk ID: 76960C6D
+Type   : Virtual
+Status : Online
+Path   : 0
+Target : 0
+LUN ID : 0
+Location Path : UNAVAILABLE
+Current Read-only State : No
+Read-only  : No
+Boot Disk  : No
+Pagefile Disk  : No
+Hibernation File Disk  : No
+Crashdump Disk  : No
+Clustered Disk  : No
+
+  Volume ###  Ltr  Label        Fs     Type        Size     Status     Info
+  ----------  ---  -----------  -----  ----------  -------  ---------  --------
+* Volume 3                      RAW    Partition    510 MB  Healthy
+
+DISKPART> exit
+
+Leaving DiskPart...
+----
+
+WARNING: BE VERY CAREFUL when using `diskpart`. It can easily be used to destroy your system. In particular make certain that you select the right disk to partition.
+
+
 
 == THRESHOLD
 
