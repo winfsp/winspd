@@ -170,11 +170,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="rawdisk-main.c" />
     <ClCompile Include="rawdisk.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="rawdisk.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -9,7 +9,7 @@ ifdef::env-github[]
 :warning-caption: :warning:
 endif::[]
 
-In this tutorial we describe the process of creating a simple user mode storage unit using WinSpd. The storage unit we will create is called "rawdisk" and stores disk data as raw data in a regular file.
+In this tutorial we describe the process of creating a simple user mode storage device using WinSpd. The storage device we will create is called "rawdisk" and stores disk data as raw data in a regular file.
 
 == Prerequisites
 
@@ -21,125 +21,89 @@ image::WinSpd-Tutorial/Installer.png[WinSpd Installer]
 
 With those prerequisites out of the way we are now ready to start creating our first storage unit.
 
-NOTE: The storage unit that we will create is included as a sample with the WinSpd installer. Look in the `samples\rawdisk` directory.
+NOTE: The storage device that we will create is included as a sample with the WinSpd installer. Look in the `samples\rawdisk` directory.
 
 == Create the project skeleton
 
-We start by creating the Visual Studio project. Choose "Win32 Console Application" and then select our preferred settings. For this project we will select empty project, because we will add all files ourselves.
+We start by creating the Visual Studio project. Choose "Win32 Console Application" and select empty project.
 
 image::WinSpd-Tutorial/NewProject.png[Visual Studio New Project]
 
-NOTE: A user mode storage unit services requests from the operating system. Therefore it becomes an important system component and must service requests timely. In general it should be a console mode application, not block for user input after it has been initialized, and not expose a GUI. This also allows the user mode storage unit to be converted into a Windows service easily or to be controlled by the WinSpd.Launcher service.
+NOTE: A user mode storage device services requests from the operating system. Therefore it becomes an important system component and must service requests timely. In general it should be a console mode application, not block for user input after it has been initialized, and not expose a GUI. This also allows the user mode storage device to be converted into a Windows service easily or to be controlled by the WinSpd.Launcher service.
 
-== THRESHOLD
+We add an empty file named `rawdisk.c` in the project and add the following skeleton code.
 
-Now create and add a file passthrough.c with the following contents:
-
-.`*passthrough.c*`
+.`*rawdisk.c*`
 [source,c]
 ----
-#include <winfsp/winfsp.h>                                              // <1>
-
-#define PROGNAME                        "passthrough"
-
-static
-NTSTATUS SvcStart(FSP_SERVICE *Service, ULONG argc, PWSTR *argv)        // <2>
-{
-    return STATUS_NOT_IMPLEMENTED;
-}
-
-static
-NTSTATUS SvcStop(FSP_SERVICE *Service)                                  // <3>
-{
-    return STATUS_NOT_IMPLEMENTED;
-}
+#include <winspd/winspd.h>                                              // <1>
 
 int wmain(int argc, wchar_t **argv)
 {
-    return FspServiceRun(L"" PROGNAME, SvcStart, SvcStop, 0);           // <4>
+    return 0;
 }
 ----
 <1> Include WinFsp header file.
-<2> Service entry point.
-<3> Service exit point.
-<4> Run file system as a service.
 
-This simple template allows a user mode file system to be run as a console application, as a Windows service, or as a "sub-service" controlled by the WinFsp launcher.
+We must also set up the locations where Visual Studio can find the WinSpd headers and libraries. The following project settings must be made:
 
-If we try to build the program, it will fail. We must set up the locations where Visual Studio can find the WinFsp headers and libraries. The following settings must be made:
+- C/C++ > General > Additional Include Directories: `$(MSBuildProgramFiles32)\WinSpd\inc`
+- Linker > Input > Additional Dependencies: `$(MSBuildProgramFiles32)\WinSpd\lib\winspd-$(PlatformTarget).lib`
 
-- C/C++ > General > Additional Include Directories: `$(MSBuildProgramFiles32)\WinFsp\inc`
-- Linker > Input > Additional Dependencies: `$(MSBuildProgramFiles32)\WinFsp\lib\winfsp-$(PlatformTarget).lib`
+NOTE: These settings assume that WinSpd has been installed in the default location under "Program Files".
 
-NOTE: These settings assume that WinFsp has been installed in the default location under "Program Files".
+We now have a complete project skeleton and can proceed with implementing our storage device!
 
-We are now able to build this program. But if we try to run it:
+== Top level code
 
-image::WinFsp-Tutorial/MissingDll.png[Missing WinFsp DLL]
+The top level code of the rawdisk storage device starts at `wmain`, performs command line handling, sets up a file to act as backing storage, creates a storage unit which is registered with the OS and starts servicing requests for it.
 
-We must make the WinFsp DLL available. There are multiple ways of doing this, but my preferred way is to delay load the DLL and then load the correct version of the DLL at run-time. This is explained below.
+We first consider command line handling. We want the rawdisk storage device to be used as follows:
 
-NOTE: WinFsp made a conscious decision not to install the WinFsp DLL in one of the Windows system directories. Applications that do not ship with the operating system should not be installing components in the system directories in this author's opinion.
+.`*usage*`
+----
+usage: rawdisk OPTIONS
 
-First add the WinFsp DLL as a delay loaded DLL. Open the project properties and change the following setting:
+options:
+    -f RawDiskFile                      Storage unit data file
+    -c BlockCount                       Storage unit size in blocks
+    -l BlockLength                      Storage unit block length
+    -i ProductId                        1-16 chars
+    -r ProductRevision                  1-4 chars
+    -W 0|1                              Disable/enable writes (deflt: enable)
+    -C 0|1                              Disable/enable cache (deflt: enable)
+    -U 0|1                              Disable/enable unmap (deflt: enable)
+    -d -1                               Debug flags
+    -D DebugLogFile                     Debug log file; - for stderr
+    -p \\.\pipe\PipeName                Listen on pipe; omit to use driver
+----
 
-- Linker > Input > Delay Loaded Dll's: `winfsp-$(PlatformTarget).dll`
-
-Then add the following lines in the beginning of `wmain`:
+The full code to handle these command line parameters is straight forward and is omitted for brevity. It can be found in the `rawdisk.c` sample file that ships with the WinSpd installer. The code sets a number of variables that are used to configure each run of the passthrough file system.
 
 .`*wmain excerpt*`
 [source,c]
 ----
-    if (!NT_SUCCESS(FspLoad(0)))
-        return ERROR_DELAY_LOAD_FAILED;
-----
-
-Running this now results in a console window:
-
-image::WinFsp-Tutorial/FirstRun.png[First Run]
-
-The message is `The service passthrough has failed to start (Status=c0000002).` The status `c0000002` is `STATUS_NOT_IMPLEMENTED`, which is what we return from `SvcStart`. This means that our program has actually run and we are ready to start building our passthrough file system!
-
-== File system entry/exit points
-
-We now turn our attention to the file system entry/exit points. Recall that passthrough is written as a service and its entry and exit points are `SvcStart` and `SvcStop` respectively.
-
-=== Entry point
-
-We start with the entry point `SvcStart` and first consider command line handling. We want the passthrough file system to be used as follows:
-
-.`*usage*`
-----
-usage: passthrough OPTIONS
-
-options:
-    -d DebugFlags       [-1: enable all debug logs]
-    -D DebugLogFile     [file path; use - for stderr]
-    -u \Server\Share    [UNC prefix (single backslash)]
-    -p Directory        [directory to expose as pass through file system]
-    -m MountPoint       [X:|*|directory]
-----
-
-The full code to handle these command line parameters is straight forward and is omitted for brevity. It can be found in the passthrough.c sample file that ships with the WinFsp installer. The code sets a number of variables that are used to configure each run of the passthrough file system.
-
-.`*SvcStart excerpt*`
-[source,c]
-----
-    PWSTR DebugLogFile = 0;
+    PWSTR RawDiskFile = 0;
+    ULONG BlockCount = 1024 * 1024;
+    ULONG BlockLength = 512;
+    PWSTR ProductId = L"RawDisk";
+    PWSTR ProductRevision = L"1.0";
+    ULONG WriteAllowed = 1;
+    ULONG CacheSupported = 1;
+    ULONG UnmapSupported = 1;
     ULONG DebugFlags = 0;
-    PWSTR VolumePrefix = 0;
-    PWSTR PassThrough = 0;
-    PWSTR MountPoint = 0;
+    PWSTR DebugLogFile = 0;
+    PWSTR PipeName = 0;
 ----
 
-The variable `DebugLogFile` is used to control the WinFsp debug logging mechanism. This mechanism can send messages to the debugger for display or log them into a file. The behavior is controlled by a call to `FspDebugLogSetHandle`: if this call is not made any debug log messages will be sent to the debugger; if this call is made debug log messages will be logged into the specified file handle.
+The variable `DebugLogFile` is used to control the WinSpd debug logging mechanism. This mechanism can send messages to the debugger for display or log them into a file. The behavior is controlled by a call to `SpdDebugLogSetHandle`: if this call is not made any debug log messages will be sent to the debugger; if this call is made debug log messages will be logged into the specified file handle.
 
-.`*SvcStart excerpt*`
+.`*wmain excerpt*`
 [source,c]
 ----
     if (0 != DebugLogFile)
     {
-        if (0 == wcscmp(L"-", DebugLogFile))
+        if (L'-' == DebugLogFile[0] && L'\0' == DebugLogFile[1])
             DebugLogHandle = GetStdHandle(STD_ERROR_HANDLE);
         else
             DebugLogHandle = CreateFileW(
@@ -151,1028 +115,552 @@ The variable `DebugLogFile` is used to control the WinFsp debug logging mechanis
                 FILE_ATTRIBUTE_NORMAL,
                 0);
         if (INVALID_HANDLE_VALUE == DebugLogHandle)
-        {
-            fail(L"cannot open debug log file");
-            goto usage;
-        }
+            fail(GetLastError(), L"error: cannot open debug log file");
 
-        FspDebugLogSetHandle(DebugLogHandle);
+        SpdDebugLogSetHandle(DebugLogHandle);
     }
 ----
 
-The remaining variables are used to create and start an instance of the passthrough file system.
+The remaining variables are used to set up a file to act as backing storage and create and start a storage unit.
 
-.`*SvcStart excerpt*`
+.`*wmain excerpt*`
 [source,c]
 ----
-    Result = PtfsCreate(PassThrough, VolumePrefix, MountPoint, DebugFlags,
-        &Ptfs);                                                         // <1>
-    if (!NT_SUCCESS(Result))
-    {
-        fail(L"cannot create file system");
-        goto exit;
-    }
-
-    Result = FspFileSystemStartDispatcher(Ptfs->FileSystem, 0);         // <2>
-    if (!NT_SUCCESS(Result))
-    {
-        fail(L"cannot start file system");
-        goto exit;
-    }
+    Error = RawDiskCreate(RawDiskFile,
+        BlockCount, BlockLength,
+        ProductId, ProductRevision,
+        !WriteAllowed,
+        !!CacheSupported,
+        !!UnmapSupported,
+        PipeName,
+        &RawDisk);                                                      // <1>
+    if (0 != Error)
+        fail(Error, L"error: cannot create RawDisk: error %lu", Error);
+    Error = SpdStorageUnitStartDispatcher(
+        RawDiskStorageUnit(RawDisk), 2);                                // <2>
+    if (0 != Error)
+        fail(Error, L"error: cannot start RawDisk: error %lu", Error);
 
     ...
 
-    Service->UserContext = Ptfs;                                        // <3>
+    SpdGuardSet(&ConsoleCtrlGuard, RawDiskStorageUnit(RawDisk));        // <3>
+    SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);                    // <4>
+    SpdStorageUnitWaitDispatcher(RawDiskStorageUnit(RawDisk));          // <5>
+    SpdGuardSet(&ConsoleCtrlGuard, 0);                                  // <6>
+
+    RawDiskDelete(RawDisk);                                             // <7>
 ----
-<1> Create the passthrough file system.
-<2> Start the file system dispatcher.
-<3> Associate the passthrough file system with the service instance.
+<1> Create the rawdisk storage unit.
+<2> Start the storage unit dispatcher. At this point the storage unit starts receiving storage requests (if any).
+<3> Set a "guarded" pointer to the storage unit so that it can be shutdown in a thread-safe manner by the process console control handler.
+<4> Set up a console control handler for the process.
+<5> Wait until the storage unit (and its dispatcher) is shutdown.
+<6> Reset the "guarded" pointer.
+<7> Delete the rawdisk storage unit.
 
-We now consider the code for `PtfsCreate`:
+We now consider the code for `RawDiskCreate`, `RawDiskDelete` and `ConsoleCtrlHandler`:
 
-.`*PtfsCreate*`
+.`*RawDiskCreate*`
 [source,c]
 ----
-typedef struct
+typedef struct _RAWDISK
 {
-    FSP_FILE_SYSTEM *FileSystem;
-    PWSTR Path;
-} PTFS;
+    SPD_STORAGE_UNIT *StorageUnit;
+    UINT64 BlockCount;
+    UINT32 BlockLength;
+    HANDLE Handle;
+    HANDLE Mapping;
+    PVOID Pointer;
+    BOOLEAN Sparse;
+} RAWDISK;
 
 ...
 
-static NTSTATUS PtfsCreate(PWSTR Path, PWSTR VolumePrefix, PWSTR MountPoint, UINT32 DebugFlags,
-    PTFS **PPtfs)
+static SPD_STORAGE_UNIT_INTERFACE RawDiskInterface =
 {
-    WCHAR FullPath[MAX_PATH];
-    ULONG Length;
-    HANDLE Handle;
-    FILETIME CreationTime;
-    DWORD LastError;
-    FSP_FSCTL_VOLUME_PARAMS VolumeParams;
-    PTFS *Ptfs = 0;
-    NTSTATUS Result;
+    0,
+};
 
-    *PPtfs = 0;
+DWORD RawDiskCreate(PWSTR RawDiskFile,
+    UINT64 BlockCount, UINT32 BlockLength,
+    PWSTR ProductId, PWSTR ProductRevision,
+    BOOLEAN WriteProtected,
+    BOOLEAN CacheSupported,
+    BOOLEAN UnmapSupported,
+    PWSTR PipeName,
+    RAWDISK **PRawDisk)
+{
+    RAWDISK *RawDisk = 0;
+    HANDLE Handle = INVALID_HANDLE_VALUE;
+    HANDLE Mapping = 0;
+    PVOID Pointer = 0;
+    FILE_SET_SPARSE_BUFFER Sparse;
+    DWORD BytesTransferred;
+    LARGE_INTEGER FileSize;
+    BOOLEAN ZeroSize;
+    SPD_PARTITION Partition;
+    SPD_STORAGE_UNIT_PARAMS StorageUnitParams;
+    SPD_STORAGE_UNIT *StorageUnit = 0;
+    DWORD Error;
 
-    Handle = CreateFileW(
-        Path, FILE_READ_ATTRIBUTES, 0, 0,
-        OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
+    *PRawDisk = 0;
+
+    memset(&StorageUnitParams, 0, sizeof StorageUnitParams);            // <1>
+    UuidCreate(&StorageUnitParams.Guid);                                // <1>
+    StorageUnitParams.BlockCount = BlockCount;                          // <1>
+    StorageUnitParams.BlockLength = BlockLength;                        // <1>
+    StorageUnitParams.MaxTransferLength = 64 * 1024;                    // <1>
+    if (0 == WideCharToMultiByte(CP_UTF8, 0,                            // <1>
+        ProductId, lstrlenW(ProductId),                                 // <1>
+        StorageUnitParams.ProductId,                                    // <1>
+        sizeof StorageUnitParams.ProductId,                             // <1>
+        0, 0))                                                          // <1>
+    {                                                                   // <1>
+        Error = ERROR_INVALID_PARAMETER;                                // <1>
+        goto exit;                                                      // <1>
+    }                                                                   // <1>
+    if (0 == WideCharToMultiByte(CP_UTF8, 0,                            // <1>
+        ProductRevision, lstrlenW(ProductRevision),                     // <1>
+        StorageUnitParams.ProductRevisionLevel,                         // <1>
+        sizeof StorageUnitParams.ProductRevisionLevel,                  // <1>
+        0, 0))                                                          // <1>
+    {                                                                   // <1>
+        Error = ERROR_INVALID_PARAMETER;                                // <1>
+        goto exit;                                                      // <1>
+    }                                                                   // <1>
+    StorageUnitParams.WriteProtected = WriteProtected;                  // <1>
+    StorageUnitParams.CacheSupported = CacheSupported;                  // <1>
+    StorageUnitParams.UnmapSupported = UnmapSupported;                  // <1>
+
+    RawDisk = malloc(sizeof *RawDisk);
+    if (0 == RawDisk)
+    {
+        Error = ERROR_NOT_ENOUGH_MEMORY;
+        goto exit;
+    }
+
+    Handle = CreateFileW(RawDiskFile,
+        GENERIC_READ | GENERIC_WRITE, 0, 0,
+        OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);                         // <2>
     if (INVALID_HANDLE_VALUE == Handle)
-        return FspNtStatusFromWin32(GetLastError());
-
-    Length = GetFinalPathNameByHandleW(Handle,
-        FullPath, FULLPATH_SIZE - 1, 0);                                // <1>
-    if (0 == Length)
     {
-        LastError = GetLastError();
-        CloseHandle(Handle);
-        return FspNtStatusFromWin32(LastError);
-    }
-    if (L'\\' == FullPath[Length - 1])
-        FullPath[--Length] = L'\0';
-
-    if (!GetFileTime(Handle, &CreationTime, 0, 0))                      // <2>
-    {
-        LastError = GetLastError();
-        CloseHandle(Handle);
-        return FspNtStatusFromWin32(LastError);
-    }
-
-    CloseHandle(Handle);
-
-    /* from now on we must goto exit on failure */
-
-    Ptfs = malloc(sizeof *Ptfs);                                        // <3>
-    if (0 == Ptfs)
-    {
-        Result = STATUS_INSUFFICIENT_RESOURCES;
+        Error = GetLastError();
         goto exit;
     }
-    memset(Ptfs, 0, sizeof *Ptfs);
 
-    Length = (Length + 1) * sizeof(WCHAR);
-    Ptfs->Path = malloc(Length);                                        // <3>
-    if (0 == Ptfs->Path)
+    Sparse.SetSparse = TRUE;
+    Sparse.SetSparse = DeviceIoControl(Handle,
+        FSCTL_SET_SPARSE, &Sparse, sizeof Sparse, 0, 0,
+        &BytesTransferred, 0);                                          // <3>
+
+    if (!GetFileSizeEx(Handle, &FileSize))
     {
-        Result = STATUS_INSUFFICIENT_RESOURCES;
+        Error = GetLastError();
         goto exit;
     }
-    memcpy(Ptfs->Path, FullPath, Length);
 
-    memset(&VolumeParams, 0, sizeof VolumeParams);                      // <4>
-    VolumeParams.SectorSize = ALLOCATION_UNIT;
-    VolumeParams.SectorsPerAllocationUnit = 1;
-    VolumeParams.VolumeCreationTime = ((PLARGE_INTEGER)&CreationTime)->QuadPart;
-    VolumeParams.VolumeSerialNumber = 0;
-    VolumeParams.FileInfoTimeout = 1000;
-    VolumeParams.CaseSensitiveSearch = 0;
-    VolumeParams.CasePreservedNames = 1;
-    VolumeParams.UnicodeOnDisk = 1;
-    VolumeParams.PersistentAcls = 1;
-    VolumeParams.PostCleanupWhenModifiedOnly = 1;                       // <4>
-    VolumeParams.UmFileContextIsUserContext2 = 1;                       // <4>
-    if (0 != VolumePrefix)
-        wcscpy_s(VolumeParams.Prefix, sizeof VolumeParams.Prefix / sizeof(WCHAR), VolumePrefix);
-    wcscpy_s(VolumeParams.FileSystemName, sizeof VolumeParams.FileSystemName / sizeof(WCHAR),
-        L"" PROGNAME);
-
-    Result = FspFileSystemCreate(
-        VolumeParams.Prefix[0] ? L"" FSP_FSCTL_NET_DEVICE_NAME : L"" FSP_FSCTL_DISK_DEVICE_NAME,
-        &VolumeParams,
-        &PtfsInterface,
-        &Ptfs->FileSystem);                                             // <5>
-    if (!NT_SUCCESS(Result))
+    ZeroSize = 0 == FileSize.QuadPart;
+    if (ZeroSize)
+        FileSize.QuadPart = BlockCount * BlockLength;
+    if (0 == FileSize.QuadPart ||
+        BlockCount * BlockLength != FileSize.QuadPart)                  // <4>
+    {
+        Error = ERROR_INVALID_PARAMETER;
         goto exit;
-    Ptfs->FileSystem->UserContext = Ptfs;                               // <5>
+    }
 
-    Result = FspFileSystemSetMountPoint(Ptfs->FileSystem, MountPoint);  // <6>
-    if (!NT_SUCCESS(Result))
+    if (!SetFilePointerEx(Handle, FileSize, 0, FILE_BEGIN) ||
+        !SetEndOfFile(Handle))                                          // <5>
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    Mapping = CreateFileMappingW(Handle, 0, PAGE_READWRITE, 0, 0, 0);   // <6>
+    if (0 == Mapping)
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    Pointer = MapViewOfFile(Mapping, FILE_MAP_ALL_ACCESS, 0, 0, 0);     // <6>
+    if (0 == Pointer)
+    {
+        Error = GetLastError();
+        goto exit;
+    }
+
+    if (ZeroSize)
+    {
+        memset(&Partition, 0, sizeof Partition);
+        Partition.Type = 7;
+        Partition.BlockAddress =
+            4096 >= BlockLength ? 4096 / BlockLength : 1;
+        Partition.BlockCount = BlockCount - Partition.BlockAddress;
+        if (ERROR_SUCCESS ==
+            SpdDefinePartitionTable(&Partition, 1, Pointer))            // <7>
+        {
+            FlushViewOfFile(Pointer, 0);
+            FlushFileBuffers(Handle);
+        }
+    }
+
+    Error = SpdStorageUnitCreate(PipeName,
+        &StorageUnitParams, &RawDiskInterface, &StorageUnit);           // <8>
+    if (ERROR_SUCCESS != Error)
         goto exit;
 
-    FspFileSystemSetDebugLog(Ptfs->FileSystem, DebugFlags);             // <7>
+    memset(RawDisk, 0, sizeof *RawDisk);
+    RawDisk->StorageUnit = StorageUnit;
+    RawDisk->BlockCount = BlockCount;
+    RawDisk->BlockLength = BlockLength;
+    RawDisk->Handle = Handle;
+    RawDisk->Mapping = Mapping;
+    RawDisk->Pointer = Pointer;
+    RawDisk->Sparse = Sparse.SetSparse;
+    StorageUnit->UserContext = RawDisk;                                 // <9>
 
-    Result = STATUS_SUCCESS;
+    *PRawDisk = RawDisk;
+
+    Error = ERROR_SUCCESS;
 
 exit:
-    if (NT_SUCCESS(Result))
-        *PPtfs = Ptfs;
-    else if (0 != Ptfs)
-        PtfsDelete(Ptfs);
+    if (ERROR_SUCCESS != Error)
+    {
+        if (0 != StorageUnit)
+            SpdStorageUnitDelete(StorageUnit);
 
-    return Result;
+        if (0 != Pointer)
+            UnmapViewOfFile(Pointer);
+
+        if (0 != Mapping)
+            CloseHandle(Mapping);
+
+        if (INVALID_HANDLE_VALUE != Handle)
+            CloseHandle(Handle);
+
+        free(RawDisk);
+    }
+
+    return Error;
 }
 ----
-<1> Get the full path name of the passthrough directory. This allows the file system to change directories safely (if it so chooses).
-<2> Get the creation time of the passthrough directory. We will use this time as the volume creation time.
-<3> Allocate memory for the passthrough file system main structure and for the passthrough directory path.
-<4> Initialize the file system `VolumeParams`. We want the file system to post Cleanup requests only when a file is modified (this avoids unnecessary Cleanup requests thus improving performance). We also want to treat the `FileContext` parameter as a "file descriptor".
-<5> Create the WinFsp `FileSystem` object.
-<6> Set the mount point. It can be a drive or directory.
-<7> Set debug log flags. Specify 0 to disable logging. Specify -1 to enable all logging.
+<1> Initialize the `StorageUnitParams`. The `Guid` field should in general be persisted with the storage unit's backing storage, although this rule is not followed by the current version of the rawdisk storage device.
+<2> Create or open the file that will act as backing storage for our storage unit.
+<3> Attempt to set the file as sparse if the underlying file system supports it.
+<4> Double-check that the file size matches our expectation based on the storage unit geometry.
+<5> Set the file size to the appropriate value for the storage unit geometry. Note that if the file was successfuly set as sparse it should not occupy much actual space in the underlying file system.
+<6> Map the file in memory.
+<7> If the file was empty when it was first created we add a default partition that encompasses the whole storage unit.
+<8> Create the WinSpd `SPD_STORAGE_UNIT` object. This includes associated kernel objects.
+<9> Associate our private `RAWDISK` data structure with the WinSpd `SPD_STORAGE_UNIT` object.
 
-=== Exit point
-
-We now consider the exit point `SvcStop`. The code for this is simple:
-
-.`*SvcStop excerpt*`
+.`*RawDiskDelete*`
 [source,c]
 ----
-    PTFS *Ptfs = Service->UserContext;                                  // <1>
-
-    FspFileSystemStopDispatcher(Ptfs->FileSystem);                      // <2>
-    PtfsDelete(Ptfs);                                                   // <3>
-----
-<1> Get the passthrough file system from the service instance.
-<2> Stop the file system dispatcher.
-<3> Delete the file system.
-
-Finally the code for `PtfsDelete`:
-
-.`*PtfsDelete*`
-[source,c]
-----
-static VOID PtfsDelete(PTFS *Ptfs)
+VOID RawDiskDelete(RAWDISK *RawDisk)
 {
-    if (0 != Ptfs->FileSystem)
-        FspFileSystemDelete(Ptfs->FileSystem);                          // <1>
+    SpdStorageUnitDelete(RawDisk->StorageUnit);                         // <1>
 
-    if (0 != Ptfs->Path)
-        free(Ptfs->Path);                                               // <2>
+    FlushViewOfFile(RawDisk->Pointer, 0);                               // <2>
+    FlushFileBuffers(RawDisk->Handle);                                  // <2>
+    UnmapViewOfFile(RawDisk->Pointer);                                  // <2>
+    CloseHandle(RawDisk->Mapping);                                      // <2>
+    CloseHandle(RawDisk->Handle);                                       // <2>
 
-    free(Ptfs);                                                         // <2>
+    free(RawDisk);
 }
 ----
-<1> Delete the WinFsp `FileSystem` object.
-<2> Free any remaining memory.
+<1> Delete the WinSpd `SPD_STORAGE_UNIT` object.
+<2> Flush and unmap the backing storage file.
+
+.`*ConsoleCtrlHandler*`
+[source,c]
+----
+static SPD_GUARD ConsoleCtrlGuard = SPD_GUARD_INIT;
+
+static BOOL WINAPI ConsoleCtrlHandler(DWORD CtrlType)
+{
+    SpdGuardExecute(&ConsoleCtrlGuard, SpdStorageUnitShutdown);         // <1>
+    return TRUE;
+}
+----
+<1> Shutdown the storage unit in a thread-safe manner.
 
 === Test run
 
-We can now run the program from Visual Studio or the command line. The program starts and waits for file system requests from the operating system (although we do not yet service any). Press Ctrl-C to stop the file system.
+We can now run the program from Visual Studio or the command line. The program starts and services storage requests from the operating system. However because we have not yet implemented any storage request handlers all requests will be failed. This is demonstrated by the `diskpart` session below. Press Ctrl-C to stop the storage device.
 
-image::WinFsp-Tutorial/EntryExit.png[Entry/exit test run]
+image::WinSpd-Tutorial/FirstRun.png[First run]
 
-NOTE: Pressing Ctrl-C orderly stops the file system (by calling `SvcStop`). It is however possible to forcibly stop a file system, e.g. by killing the process in the debugger. This is fine with WinFsp as *all associated resources will be automatically cleaned up*. This includes resources that WinFsp knows about such as kernel memory, volume devices, etc. It does not include resources that it has no knowledge about such as temporary files, network registrations, etc.
+NOTE: Pressing Ctrl-C orderly stops the storage device (by calling `ConsoleCtrlHandler`). It is however possible to forcibly stop a storage device, e.g. by killing the process in the debugger. This is fine with WinSpd as *all associated resources will be automatically cleaned up*. This includes resources that WinSpd knows about such as associated kernel objects and memory, etc. It does not include resources that it has no knowledge about such as temporary files, network registrations, etc.
 
-== File system operations
+== Storage unit operations
 
-We now start implementing the actual file system operations. These operations are the ones found in `FSP_FILE_SYSTEM_INTERFACE`. We first create stubs for all operations that our file system is going to support.
+We now start implementing the actual storage unit operations. These operations are the ones found in `SPD_STORAGE_UNIT_INTERFACE`.
 
-.`*File system operations stubs*`
+.`*Storage unit operations stubs*`
 [source,c]
 ----
-static NTSTATUS GetVolumeInfo(FSP_FILE_SYSTEM *FileSystem,
-    FSP_FSCTL_VOLUME_INFO *VolumeInfo)
+static BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
+    PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN FlushFlag,
+    SPD_STORAGE_UNIT_STATUS *Status)
 {
-    return STATUS_INVALID_DEVICE_REQUEST;
+    return TRUE;
 }
 
-static NTSTATUS SetVolumeLabel_(FSP_FILE_SYSTEM *FileSystem,
-    PWSTR VolumeLabel,
-    FSP_FSCTL_VOLUME_INFO *VolumeInfo)
+static BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
+    PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN FlushFlag,
+    SPD_STORAGE_UNIT_STATUS *Status)
 {
-    return STATUS_INVALID_DEVICE_REQUEST;
+    return TRUE;
 }
 
-...
-
-static FSP_FILE_SYSTEM_INTERFACE PtfsInterface =
+static BOOLEAN Flush(SPD_STORAGE_UNIT *StorageUnit,
+    UINT64 BlockAddress, UINT32 BlockCount,
+    SPD_STORAGE_UNIT_STATUS *Status)
 {
-    GetVolumeInfo,
-    SetVolumeLabel_,
-    GetSecurityByName,
-    Create,
-    Open,
-    Overwrite,
-    Cleanup,
-    Close,
+    return TRUE;
+}
+
+static BOOLEAN Unmap(SPD_STORAGE_UNIT *StorageUnit,
+    SPD_UNMAP_DESCRIPTOR Descriptors[], UINT32 Count,
+    SPD_STORAGE_UNIT_STATUS *Status)
+{
+    return TRUE;
+}
+
+static SPD_STORAGE_UNIT_INTERFACE RawDiskInterface =
+{
     Read,
     Write,
     Flush,
-    GetFileInfo,
-    SetBasicInfo,
-    SetFileSize,
-    CanDelete,
-    Rename,
-    GetSecurity,
-    SetSecurity,
-    ReadDirectory,
+    Unmap,
 };
-----
-
-=== GetSecurityByName / Open / Close
-
-At a minimum a file system needs to support `GetSecurityByName`, `Open` and `Close`. This allows one to use the command prompt to switch to the drive, but not much more. [Strictly speaking it is possible to not implement GetSecurityByName, but the file system will perform no access checks in that case.]
-
-`GetSecurityByName` is used by WinFsp to retrieve essential metadata about a file to be opened, such as its attributes and security descriptor.
-
-.`*GetSecurityByName*`
-[source,c]
-----
-static NTSTATUS GetSecurityByName(FSP_FILE_SYSTEM *FileSystem,
-    PWSTR FileName, PUINT32 PFileAttributes,
-    PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize)
-{
-    PTFS *Ptfs = (PTFS *)FileSystem->UserContext;
-    WCHAR FullPath[FULLPATH_SIZE];
-    HANDLE Handle;
-    FILE_ATTRIBUTE_TAG_INFO AttributeTagInfo;
-    DWORD SecurityDescriptorSizeNeeded;
-    NTSTATUS Result;
-
-    if (!ConcatPath(Ptfs, FileName, FullPath))
-        return STATUS_OBJECT_NAME_INVALID;
-
-    Handle = CreateFileW(FullPath,
-        FILE_READ_ATTRIBUTES | READ_CONTROL, 0, 0,
-        OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
-    if (INVALID_HANDLE_VALUE == Handle)
-    {
-        Result = FspNtStatusFromWin32(GetLastError());
-        goto exit;
-    }
-
-    if (0 != PFileAttributes)
-    {
-        if (!GetFileInformationByHandleEx(Handle,
-            FileAttributeTagInfo, &AttributeTagInfo, sizeof AttributeTagInfo))
-        {
-            Result = FspNtStatusFromWin32(GetLastError());
-            goto exit;
-        }
-
-        *PFileAttributes = AttributeTagInfo.FileAttributes;             // <1>
-    }
-
-    if (0 != PSecurityDescriptorSize)
-    {
-        if (!GetKernelObjectSecurity(Handle,
-            OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
-            SecurityDescriptor, (DWORD)*PSecurityDescriptorSize, &SecurityDescriptorSizeNeeded))
-        {
-            *PSecurityDescriptorSize = SecurityDescriptorSizeNeeded;
-            Result = FspNtStatusFromWin32(GetLastError());
-            goto exit;
-        }
-
-        *PSecurityDescriptorSize = SecurityDescriptorSizeNeeded;        // <2>
-    }
-
-    Result = STATUS_SUCCESS;
-
-exit:
-    if (INVALID_HANDLE_VALUE != Handle)
-        CloseHandle(Handle);
-
-    return Result;
-}
-----
-<1> Get file attributes.
-<2> Get file security.
-
-The next call to implement is `Open`. `Open` is used to open existing files and should never create or overwrite files.
-
-.`*Open*`
-[source,c]
-----
-static NTSTATUS Open(FSP_FILE_SYSTEM *FileSystem,
-    PWSTR FileName, UINT32 CreateOptions, UINT32 GrantedAccess,
-    PVOID *PFileContext, FSP_FSCTL_FILE_INFO *FileInfo)
-{
-    PTFS *Ptfs = (PTFS *)FileSystem->UserContext;
-    WCHAR FullPath[FULLPATH_SIZE];
-    ULONG CreateFlags;
-    PTFS_FILE_CONTEXT *FileContext;
-
-    if (!ConcatPath(Ptfs, FileName, FullPath))
-        return STATUS_OBJECT_NAME_INVALID;
-
-    FileContext = malloc(sizeof *FileContext);                          // <1>
-    if (0 == FileContext)
-        return STATUS_INSUFFICIENT_RESOURCES;
-    memset(FileContext, 0, sizeof *FileContext);
-
-    CreateFlags = FILE_FLAG_BACKUP_SEMANTICS;                           // <2>
-    if (CreateOptions & FILE_DELETE_ON_CLOSE)
-        CreateFlags |= FILE_FLAG_DELETE_ON_CLOSE;                       // <3>
-
-    FileContext->Handle = CreateFileW(FullPath,
-        GrantedAccess, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, 0,
-        OPEN_EXISTING, CreateFlags, 0);                                 // <4>
-    if (INVALID_HANDLE_VALUE == FileContext->Handle)
-    {
-        free(FileContext);
-        return FspNtStatusFromWin32(GetLastError());
-    }
-
-    *PFileContext = FileContext;
-
-    return GetFileInfoInternal(FileContext->Handle, FileInfo);          // <5>
-}
-----
-<1> Create the `FileContext` object. This is used to track an open file instance.
-<2> Allow opening of directories (`FILE_FLAG_BACKUP_SEMANTICS`).
-<3> Include the FILE_FLAG_DELETE_ON_CLOSE flag. File systems do not normally have to track this flag as WinFsp will track it and post the appropriate `Cleanup` request. Passing it to the underlying file system here allows us to simplify `Cleanup` for this simple file system.
-<4> Use OPEN_EXISTING to open existing files only. Allow full sharing (`FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE`) as WinFsp performs its own sharing checks.
-<5> Use `GetFileInfoInternal` to return information about the file (see below).
-
-After the completion of many file system operations the kernel needs to have an accurate view of the file system metadata. [This is also the case with `Open`.] We create a helper function `GetFileInfoInternal` for this purpose.
-
-.`*GetFileInfoInternal*`
-[source,c]
-----
-static NTSTATUS GetFileInfoInternal(HANDLE Handle, FSP_FSCTL_FILE_INFO *FileInfo)
-{
-    BY_HANDLE_FILE_INFORMATION ByHandleFileInfo;
-
-    if (!GetFileInformationByHandle(Handle, &ByHandleFileInfo))
-        return FspNtStatusFromWin32(GetLastError());
-
-    FileInfo->FileAttributes = ByHandleFileInfo.dwFileAttributes;
-    FileInfo->ReparseTag = 0;
-    FileInfo->FileSize =
-        ((UINT64)ByHandleFileInfo.nFileSizeHigh << 32) | (UINT64)ByHandleFileInfo.nFileSizeLow;
-    FileInfo->AllocationSize = (FileInfo->FileSize + ALLOCATION_UNIT - 1)
-        / ALLOCATION_UNIT * ALLOCATION_UNIT;
-    FileInfo->CreationTime = ((PLARGE_INTEGER)&ByHandleFileInfo.ftCreationTime)->QuadPart;
-    FileInfo->LastAccessTime = ((PLARGE_INTEGER)&ByHandleFileInfo.ftLastAccessTime)->QuadPart;
-    FileInfo->LastWriteTime = ((PLARGE_INTEGER)&ByHandleFileInfo.ftLastWriteTime)->QuadPart;
-    FileInfo->ChangeTime = FileInfo->LastWriteTime;
-    FileInfo->IndexNumber = 0;
-    FileInfo->HardLinks = 0;
-
-    return STATUS_SUCCESS;
-}
-----
-
-Every `Open` (or `Create`) is always matched by `Close`. `Close` is the final call that will be received for an open file instance.
-
-.`*Close*`
-[source,c]
-----
-static VOID Close(FSP_FILE_SYSTEM *FileSystem,
-    PVOID FileContext0)
-{
-    PTFS_FILE_CONTEXT *FileContext = FileContext0;
-    HANDLE Handle = HandleFromContext(FileContext);
-
-    CloseHandle(Handle);                                                // <1>
-
-    FspFileSystemDeleteDirectoryBuffer(&FileContext->DirBuffer);        // <2>
-    free(FileContext);                                                  // <3>
-}
-----
-<1> Close the file handle.
-<2> Delete the directory buffer (if there is one).
-<3> Free the `FileContext` object.
-
-For completeness the definition of `PTFS_FILE_CONTEXT` is included here:
-
-.`*PTFS_FILE_CONTEXT*`
-[source,c]
-----
-#define HandleFromContext(FC)           (((PTFS_FILE_CONTEXT *)(FC))->Handle)
-
-typedef struct
-{
-    HANDLE Handle;
-    PVOID DirBuffer;
-} PTFS_FILE_CONTEXT;
-----
-
-=== ReadDirectory
-
-Our simple file system can only open and close existing files. Supporting the Windows explorer is somewhat more involved. It requires implementation of `ReadDirectory`.
-
-`ReadDirectory` is conceptually simple: given a `Marker` file name within the directory fill the specified `Buffer` with directory contents. The idea here is that a directory can be viewed as a file with directory entries, the `Marker` is used to specify where in the file to start reading. Only files with names that are greater than (not equal to) the `Marker` (in the directory order determined by the file system) should be returned. If the `Marker` is `NULL` it means to start at the beginning of the directory file.
-
-This scheme is simple and flexible in that it allows arbitrarily large directories to be read in chunks. If implemented correctly it can also cope with concurrent modifications to the directory (like file creations, deletions).
-
-Not all file systems maintain a consistent directory order or are able to seek by file name within a directory. For these file systems a simple strategy is to buffer *all* directory contents when they receive a `NULL` `Marker`.
-
-This is how we implement `ReadDirectory` for our passthrough file system.
-
-.`*ReadDirectory*`
-[source,c]
-----
-static NTSTATUS ReadDirectory(FSP_FILE_SYSTEM *FileSystem,
-    PVOID FileContext0, PWSTR Pattern, PWSTR Marker,
-    PVOID Buffer, ULONG BufferLength, PULONG PBytesTransferred)
-{
-    PTFS *Ptfs = (PTFS *)FileSystem->UserContext;
-    PTFS_FILE_CONTEXT *FileContext = FileContext0;
-    HANDLE Handle = HandleFromContext(FileContext);
-    WCHAR FullPath[FULLPATH_SIZE];
-    ULONG Length, PatternLength;
-    HANDLE FindHandle;
-    WIN32_FIND_DATAW FindData;
-    union
-    {
-        UINT8 B[FIELD_OFFSET(FSP_FSCTL_DIR_INFO, FileNameBuf) + MAX_PATH * sizeof(WCHAR)];
-        FSP_FSCTL_DIR_INFO D;
-    } DirInfoBuf;
-    FSP_FSCTL_DIR_INFO *DirInfo = &DirInfoBuf.D;
-    NTSTATUS DirBufferResult;
-
-    DirBufferResult = STATUS_SUCCESS;
-    if (FspFileSystemAcquireDirectoryBuffer(&FileContext->DirBuffer, 0 == Marker,
-        &DirBufferResult))                                              // <1>
-    {
-        if (0 == Pattern)
-            Pattern = L"*";
-        PatternLength = (ULONG)wcslen(Pattern);
-
-        Length = GetFinalPathNameByHandleW(Handle, FullPath, FULLPATH_SIZE - 1, 0);
-        if (0 == Length)
-            DirBufferResult = FspNtStatusFromWin32(GetLastError());
-        else if (Length + 1 + PatternLength >= FULLPATH_SIZE)
-            DirBufferResult = STATUS_OBJECT_NAME_INVALID;
-        if (!NT_SUCCESS(DirBufferResult))
-        {
-            FspFileSystemReleaseDirectoryBuffer(&FileContext->DirBuffer);
-            return DirBufferResult;
-        }
-
-        if (L'\\' != FullPath[Length - 1])
-            FullPath[Length++] = L'\\';
-        memcpy(FullPath + Length, Pattern, PatternLength * sizeof(WCHAR));
-        FullPath[Length + PatternLength] = L'\0';
-
-        FindHandle = FindFirstFileW(FullPath, &FindData);               // <2>
-        if (INVALID_HANDLE_VALUE != FindHandle)
-        {
-            do
-            {
-                memset(DirInfo, 0, sizeof *DirInfo);
-                Length = (ULONG)wcslen(FindData.cFileName);
-                DirInfo->Size = (UINT16)(FIELD_OFFSET(FSP_FSCTL_DIR_INFO, FileNameBuf) + Length * sizeof(WCHAR));
-                DirInfo->FileInfo.FileAttributes = FindData.dwFileAttributes;
-                DirInfo->FileInfo.ReparseTag = 0;
-                DirInfo->FileInfo.FileSize =
-                    ((UINT64)FindData.nFileSizeHigh << 32) | (UINT64)FindData.nFileSizeLow;
-                DirInfo->FileInfo.AllocationSize = (DirInfo->FileInfo.FileSize + ALLOCATION_UNIT - 1)
-                    / ALLOCATION_UNIT * ALLOCATION_UNIT;
-                DirInfo->FileInfo.CreationTime = ((PLARGE_INTEGER)&FindData.ftCreationTime)->QuadPart;
-                DirInfo->FileInfo.LastAccessTime = ((PLARGE_INTEGER)&FindData.ftLastAccessTime)->QuadPart;
-                DirInfo->FileInfo.LastWriteTime = ((PLARGE_INTEGER)&FindData.ftLastWriteTime)->QuadPart;
-                DirInfo->FileInfo.ChangeTime = DirInfo->FileInfo.LastWriteTime;
-                DirInfo->FileInfo.IndexNumber = 0;
-                DirInfo->FileInfo.HardLinks = 0;
-                memcpy(DirInfo->FileNameBuf, FindData.cFileName, Length * sizeof(WCHAR));
-
-                if (!FspFileSystemFillDirectoryBuffer(&FileContext->DirBuffer, DirInfo,
-                    &DirBufferResult))                                  // <2>
-                    break;
-            } while (FindNextFileW(FindHandle, &FindData));             // <2>
-
-            FindClose(FindHandle);
-        }
-
-        FspFileSystemReleaseDirectoryBuffer(&FileContext->DirBuffer);   // <3>
-    }
-
-    if (!NT_SUCCESS(DirBufferResult))
-        return DirBufferResult;
-
-    FspFileSystemReadDirectoryBuffer(&FileContext->DirBuffer,
-        Marker, Buffer, BufferLength, PBytesTransferred);               // <4>
-
-    return STATUS_SUCCESS;
-}
-----
-<1> Acquire a directory buffer if there is not one or if `Marker == 0`.
-<2> Iterate over all directory entries and buffer them.
-<3> Release the directory buffer.
-<4> Copy the buffered directory contents into the specified `Buffer`.
-
-=== GetVolumeInfo
-
-The Windows explorer will often query a volume (file system) for information about it. Implementation of `GetVolumeInfo` allows us to return information about the total and free space in the file system and its volume label.
-
-.`*GetVolumeInfo*`
-[source,c]
-----
-static NTSTATUS GetVolumeInfo(FSP_FILE_SYSTEM *FileSystem,
-    FSP_FSCTL_VOLUME_INFO *VolumeInfo)
-{
-    PTFS *Ptfs = (PTFS *)FileSystem->UserContext;
-    WCHAR Root[MAX_PATH];
-    ULARGE_INTEGER TotalSize, FreeSize;
-
-    if (!GetVolumePathName(Ptfs->Path, Root, MAX_PATH))
-        return FspNtStatusFromWin32(GetLastError());
-
-    if (!GetDiskFreeSpaceEx(Root, 0, &TotalSize, &FreeSize))
-        return FspNtStatusFromWin32(GetLastError());
-
-    VolumeInfo->TotalSize = TotalSize.QuadPart;                         // <1>
-    VolumeInfo->FreeSize = FreeSize.QuadPart;                           // <2>
-                                                                        // <3>
-    return STATUS_SUCCESS;
-}
-----
-<1> Total size in bytes.
-<2> Free size in bytes.
-<3> We do not support volume labels so we simply return the default (blank) volume label.
-
-=== GetFileInfo / GetSecurity
-
-If we right click on a file and choose "Properties" on the Windows explorer, it will interrogate the file system for the file metadata. This metadata includes file information such as file size, attributes, times, etc. and security information such as ACL's.
-
-The `GetFileInfo` operation allows the kernel to query/refresh its view of the file metadata.
-
-.`*GetFileInfo*`
-[source,c]
-----
-static NTSTATUS GetFileInfo(FSP_FILE_SYSTEM *FileSystem,
-    PVOID FileContext,
-    FSP_FSCTL_FILE_INFO *FileInfo)
-{
-    HANDLE Handle = HandleFromContext(FileContext);
-
-    return GetFileInfoInternal(Handle, FileInfo);
-}
-----
-
-The `GetSecurity` operation is used to return a file's security descriptor. [Please note that file systems that do not support ACL's need not implement this function.]
-
-.`*GetSecurity*`
-[source,c]
-----
-static NTSTATUS GetSecurity(FSP_FILE_SYSTEM *FileSystem,
-    PVOID FileContext,
-    PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize)
-{
-    HANDLE Handle = HandleFromContext(FileContext);
-    DWORD SecurityDescriptorSizeNeeded;
-
-    if (!GetKernelObjectSecurity(Handle,
-        OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
-        SecurityDescriptor, (DWORD)*PSecurityDescriptorSize, &SecurityDescriptorSizeNeeded))
-    {
-        *PSecurityDescriptorSize = SecurityDescriptorSizeNeeded;
-        return FspNtStatusFromWin32(GetLastError());
-    }
-
-    *PSecurityDescriptorSize = SecurityDescriptorSizeNeeded;
-
-    return STATUS_SUCCESS;
-}
 ----
 
 === Read / Write
 
-Files in our file system can now be listed (`ReadDirectory`) and queried for their metadata (`GetFileInfo`, `GetSecurity`). However files cannot be read or written yet!
+At a minimum a storage unit must implement `Read` and `Write`, unless the storage unit is write-protected (read-only) in which case it may only implement `Read`.
 
-Implementing `Read` is simple for our file system. Here is the implementation.
+`Read` is used to read block data from the storage unit.
 
 .`*Read*`
 [source,c]
 ----
-static NTSTATUS Read(FSP_FILE_SYSTEM *FileSystem,
-    PVOID FileContext, PVOID Buffer, UINT64 Offset, ULONG Length,
-    PULONG PBytesTransferred)
+static BOOLEAN Read(SPD_STORAGE_UNIT *StorageUnit,
+    PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN FlushFlag,
+    SPD_STORAGE_UNIT_STATUS *Status)
 {
-    HANDLE Handle = HandleFromContext(FileContext);
-    OVERLAPPED Overlapped = { 0 };
+    WARNONCE(StorageUnit->StorageUnitParams.CacheSupported || FlushFlag);
 
-    Overlapped.Offset = (DWORD)Offset;                                  // <1>
-    Overlapped.OffsetHigh = (DWORD)(Offset >> 32);
+    if (FlushFlag)                                                      // <1>
+    {
+        FlushInternal(StorageUnit, BlockAddress, BlockCount, Status);
+        if (SCSISTAT_GOOD != Status->ScsiStatus)
+            return TRUE;
+    }
 
-    if (!ReadFile(Handle, Buffer, Length, PBytesTransferred, &Overlapped))
-        return FspNtStatusFromWin32(GetLastError());
+    RAWDISK *RawDisk = StorageUnit->UserContext;
+    PVOID FileBuffer =
+        (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength; // <2>
 
-    return STATUS_SUCCESS;
+    CopyBuffer(StorageUnit,
+        Buffer, FileBuffer, BlockCount * RawDisk->BlockLength,
+        SCSI_ADSENSE_UNRECOVERED_ERROR,
+        Status);                                                        // <3>
+
+    return TRUE;
 }
 ----
-<1> Specify the `Offset` to read in an `OVERLAPPED` structure.
+<1> If the `FlushFlag` is set then the storage unit cache must be flushed prior to reading.
+<2> Compute a pointer inside the backing storage file mapping based on arguments and our storage unit geometry.
+<3> Copy data from the file mapping into the supplied `Buffer`.
 
-Implementing `Write` is also simple, although more involved. This is because `Write` has more complex semantics and supports a `ConstrainedIo` mode in which the file system is not allowed to extend the file size during a `Write`.
+`Write` is used to write block data to the storage unit.
 
 .`*Write*`
 [source,c]
 ----
-static NTSTATUS Write(FSP_FILE_SYSTEM *FileSystem,
-    PVOID FileContext, PVOID Buffer, UINT64 Offset, ULONG Length,
-    BOOLEAN WriteToEndOfFile, BOOLEAN ConstrainedIo,
-    PULONG PBytesTransferred, FSP_FSCTL_FILE_INFO *FileInfo)
+static BOOLEAN Write(SPD_STORAGE_UNIT *StorageUnit,
+    PVOID Buffer, UINT64 BlockAddress, UINT32 BlockCount, BOOLEAN FlushFlag,
+    SPD_STORAGE_UNIT_STATUS *Status)
 {
-    HANDLE Handle = HandleFromContext(FileContext);
-    LARGE_INTEGER FileSize;
-    OVERLAPPED Overlapped = { 0 };
+    WARNONCE(!StorageUnit->StorageUnitParams.WriteProtected);
+    WARNONCE(StorageUnit->StorageUnitParams.CacheSupported || FlushFlag);
 
-    if (ConstrainedIo)                                                  // <1>
-    {
-        if (!GetFileSizeEx(Handle, &FileSize))
-            return FspNtStatusFromWin32(GetLastError());
+    RAWDISK *RawDisk = StorageUnit->UserContext;
+    PVOID FileBuffer =
+        (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength; // <1>
 
-        if (Offset >= (UINT64)FileSize.QuadPart)
-            return STATUS_SUCCESS;
-        if (Offset + Length > (UINT64)FileSize.QuadPart)
-            Length = (ULONG)((UINT64)FileSize.QuadPart - Offset);
-    }
+    CopyBuffer(StorageUnit,
+        FileBuffer, Buffer, BlockCount * RawDisk->BlockLength,
+        SCSI_ADSENSE_WRITE_ERROR,
+        Status);                                                        // <2>
 
-    Overlapped.Offset = (DWORD)Offset;                                  // <2>
-    Overlapped.OffsetHigh = (DWORD)(Offset >> 32);
+    if (SCSISTAT_GOOD == Status->ScsiStatus && FlushFlag)               // <3>
+        FlushInternal(StorageUnit, BlockAddress, BlockCount, Status);
 
-    if (!WriteFile(Handle, Buffer, Length, PBytesTransferred, &Overlapped))
-        return FspNtStatusFromWin32(GetLastError());
-
-    return GetFileInfoInternal(Handle, FileInfo);
+    return TRUE;
 }
 ----
-<1> If `ConstrainedIo` is set we must restrict `Write` to not extend file size.
-<2> Specify the `Offset` to write in an `OVERLAPPED` structure. Note that the `Offset` will be `(UINT64)-1` when `WriteToEndOfFile` is set, which achieves the desired effect.
-
-=== SetBasicInfo / SetFileSize / SetSecurity
-
-Along with the ability to write a file, we also want the ability to update its metadata. This is accomplished by implementing the `SetBasicInfo`, `SetFileSize`, and `SetSecurity` operations. [The `SetSecurity` operation is not necessary if the file system does not support ACL's.]
-
-The `SetBasicInfo` operation is used to update a file's attributes and times. The implementation follows:
-
-.`*SetBasicInfo*`
-[source,c]
-----
-static NTSTATUS SetBasicInfo(FSP_FILE_SYSTEM *FileSystem,
-    PVOID FileContext, UINT32 FileAttributes,
-    UINT64 CreationTime, UINT64 LastAccessTime, UINT64 LastWriteTime, UINT64 ChangeTime,
-    FSP_FSCTL_FILE_INFO *FileInfo)
-{
-    HANDLE Handle = HandleFromContext(FileContext);
-    FILE_BASIC_INFO BasicInfo = { 0 };
-
-    if (INVALID_FILE_ATTRIBUTES == FileAttributes)
-        FileAttributes = 0;
-    else if (0 == FileAttributes)
-        FileAttributes = FILE_ATTRIBUTE_NORMAL;
-
-    BasicInfo.FileAttributes = FileAttributes;
-    BasicInfo.CreationTime.QuadPart = CreationTime;
-    BasicInfo.LastAccessTime.QuadPart = LastAccessTime;
-    BasicInfo.LastWriteTime.QuadPart = LastWriteTime;
-    //BasicInfo.ChangeTime = ChangeTime;
-
-    if (!SetFileInformationByHandle(Handle,
-        FileBasicInfo, &BasicInfo, sizeof BasicInfo))
-        return FspNtStatusFromWin32(GetLastError());
-
-    return GetFileInfoInternal(Handle, FileInfo);
-}
-----
-
-The `SetFileSize` operation is used to change a file's sizes. Files in a Windows file system can have two sizes: an "EndOfFile" size or `FileSize` and an `AllocationSize`. The `FileSize` is the number of bytes contained in a file. The `AllocationSize` is a concept that many file systems can safely ignore (or not expose to the kernel): it is the actual number of bytes that a file occupies on its storage medium.
-
-Although some file systems may have an internal block / chunk / cluster / sector that they use as their basic `AllocationUnit`, it is not necessary to expose this information to the kernel. The advantage to exposing it is that applications can use (little documented) file system API's to preallocate files.
-
-Regardless of whether a file system exposes `AllocationSize` it must obey the following rule: it must always be that `FileSize \<= AllocationSize`. In general the WinFsp driver also assumes that the `AllocationSize` is a multiple of the `AllocationUnit`; in this case the `AllocationUnit` is the product of `SectorSize * SectorsPerAllocationUnit`.
-
-.`*SetFileSize*`
-[source,c]
-----
-static NTSTATUS SetFileSize(FSP_FILE_SYSTEM *FileSystem,
-    PVOID FileContext, UINT64 NewSize, BOOLEAN SetAllocationSize,
-    FSP_FSCTL_FILE_INFO *FileInfo)
-{
-    HANDLE Handle = HandleFromContext(FileContext);
-    FILE_ALLOCATION_INFO AllocationInfo;
-    FILE_END_OF_FILE_INFO EndOfFileInfo;
-
-    if (SetAllocationSize)
-    {
-        /*
-         * This file system does not maintain AllocationSize, although NTFS clearly can.
-         * However it must always be FileSize <= AllocationSize and NTFS will make sure
-         * to truncate the FileSize if it sees an AllocationSize < FileSize.
-         *
-         * If OTOH a very large AllocationSize is passed, the call below will increase
-         * the AllocationSize of the underlying file, although our file system does not
-         * expose this fact. This AllocationSize is only temporary as NTFS will reset
-         * the AllocationSize of the underlying file when it is closed.
-         */
-
-        AllocationInfo.AllocationSize.QuadPart = NewSize;
-
-        if (!SetFileInformationByHandle(Handle,
-            FileAllocationInfo, &AllocationInfo, sizeof AllocationInfo))
-            return FspNtStatusFromWin32(GetLastError());
-    }
-    else
-    {
-        EndOfFileInfo.EndOfFile.QuadPart = NewSize;
-
-        if (!SetFileInformationByHandle(Handle,
-            FileEndOfFileInfo, &EndOfFileInfo, sizeof EndOfFileInfo))
-            return FspNtStatusFromWin32(GetLastError());
-    }
-
-    return GetFileInfoInternal(Handle, FileInfo);
-}
-----
-
-Finally the `SetSecurity` operation is used to update a file's security information.
-
-.`*SetSecurity*`
-[source,c]
-----
-static NTSTATUS SetSecurity(FSP_FILE_SYSTEM *FileSystem,
-    PVOID FileContext,
-    SECURITY_INFORMATION SecurityInformation, PSECURITY_DESCRIPTOR ModificationDescriptor)
-{
-    HANDLE Handle = HandleFromContext(FileContext);
-
-    if (!SetKernelObjectSecurity(Handle, SecurityInformation, ModificationDescriptor))
-        return FspNtStatusFromWin32(GetLastError());
-
-    return STATUS_SUCCESS;
-}
-----
+<1> Compute a pointer inside the backing storage file mapping based on arguments and our storage unit geometry.
+<3> Copy data from the supplied `Buffer` into the file mapping.
+<3> If the `FlushFlag` is set then the storage unit cache must be flushed after writing.
 
 === Flush
 
-Windows file systems are free to cache file information in order to speed up operations. In some cases it is important to ensure that all caches have been "flushed" and all information has been persisted in the final storage medium. Windows provides the `FlushFileBuffers` API for this purpose. User mode file systems that support flushing must implement the `Flush` operation.
-
-The `Flush` operation is used to flush a single file or the whole volume (file system). At the time the `Flush` call arrives the kernel has already flushed all its file caches (by calling `Write` for all dirty data in its caches). If the file system performs additional caching it should flush its own caches at this point.
-
-The implementation of `Flush` for our passthrough file system follows:
+A storage unit that has its own cache must implement `Flush`.
 
 .`*Flush*`
 [source,c]
 ----
-NTSTATUS Flush(FSP_FILE_SYSTEM *FileSystem,
-    PVOID FileContext,
-    FSP_FSCTL_FILE_INFO *FileInfo)
+static BOOLEAN Flush(SPD_STORAGE_UNIT *StorageUnit,
+    UINT64 BlockAddress, UINT32 BlockCount,
+    SPD_STORAGE_UNIT_STATUS *Status)
 {
-    HANDLE Handle = HandleFromContext(FileContext);
+    WARNONCE(!StorageUnit->StorageUnitParams.WriteProtected);
+    WARNONCE(StorageUnit->StorageUnitParams.CacheSupported);
 
-    /* we do not flush the whole volume, so just return SUCCESS */
-    if (0 == Handle)
-        return STATUS_SUCCESS;
-
-    if (!FlushFileBuffers(Handle))
-        return FspNtStatusFromWin32(GetLastError());
-
-    return GetFileInfoInternal(Handle, FileInfo);
+    return FlushInternal(StorageUnit, BlockAddress, BlockCount, Status);
 }
 ----
 
-=== Create
+=== Unmap
 
-Our file system is now functional, but it still misses an important ability: the ability to create and delete files. We will tackle creating files first.
+A storage unit may implement `Unmap` so that it can be informed by the OS when a block is no longer needed.
 
-The `Create` operation is used to create files and directories. A file or directory should be created only if it does not already exist. Whether to create a file or directory is controlled by the `FILE_DIRECTORY_FILE` flag.
-
-The implementation of `Create` follows:
-
-.`*Create*`
+.`*Unmap*`
 [source,c]
 ----
-static NTSTATUS Create(FSP_FILE_SYSTEM *FileSystem,
-    PWSTR FileName, UINT32 CreateOptions, UINT32 GrantedAccess,
-    UINT32 FileAttributes, PSECURITY_DESCRIPTOR SecurityDescriptor, UINT64 AllocationSize,
-    PVOID *PFileContext, FSP_FSCTL_FILE_INFO *FileInfo)
+static BOOLEAN Unmap(SPD_STORAGE_UNIT *StorageUnit,
+    SPD_UNMAP_DESCRIPTOR Descriptors[], UINT32 Count,
+    SPD_STORAGE_UNIT_STATUS *Status)
 {
-    PTFS *Ptfs = (PTFS *)FileSystem->UserContext;
-    WCHAR FullPath[FULLPATH_SIZE];
-    SECURITY_ATTRIBUTES SecurityAttributes;
-    ULONG CreateFlags;
-    PTFS_FILE_CONTEXT *FileContext;
+    WARNONCE(!StorageUnit->StorageUnitParams.WriteProtected);
+    WARNONCE(StorageUnit->StorageUnitParams.UnmapSupported);
 
-    if (!ConcatPath(Ptfs, FileName, FullPath))
-        return STATUS_OBJECT_NAME_INVALID;
+    RAWDISK *RawDisk = StorageUnit->UserContext;
+    FILE_ZERO_DATA_INFORMATION Zero;
+    DWORD BytesTransferred;
+    PVOID FileBuffer;
 
-    FileContext = malloc(sizeof *FileContext);                          // <1>
-    if (0 == FileContext)
-        return STATUS_INSUFFICIENT_RESOURCES;
-    memset(FileContext, 0, sizeof *FileContext);
-
-    SecurityAttributes.nLength = sizeof SecurityAttributes;
-    SecurityAttributes.lpSecurityDescriptor = SecurityDescriptor;
-    SecurityAttributes.bInheritHandle = FALSE;
-
-    CreateFlags = FILE_FLAG_BACKUP_SEMANTICS;                           // <2>
-    if (CreateOptions & FILE_DELETE_ON_CLOSE)
-        CreateFlags |= FILE_FLAG_DELETE_ON_CLOSE;                       // <3>
-
-    if (CreateOptions & FILE_DIRECTORY_FILE)
+    for (UINT32 I = 0; Count > I; I++)
     {
-        /*
-         * It is not widely known but CreateFileW can be used to create directories!
-         * It requires the specification of both FILE_FLAG_BACKUP_SEMANTICS and
-         * FILE_FLAG_POSIX_SEMANTICS. It also requires that FileAttributes has
-         * FILE_ATTRIBUTE_DIRECTORY set.
-         */
-        CreateFlags |= FILE_FLAG_POSIX_SEMANTICS;                       // <2>
-        FileAttributes |= FILE_ATTRIBUTE_DIRECTORY;
-    }
-    else
-        FileAttributes &= ~FILE_ATTRIBUTE_DIRECTORY;
+        BOOLEAN SetZero = FALSE;
 
-    if (0 == FileAttributes)
-        FileAttributes = FILE_ATTRIBUTE_NORMAL;
-
-    FileContext->Handle = CreateFileW(FullPath,
-        GrantedAccess, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, &SecurityAttributes,
-        CREATE_NEW, CreateFlags | FileAttributes, 0);                   // <4>
-    if (INVALID_HANDLE_VALUE == FileContext->Handle)
-    {
-        free(FileContext);
-        return FspNtStatusFromWin32(GetLastError());
-    }
-
-    *PFileContext = FileContext;
-
-    return GetFileInfoInternal(FileContext->Handle, FileInfo);          // <5>
-}
-----
-<1> Create the `FileContext` object. This is used to track an open file instance.
-<2> Allow creation of directories using the flags `FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_POSIX_SEMANTICS`.
-<3> Include the FILE_FLAG_DELETE_ON_CLOSE flag. File systems do not normally have to track this flag as WinFsp will track it and post the appropriate `Cleanup` request. Passing it to the underlying file system here allows us to simplify `Cleanup` for this simple file system.
-<4> Use CREATE_NEW to create new files only. Allow full sharing (`FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE`) as WinFsp performs its own sharing checks.
-<5> Use `GetFileInfoInternal` to return information about the file.
-
-=== Overwrite
-
-Another special operation for Windows file systems is the ability to "overwrite" or "supersede" files. This operation is used (for example) when an application calls `CreateFileW` with the `CREATE_ALWAYS` flag.
-
-`Overwrite` must truncate the file to zero size. It must also replace or merge the file's attributes according to the `ReplaceFileAttributes` parameter. The implementation of `Overwrite` for our file system follows.
-
-.`*Overwrite*`
-[source,c]
-----
-static NTSTATUS Overwrite(FSP_FILE_SYSTEM *FileSystem,
-    PVOID FileContext, UINT32 FileAttributes, BOOLEAN ReplaceFileAttributes, UINT64 AllocationSize,
-    FSP_FSCTL_FILE_INFO *FileInfo)
-{
-    HANDLE Handle = HandleFromContext(FileContext);
-    FILE_BASIC_INFO BasicInfo = { 0 };
-    FILE_ALLOCATION_INFO AllocationInfo = { 0 };
-    FILE_ATTRIBUTE_TAG_INFO AttributeTagInfo;
-
-    if (ReplaceFileAttributes)
-    {
-        if (0 == FileAttributes)
-            FileAttributes = FILE_ATTRIBUTE_NORMAL;
-
-        BasicInfo.FileAttributes = FileAttributes;                      // <1>
-        if (!SetFileInformationByHandle(Handle,
-            FileBasicInfo, &BasicInfo, sizeof BasicInfo))
-            return FspNtStatusFromWin32(GetLastError());
-    }
-    else if (0 != FileAttributes)
-    {
-        if (!GetFileInformationByHandleEx(Handle,
-            FileAttributeTagInfo, &AttributeTagInfo, sizeof AttributeTagInfo))
-            return FspNtStatusFromWin32(GetLastError());
-
-        BasicInfo.FileAttributes =
-            FileAttributes | AttributeTagInfo.FileAttributes;           // <2>
-        if (BasicInfo.FileAttributes ^ FileAttributes)
+        if (RawDisk->Sparse)
         {
-            if (!SetFileInformationByHandle(Handle,
-                FileBasicInfo, &BasicInfo, sizeof BasicInfo))
-                return FspNtStatusFromWin32(GetLastError());
+            Zero.FileOffset.QuadPart = Descriptors[I].BlockAddress * RawDisk->BlockLength;
+            Zero.BeyondFinalZero.QuadPart = (Descriptors[I].BlockAddress + Descriptors[I].BlockCount) *
+                RawDisk->BlockLength;
+            SetZero = DeviceIoControl(RawDisk->Handle,
+                FSCTL_SET_ZERO_DATA, &Zero, sizeof Zero, 0, 0,
+                &BytesTransferred, 0);                                  // <1>
+        }
+
+        if (!SetZero)
+        {
+            FileBuffer = (PUINT8)RawDisk->Pointer + Descriptors[I].BlockAddress * RawDisk->BlockLength;
+
+            CopyBuffer(StorageUnit,
+                FileBuffer, 0, Descriptors[I].BlockCount * RawDisk->BlockLength,
+                SCSI_ADSENSE_NO_SENSE,
+                0);                                                     // <2>
         }
     }
 
-    if (!SetFileInformationByHandle(Handle,
-        FileAllocationInfo, &AllocationInfo, sizeof AllocationInfo))    // <3>
-        return FspNtStatusFromWin32(GetLastError());
-
-    return GetFileInfoInternal(Handle, FileInfo);
+    return TRUE;
 }
 ----
-<1> If `ReplaceFileAttributes` is true, set the file's attributets to the specified ones (this is a "supersede" operation).
-<2> If `ReplaceFileAttributes` is false, merge the specified file attributes with the existing ones (this is an "overwrite" operation).
-<3> Set the underlying file's allocation size to 0, which also sets the file size to 0, thus truncating the file.
+<1> Use `FSCTL_SET_ZERO_DATA` to zero the relevant backing storage file range. File systems that support sparse files may "deallocate disk space" in the file in this case.
+<2> If the file is not sparse of the `FSCTL_SET_ZERO_DATA` method failed, zero the relevant backing storage file range. This is not strictly required by Windows, but it is required by the WinSpd test suites.
 
-=== Cleanup
+=== Helper functions
 
-One of the important file system operations that we have not discussed so far is `Cleanup`. `Cleanup` is called whenever a file is about to be closed (when an application that opened a file calls `CloseHandle`). If the `VolumeParams` `PostCleanupWhenModifiedOnly` flag is set, then `Cleanup` is posted only when the file was modified or deleted. As such `Cleanup` support is essential if a file system supports deleting files.
+A number of functions were used in the implementation of the storage unit operations that have not been presented so far. We include them below.
 
-Our `Cleanup` implementation is minimal. We present it below and we discuss it afterwards.
+`CopyBuffer` is used to copy data from the backing storage file mapping to the OS supplied buffers or vice-versa. This is a simple memory copy operation, except that it must also be able to deal with the `EXCEPTION_IN_PAGE_ERROR` exception code, which means that there was an I/O error with the file mapping.
 
-.`*Cleanup*`
+.`*CopyBuffer and ExceptionFilter*`
 [source,c]
 ----
-static VOID Cleanup(FSP_FILE_SYSTEM *FileSystem,
-    PVOID FileContext, PWSTR FileName, ULONG Flags)
+static inline BOOLEAN ExceptionFilter(ULONG Code, PEXCEPTION_POINTERS Pointers,
+    PUINT_PTR PDataAddress)
 {
-    HANDLE Handle = HandleFromContext(FileContext);
+    if (EXCEPTION_IN_PAGE_ERROR != Code)
+        return EXCEPTION_CONTINUE_SEARCH;
 
-    if (Flags & FspCleanupDelete)                                       // <1>
+    *PDataAddress = 2 <= Pointers->ExceptionRecord->NumberParameters ?
+        Pointers->ExceptionRecord->ExceptionInformation[1] : 0;
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
+static VOID CopyBuffer(SPD_STORAGE_UNIT *StorageUnit,
+    PVOID Dst, PVOID Src, ULONG Length, UINT8 ASC,
+    SPD_STORAGE_UNIT_STATUS *Status)
+{
+    RAWDISK *RawDisk = StorageUnit->UserContext;
+    UINT_PTR ExceptionDataAddress;
+    UINT64 Information, *PInformation;
+
+    __try
     {
-        CloseHandle(Handle);
+        if (0 != Src)
+            memcpy(Dst, Src, Length);                                   // <1>
+        else
+            memset(Dst, 0, Length);                                     // <1>
+    }
+    __except (ExceptionFilter(GetExceptionCode(), GetExceptionInformation(), &ExceptionDataAddress))
+    {
+        if (0 != Status)
+        {
+            PInformation = 0;
+            if (0 != ExceptionDataAddress)
+            {
+                Information = (UINT64)(ExceptionDataAddress - (UINT_PTR)RawDisk->Pointer) /
+                    RawDisk->BlockLength;                               // <2>
+                PInformation = &Information;
+            }
 
-        /* this will make all future uses of Handle to fail with STATUS_INVALID_HANDLE */
-        HandleFromContext(FileContext) = INVALID_HANDLE_VALUE;          // <2>
+            SpdStorageUnitStatusSetSense(Status,
+                SCSI_SENSE_MEDIUM_ERROR, ASC, PInformation);            // <3>
+        }
     }
 }
 ----
-<1> Only close the underlying file's handle if our file system's file instance has been marked for deletion.
-<2> This invalidates the underlying file's handle, thus ensuring that additional file operations will fail with `STATUS_INVALID_HANDLE`.
+<1> The actual memory copy or set operation that needs to be protected from any file mapping I/O errors. (These errors should be non-existent in practice, except if the underlying file system is on a bad medium.)
+<2> `Information` is used to pass information about the actual block address that caused the I/O error. 
+<3> `SpdStorageUnitStatusSetSense` is used to report a SCSI error to the operating system.
 
-If our open file instance is not marked for deletion we do *not* `CloseHandle` the underlying handle; we will do so at a later time when we receive the `Close` request. This allows the file system to receive additional requests (for example, `Write` requests from the kernel lazy writer if kernel caching is enabled for this file system).
+`FlushInternal` is used by the `Read`, `Write` and `Flush` storage operations to actually flush the backing storage file.
 
-If our open file instance is marked for deletion we `CloseHandle` the underlying handle, and we invalidate the handle. By calling `CloseHandle` we ensure that the underlying file system can now delete a file that has been previously marked for deletion by the `FILE_FLAG_DELETE_ON_CLOSE` flag or a `FileDispositionInfo` call (see `CanDelete` below). By invalidating the handle we ensure that no additional file operations can be performed on this file instance (they will fail with `STATUS_INVALID_HANDLE`). We will still receive a `Close` operation for our open file instance which calls `CloseHandle` again, but this is safe to do with INVALID_HANDLE_VALUE.
-
-NOTE: The WinFsp kernel driver maintains a `DeletePending` flag for every open file. This flag becomes true when a file is opened with `FILE_FLAG_DELETE_ON_CLOSE` or when `FileDispositionInfo` is set. The WinFsp kernel driver sets `FspCleanupDelete` when it receives the last `CloseHandle` for a file that is being deleted. The user mode file system need not maintain its own `DeletePending` flag.
-
-=== CanDelete
-
-There are two ways for deleting a file or directory on Windows. One is to supply the `FILE_FLAG_DELETE_ON_CLOSE` flag during a `CreateFileW` call. The other one is to use the `FileDispositionInfo` information class with a call to `SetInformationByHandle` (which is what `DeleteFileW` and `RemoveDirectoryW` effectively do). [It is also possible to delete an (unopened) file using `Rename` by we will ignore this case here.]
-
-`CanDelete` is called in the `FileDispositionInfo` case (only). In general `CanDelete` needs to check whether deleting the file or directory is allowed and return `STATUS_SUCCESS` or an appropriate status code. Most file systems need only check whether a directory is empty and disallow deletion by returning `STATUS_DIRECTORY_NOT_EMPTY` if it is not. `CanDelete` need *not* mark a file for deletion, this flag is maintained by the WinFsp kernel driver.
-
-In this implementation of `CanDelete` we take advantage of the fact that the underlying Windows file system already knows how to handle a `FileDispositionInfo` call.
-
-.`*CanDelete*`
+.`*FlushInternal*`
 [source,c]
 ----
-static NTSTATUS CanDelete(FSP_FILE_SYSTEM *FileSystem,
-    PVOID FileContext, PWSTR FileName)
+static BOOLEAN FlushInternal(SPD_STORAGE_UNIT *StorageUnit,
+    UINT64 BlockAddress, UINT32 BlockCount,
+    SPD_STORAGE_UNIT_STATUS *Status)
 {
-    HANDLE Handle = HandleFromContext(FileContext);
-    FILE_DISPOSITION_INFO DispositionInfo;
+    RAWDISK *RawDisk = StorageUnit->UserContext;
+    PVOID FileBuffer = (PUINT8)RawDisk->Pointer + BlockAddress * RawDisk->BlockLength;
 
-    DispositionInfo.DeleteFile = TRUE;                                  // <1>
+    if (!FlushViewOfFile(FileBuffer, BlockCount * RawDisk->BlockLength))
+        goto error;
+    if (!FlushFileBuffers(RawDisk->Handle))
+        goto error;
 
-    if (!SetFileInformationByHandle(Handle,
-        FileDispositionInfo, &DispositionInfo, sizeof DispositionInfo))
-        return FspNtStatusFromWin32(GetLastError());
+    return TRUE;
 
-    return STATUS_SUCCESS;
+error:
+    SpdStorageUnitStatusSetSense(Status,
+        SCSI_SENSE_MEDIUM_ERROR, SCSI_ADSENSE_WRITE_ERROR, 0);
+
+    return TRUE;
 }
 ----
-<1> Mark the underlying file system's file for deletion.
 
-=== Rename
-
-Our file system is almost fully functional. There remains one operation to implement: `Rename`.
-
-`Rename` can be hard to implement for a general purpose file system, but in our case things are simple, because the underlying Windows file system will take care of the details.
-
-.`*Rename*`
-[source,c]
-----
-static NTSTATUS Rename(FSP_FILE_SYSTEM *FileSystem,
-    PVOID FileContext,
-    PWSTR FileName, PWSTR NewFileName, BOOLEAN ReplaceIfExists)
-{
-    PTFS *Ptfs = (PTFS *)FileSystem->UserContext;
-    WCHAR FullPath[FULLPATH_SIZE], NewFullPath[FULLPATH_SIZE];
-
-    if (!ConcatPath(Ptfs, FileName, FullPath))
-        return STATUS_OBJECT_NAME_INVALID;
-
-    if (!ConcatPath(Ptfs, NewFileName, NewFullPath))
-        return STATUS_OBJECT_NAME_INVALID;
-
-    if (!MoveFileExW(FullPath, NewFullPath, ReplaceIfExists ? MOVEFILE_REPLACE_EXISTING : 0))
-        return FspNtStatusFromWin32(GetLastError());
-
-    return STATUS_SUCCESS;
-}
-----
+== THRESHOLD
 
 == Testing the file system
 

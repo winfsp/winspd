@@ -10,13 +10,5 @@
     <ClCompile Include="rawdisk.c">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="rawdisk-main.c">
-      <Filter>Source</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="rawdisk.h">
-      <Filter>Source</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>
