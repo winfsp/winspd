@@ -533,11 +533,10 @@ int wmain(int argc, wchar_t **argv)
         &RawDisk);
     if (0 != Error)
         fail(Error, L"error: cannot create RawDisk: error %lu", Error);
+    SpdStorageUnitSetDebugLog(RawDiskStorageUnit(RawDisk), DebugFlags);
     Error = SpdStorageUnitStartDispatcher(RawDiskStorageUnit(RawDisk), 2);
     if (0 != Error)
         fail(Error, L"error: cannot start RawDisk: error %lu", Error);
-
-    SpdStorageUnitSetDebugLog(RawDiskStorageUnit(RawDisk), DebugFlags);
 
     info(L"%s -f %s -c %lu -l %lu -i %s -r %s -W %u -C %u -U %u%s%s",
         L"" PROGNAME,

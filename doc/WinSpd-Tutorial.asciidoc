@@ -138,27 +138,29 @@ The `PipeName` variable has a special purpose. It determines the channel to use 
         &RawDisk);                                                      // <1>
     if (0 != Error)
         fail(Error, L"error: cannot create RawDisk: error %lu", Error);
+    SpdStorageUnitSetDebugLog(RawDiskStorageUnit(RawDisk), DebugFlags); // <2>
     Error = SpdStorageUnitStartDispatcher(
-        RawDiskStorageUnit(RawDisk), 2);                                // <2>
+        RawDiskStorageUnit(RawDisk), 2);                                // <3>
     if (0 != Error)
         fail(Error, L"error: cannot start RawDisk: error %lu", Error);
 
     ...
 
-    SpdGuardSet(&ConsoleCtrlGuard, RawDiskStorageUnit(RawDisk));        // <3>
-    SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);                    // <4>
-    SpdStorageUnitWaitDispatcher(RawDiskStorageUnit(RawDisk));          // <5>
-    SpdGuardSet(&ConsoleCtrlGuard, 0);                                  // <6>
+    SpdGuardSet(&ConsoleCtrlGuard, RawDiskStorageUnit(RawDisk));        // <4>
+    SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);                    // <5>
+    SpdStorageUnitWaitDispatcher(RawDiskStorageUnit(RawDisk));          // <6>
+    SpdGuardSet(&ConsoleCtrlGuard, 0);                                  // <7>
 
-    RawDiskDelete(RawDisk);                                             // <7>
+    RawDiskDelete(RawDisk);                                             // <8>
 ----
 <1> Create the rawdisk storage unit.
-<2> Start the storage unit dispatcher. At this point the storage unit starts receiving storage requests (if any).
-<3> Set a "guarded" pointer to the storage unit so that it can be shutdown in a thread-safe manner by the process console control handler.
-<4> Set up a console control handler for the process.
-<5> Wait until the storage unit (and its dispatcher) is shutdown.
-<6> Reset the "guarded" pointer.
-<7> Delete the rawdisk storage unit.
+<1> Set debug log flags (-1 to enable all debug logs; 0 to disable all debug logs).
+<3> Start the storage unit dispatcher. At this point the storage unit starts receiving storage requests (if any).
+<4> Set a "guarded" pointer to the storage unit so that it can be shutdown in a thread-safe manner by the process console control handler.
+<5> Set up a console control handler for the process.
+<6> Wait until the storage unit (and its dispatcher) is shutdown.
+<7> Reset the "guarded" pointer.
+<8> Delete the rawdisk storage unit.
 
 We now consider the code for `RawDiskCreate`, `RawDiskDelete` and `ConsoleCtrlHandler`:
 
