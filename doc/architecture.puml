@@ -13,7 +13,7 @@ node "Windows Services Session" as svc {
         launcher ..> stgdev: <<launch>>
 }
 
-shellex - launcher: mount / eject
+shellex - launcher: "   mount / eject   "
 
 node Kernel as kernel {
     component "disk.sys" as disk

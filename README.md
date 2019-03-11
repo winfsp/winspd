@@ -31,9 +31,20 @@ Storage units support two primary operations: read and write, and two secondary 
 - **Flush**: flush any cached block data at the specified LBA.
 - **Unmap**: unmap (deallocate) blocks at the specified LBA. This is like the well known TRIM command.
 
+For a full tutorial on creating a user mode storage device see the [Tutorial](doc/WinSpd-Tutorial.asciidoc).
+
 ## Design
 
-WinSpd is implemented as a StorPort virtual miniport (a kernel driver) and a user mode DLL. User mode storage devices use the DLL to communicate with the driver via special IOCTL's. The driver creates a virtual SCSI disk for every storage unit, which it adds to the Windows storage stack. At that point the disk can be partitioned and formatted with any of the Windows file systems.
+WinSpd consists of a number of software components with different responsibilities:
+
+- The core components are a kernel driver (implemented as a StorPort virtual miniport) and a user
+  mode DLL. User mode storage devices use the DLL to communicate with the driver via special
+  IOCTL's.
+- A launcher service that is used to launch and control user mode storage devices.
+- A shell extension that is used to implement the "mount" and "eject" functionalities available via
+  the Windows Explorer and Shell.
+
+![Archictecture diagram](doc/architecture.png)
 
 The WinSpd virtual miniport implements the following SCSI commands:
 
@@ -57,11 +68,17 @@ The project source code is organized as follows:
 * :file_folder: [inc](inc): Public headers.
     * :file_folder: [inc/winspd](inc/winspd): Public headers for the WinSpd API.
 * :file_folder: [src](src): WinSpd source code.
-    * :file_folder: [src/dll](src/dll): Source code to the WinSpd DLL.
+    * :file_folder: [src/devsetup](src/devsetup): Source code to the devsetup utility. It is used
+      to add or remove the WinSpd device driver from the system.
+    * :file_folder: [src/dll](src/dll): Source code to the WinSpd DLL. It is used by user mode
+      storage devices to communicate with the WinSpd device driver.
     * :file_folder: [src/dotnet](src/dotnet): Source code to the .NET layer.
-    * :file_folder: [src/launcher](src/launcher): Source code to the launcher service and the launchctl utility.
+    * :file_folder: [src/launcher](src/launcher): Source code to the launcher service and the
+      launchctl utility. The launcher service is used to launch and control user mode storage devices.
     * :file_folder: [src/scsitool](src/scsitool): Source code to the scsitool command line utility.
-    * :file_folder: [src/shellex](src/shellex): Source code to the WinSpd shell extension.
+    * :file_folder: [src/shellex](src/shellex): Source code to the WinSpd shell extension. It is
+      used to implement the "mount" and "eject" functionalities available via the Windows Explorer
+      and the Shell.
     * :file_folder: [src/stgtest](src/stgtest): Source code to the stgtest storage testing tool.
     * :file_folder: [src/sys](src/sys): Source code to the WinSpd kernel driver.
 * :file_folder: [tst](tst): Source code to example user mode storage devices and test tools.
