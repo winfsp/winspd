@@ -3,6 +3,12 @@
 </h1>
 
 <p align="center">
+    <b>Download</b><br>
+    <a href="https://github.com/billziss-gh/winspd/releases">
+        <img src="https://img.shields.io/github/release/billziss-gh/winspd/all.svg?label=latest&colorB=e52e4b&style=for-the-badge"/>
+    </a>
+    <br/>
+    <br/>
     <a href="https://ci.appveyor.com/project/billziss-gh/winspd">
         <img src="https://img.shields.io/appveyor/ci/billziss-gh/winspd.svg"/>
     </a>
@@ -12,9 +18,6 @@
 
 <p align="center">
     WinSpd enables the creation of storage units ("SCSI disks") in user mode (i.e. without writing any kernel mode code). Such storage units are created and served by user mode storage devices (i.e. user mode processes) and are added to the Windows OS storage stack. They appear to Windows as real disks that can be formatted and accessed via a file system such as NTFS.
-    <br/>
-    <br/>
-    The capture below shows a storage unit created by a user mode storage device called "rawdisk", which is then partitioned, formatted with NTFS, assigned a drive letter and accessed normally.
     <br/>
     <br/>
     <img src="doc/cap.gif"/>
