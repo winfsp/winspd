@@ -1,0 +1,30 @@
+@startuml
+skinparam componentStyle uml2
+
+node "Windows Explorer" as explorer {
+    component "Shell Extension DLL" as shellex #Salmon
+}
+
+node "Windows Services Session" as svc {
+        node "Launcher Service" as launcher #Salmon
+        node "Storage Device Process\n(e.g. rawdisk)" as stgdev {
+            component "WinSpd DLL" as dll #Salmon
+        }
+        launcher ..> stgdev: <<launch>>
+}
+
+shellex - launcher: mount / eject
+
+node Kernel as kernel {
+    component "disk.sys" as disk
+    component "WinSpd Driver" as drv #Salmon
+    component "storport.sys" as storport
+    disk - drv
+    drv - storport
+}
+
+dll -- drv: IOCTL
+
+note "Salmon color\ndenotes WinSpd\ncomponent." as n1 #Salmon
+
+@enduml
