@@ -3,6 +3,8 @@
 setlocal
 setlocal EnableDelayedExpansion
 
+set vcvarsall="%~dp0vcvarsall.bat"
+
 if "%1"=="x64" set OsVer=7_X64,8_X64,6_3_X64,10_X64,Server2008R2_X64,Server8_X64,Server6_3_X64,Server10_X64
 if "%1"=="x86" set OsVer=7_X86,8_X86,6_3_X86,10_X86
 if "%OsVer%"=="" goto usage
@@ -21,7 +23,7 @@ if "%BaseDir%"=="" goto usage
 cd %BaseDir%
 if errorlevel 1 goto fail
 
-call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" x64
+call %vcvarsall% x64
 
 set TempDir=%TMP%\mkcat-%RANDOM%
 if exist %TempDir% rmdir /s/q %TempDir%

@@ -6,7 +6,7 @@ setlocal EnableDelayedExpansion
 set MsiName="WinSpd - Windows Storage Proxy Driver"
 set CrossCert="%~dp0DigiCert High Assurance EV Root CA.crt"
 set Issuer="DigiCert"
-set Subject="Navimatics Corporation"
+set Subject="Navimatics LLC"
 
 set Configuration=Release
 set SignedPackage=
@@ -14,7 +14,7 @@ set SignedPackage=
 if not X%1==X set Configuration=%1
 if not X%2==X set SignedPackage=%2
 
-call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" x64
+call "%~dp0vcvarsall.bat" x64
 
 if not X%SignedPackage%==X (
     if not exist "%~dp0..\build\VStudio\build\%Configuration%\winspd-*.msi" (echo previous build not found >&2 & exit /b 1)
