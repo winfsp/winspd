@@ -5,7 +5,7 @@
  * In order to use the WinSpd API the user mode Storage Port Driver must include
  * &lt;winspd/winspd.h&gt; and link with the winspd_x64.dll (or winspd_x86.dll) library.
  *
- * @copyright 2018-2019 Bill Zissimopoulos
+ * @copyright 2018-2020 Bill Zissimopoulos
  */
 /*
  * This file is part of WinSpd.

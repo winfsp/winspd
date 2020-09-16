@@ -1,7 +1,7 @@
 /*
  * dotnet/StorageUnitBase+Const.cs
  *
- * Copyright 2018-2019 Bill Zissimopoulos
+ * Copyright 2018-2020 Bill Zissimopoulos
  */
 /*
  * This file is part of WinSpd.
