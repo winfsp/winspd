@@ -31,7 +31,7 @@ reg query %RegKey% /v %RegVal% >nul 2>&1 || (echo Cannot find Windows Kit >&2 & 
 for /f "tokens=2,*" %%i in ('reg query %RegKey% /v %RegVal% ^| findstr %RegVal%') do (
     set KitRoot="%%j"
 )
-%KitRoot%\bin\x86\stampinf.exe -v !MyVersion! -f !dst!
+%KitRoot%\bin\x86\stampinf.exe -d * -v !MyVersion! -f !dst!
 exit /b
 
 :fail

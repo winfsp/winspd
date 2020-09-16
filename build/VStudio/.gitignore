@@ -4,3 +4,6 @@ build
 *.vcproj.*
 *.vcxproj.user
 *.csproj.user
+*.VC.db
+*.VC.opendb
+.vs

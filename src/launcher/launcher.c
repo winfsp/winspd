@@ -482,6 +482,7 @@ exit:
         RegCloseKey(RegKey);
 }
 
+__declspec(noinline) /* noinline resolves "unresolved external symbol __chkstk" on Release builds */
 static DWORD SvcInstanceAddUserRights(HANDLE Token,
     PSECURITY_DESCRIPTOR SecurityDescriptor, PSECURITY_DESCRIPTOR *PNewSecurityDescriptor)
 {
