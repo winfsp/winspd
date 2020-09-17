@@ -1,21 +1,29 @@
 @echo off
 
 setlocal
+setlocal EnableDelayedExpansion
 
-set CONFIG=Debug
-set SUFFIX=x64
-set TARGET_MACHINE=WIN8DBG
-set TARGET_ACCOUNT=\Users\%USERNAME%\Downloads\winspd\
-set TARGET=\\%TARGET_MACHINE%%TARGET_ACCOUNT%
+set Config=Debug
+set Suffix=x64
+set Deploy=C:\Deploy\winspd
+set Target=Win10DBG
+set Chkpnt=winspd
+if not X%1==X set Target=%1
+if not X%2==X set Chkpnt=%2
 
-cd %~dp0..
-mkdir %TARGET% 2>nul
-for %%f in (devsetup-%SUFFIX%.exe winspd-%SUFFIX%.inf winspd-%SUFFIX%.cat winspd-%SUFFIX%.cer winspd-%SUFFIX%.sys winspd-%SUFFIX%.dll scsitool-%SUFFIX%.exe stgtest-%SUFFIX%.exe rawdisk-%SUFFIX%.exe winspd-tests-%SUFFIX%.exe launcher-%SUFFIX%.exe launchctl-%SUFFIX%.exe shellex-%SUFFIX%.dll) do (
-    copy build\VStudio\build\%CONFIG%\%%f %TARGET% >nul
-)
-for %%f in (scsicompliance.bat) do (
-    copy tools\%%f %TARGET% >nul
-)
+(
+    echo certmgr /add /c winspd-%SUFFIX%.cer /s /r localMachine root
+    echo certmgr /add /c winspd-%SUFFIX%.cer /s /r localMachine TrustedPublisher
+    echo devsetup-x64 add root\winspd winspd-%SUFFIX%.inf
+    echo sc create WinSpd.Launcher binPath=%%~dp0launcher-%SUFFIX%.exe
+    echo sc start WinSpd.Launcher
+    echo reg add HKLM\Software\WinSpd\Services\rawdisk /v Executable /d %%~dp0rawdisk-%SUFFIX%.exe /reg:32 /f
+    echo reg add HKLM\Software\WinSpd\Services\rawdisk /v CommandLine /d "-f %%%%1" /reg:32 /f
+    echo reg add HKLM\Software\WinSpd\Services\rawdisk /v Security /d "D:P(A;;RP;;;WD)" /reg:32 /f
+    echo reg add HKCR\.rawdisk /ve /d WinSpd.DiskFile /f
+    echo reg add HKCR\.rawdisk\ShellNew /v NullFile /f
+    echo regsvr32 %%~dp0shellex-%SUFFIX%.dll
+) >%~dp0..\build\VStudio\build\%Config%\deploy-setup.bat
 
 set RegKey="HKLM\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
 set RegVal="KitsRoot10"
@@ -23,18 +31,40 @@ reg query %RegKey% /v %RegVal% >nul 2>&1 || (echo Cannot find Windows Kit >&2 & 
 for /f "tokens=2,*" %%i in ('reg query %RegKey% /v %RegVal% ^| findstr %RegVal%') do (
     set KitRoot="%%j"
 )
-copy %KitRoot%\Tools\%SUFFIX%\devcon.exe %TARGET% >nul
-copy %KitRoot%\bin\%SUFFIX%\certmgr.exe %TARGET% >nul
+set CERTMGR_DIR=
+for /r %KitRoot%bin %%f in (%SUFFIX%\certmgr.ex?) do (
+    set CERTMGR_DIR="%%~dpf"
+)
 
-echo certmgr /add /c winspd-%SUFFIX%.cer /s /r localMachine root            > %TARGET%kminst.bat
-echo certmgr /add /c winspd-%SUFFIX%.cer /s /r localMachine TrustedPublisher>>%TARGET%kminst.bat
-echo devsetup-x64 add root\winspd winspd-%SUFFIX%.inf                       >>%TARGET%kminst.bat
+set Files=
+for %%f in (
+    %~dp0..\build\VStudio\build\%Config%\
+        winspd-%SUFFIX%.inf
+        winspd-%SUFFIX%.cat
+        winspd-%SUFFIX%.cer
+        winspd-%SUFFIX%.sys
+        winspd-%SUFFIX%.dll
+        devsetup-%SUFFIX%.exe
+        launcher-%SUFFIX%.exe
+        launchctl-%SUFFIX%.exe
+        shellex-%SUFFIX%.dll
+        scsitool-%SUFFIX%.exe
+        stgtest-%SUFFIX%.exe
+        rawdisk-%SUFFIX%.exe
+        winspd-tests-%SUFFIX%.exe
+        deploy-setup.bat
+    %~dp0..\tools\
+        scsicompliance.bat
+    !CERTMGR_DIR!
+        certmgr.exe
+    ) do (
+    set File=%%~f
+    if [!File:~-1!] == [\] (
+        set Dir=!File!
+    ) else (
+        if not [!Files!] == [] set Files=!Files!,
+        set Files=!Files!'!Dir!!File!'
+    )
+)
 
-echo sc create WinSpd.Launcher binPath=%%~dp0launcher-%SUFFIX%.exe          > %TARGET%uminst.bat
-echo sc start WinSpd.Launcher                                               >>%TARGET%uminst.bat
-echo reg add HKLM\Software\WinSpd\Services\rawdisk /v Executable /d %%~dp0rawdisk-%SUFFIX%.exe /reg:32 /f   >>%TARGET%uminst.bat
-echo reg add HKLM\Software\WinSpd\Services\rawdisk /v CommandLine /d "-f %%%%1" /reg:32 /f                  >>%TARGET%uminst.bat
-echo reg add HKLM\Software\WinSpd\Services\rawdisk /v Security /d "D:P(A;;RP;;;WD)" /reg:32 /f              >>%TARGET%uminst.bat
-echo reg add HKCR\.rawdisk /ve /d WinSpd.DiskFile /f                        >>%TARGET%uminst.bat
-echo reg add HKCR\.rawdisk\ShellNew /v NullFile /f                          >>%TARGET%uminst.bat
-echo regsvr32 %%~dp0shellex-%SUFFIX%.dll                                    >>%TARGET%uminst.bat
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%~dp0deploy.ps1' -Name '%Target%' -CheckpointName '%Chkpnt%' -Files !Files! -Destination '%Deploy%'"
