@@ -22,7 +22,7 @@ if not X%2==X set Chkpnt=%2
     echo reg add HKLM\Software\WinSpd\Services\rawdisk /v Security /d "D:P(A;;RP;;;WD)" /reg:32 /f
     echo reg add HKCR\.rawdisk /ve /d WinSpd.DiskFile /f
     echo reg add HKCR\.rawdisk\ShellNew /v NullFile /f
-    echo regsvr32 %%~dp0shellex-%SUFFIX%.dll
+    echo regsvr32 /s %%~dp0shellex-%SUFFIX%.dll
 ) >%~dp0..\build\VStudio\build\%Config%\deploy-setup.bat
 
 set RegKey="HKLM\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
