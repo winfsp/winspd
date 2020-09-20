@@ -505,10 +505,10 @@ static UCHAR SpdScsiReadCapacity(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
     else
     {
         /* READ CAPACITY (16) */
-        if (sizeof(READ_CAPACITY16_DATA) > DataTransferLength)
+        if (sizeof(READ_CAPACITY_DATA_EX) > DataTransferLength)
             return SRB_STATUS_DATA_OVERRUN;
 
-        PREAD_CAPACITY16_DATA ReadCapacityData = DataBuffer;
+        PREAD_CAPACITY_DATA_EX ReadCapacityData = DataBuffer;
         UINT64 U64;
         UINT32 U32;
         U64 = StorageUnit->StorageUnitParams.BlockCount - 1;
@@ -525,10 +525,18 @@ static UCHAR SpdScsiReadCapacity(PVOID DeviceExtension, SPD_STORAGE_UNIT *Storag
         ((PUINT8)&ReadCapacityData->BytesPerBlock)[1] = (U32 >> 16) & 0xff;
         ((PUINT8)&ReadCapacityData->BytesPerBlock)[2] = (U32 >> 8) & 0xff;
         ((PUINT8)&ReadCapacityData->BytesPerBlock)[3] = U32 & 0xff;
-        if (StorageUnit->StorageUnitParams.UnmapSupported)
-            ReadCapacityData->LBPME = 1;
 
-        SrbSetDataTransferLength(Srb, sizeof(READ_CAPACITY16_DATA));
+        ULONG DataLength;
+        if (sizeof(READ_CAPACITY16_DATA) <= DataTransferLength)
+        {
+            if (StorageUnit->StorageUnitParams.UnmapSupported)
+                ((PREAD_CAPACITY16_DATA)ReadCapacityData)->LBPME = 1;
+            DataLength = sizeof(READ_CAPACITY16_DATA);
+        }
+        else
+            DataLength = sizeof(READ_CAPACITY_DATA_EX);
+
+        SrbSetDataTransferLength(Srb, DataLength);
 
         return SRB_STATUS_SUCCESS;
     }
