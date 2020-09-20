@@ -1,6 +1,16 @@
 = Changelog
 
 
+v0.10::
+
+- [FIX] Support disks with `BlockCount > 0xffffffff` (and sizes greater than 2TiB). (See PR #5; thanks @CzBiX.)
+
+
+v0.9::
+
+First binary release.
+
+
 v0.1::
 
 Prior changes are not recorded in this Changelog.
