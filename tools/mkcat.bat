@@ -24,6 +24,12 @@ cd %BaseDir%
 if errorlevel 1 goto fail
 
 call %vcvarsall% x64
+set RegKey="HKLM\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
+set RegVal="KitsRoot10"
+reg query %RegKey% /v %RegVal% >nul 2>&1 || (echo Cannot find Windows Kit >&2 & exit /b 1)
+for /f "tokens=2,*" %%i in ('reg query %RegKey% /v %RegVal% ^| findstr %RegVal%') do (
+    set KitRoot="%%j"
+)
 
 set TempDir=%TMP%\mkcat-%RANDOM%
 if exist %TempDir% rmdir /s/q %TempDir%
@@ -36,7 +42,7 @@ if not "%1"=="" (
     goto copyloop
 )
 echo inf2cat /driver:%TempDir% /os:%OsVer% /uselocaltime
-inf2cat /driver:%TempDir% /os:%OsVer% /uselocaltime
+%KitRoot%\bin\x86\inf2cat /driver:%TempDir% /os:%OsVer% /uselocaltime
 if errorlevel 1 goto fail
 if not "%CertFile%"=="" (
     for /F "delims=" %%l in ('certutil -dump "%CertFile%" ^| findstr /I /C:"Cert Hash(sha1)"') do (
