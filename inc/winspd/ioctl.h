@@ -215,7 +215,8 @@ DWORD SpdIoctlTransact(HANDLE DeviceHandle,
     UINT32 Btl,
     SPD_IOCTL_TRANSACT_RSP *Rsp,
     SPD_IOCTL_TRANSACT_REQ *Req,
-    PVOID DataBuffer);
+    PVOID DataBuffer,
+    OVERLAPPED *Overlapped);
 DWORD SpdIoctlSetTransactProcessId(HANDLE DeviceHandle,
     UINT32 Btl,
     ULONG ProcessId);
