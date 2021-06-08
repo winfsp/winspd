@@ -278,23 +278,19 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
     UINT32 Btl,
     SPD_IOCTL_TRANSACT_RSP *Rsp,
     SPD_IOCTL_TRANSACT_REQ *Req,
-    PVOID DataBuffer)
+    PVOID DataBuffer,
+    OVERLAPPED *Overlapped)
 {
     STORAGE_UNIT *StorageUnit = Handle;
     LONG Connected;
     ULONG DataLength;
     TRANSACT_MSG *Msg = 0;
-    OVERLAPPED Overlapped;
     DWORD BytesTransferred;
     DWORD Error;
 
     if ((0 == Req && 0 == Rsp) ||
         (0 != Req && 0 == DataBuffer))
         return ERROR_INVALID_PARAMETER;
-
-    Error = SpdOverlappedInit(&Overlapped);
-    if (ERROR_SUCCESS != Error)
-        goto exit;
 
     AcquireSRWLockShared(&StorageUnitLock);
     Error = StorageUnit == StorageUnits[SPD_INDEX_FROM_BTL(Btl)] ?
@@ -316,16 +312,16 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
     {
         Error = WaitOverlappedResult(
             StorageUnit->Event,
-            ConnectNamedPipe(StorageUnit->Pipe, &Overlapped),
-            StorageUnit->Pipe, &Overlapped, &BytesTransferred);
+            ConnectNamedPipe(StorageUnit->Pipe, Overlapped),
+            StorageUnit->Pipe, Overlapped, &BytesTransferred);
         if (ERROR_SUCCESS == Error || ERROR_PIPE_CONNECTED == Error)
         {
             Error = WaitOverlappedResult(
                 StorageUnit->Event,
                 WriteFile(StorageUnit->Pipe,
                     &StorageUnit->StorageUnitParams, sizeof StorageUnit->StorageUnitParams,
-                    0, &Overlapped),
-                StorageUnit->Pipe, &Overlapped, &BytesTransferred);
+                    0, Overlapped),
+                StorageUnit->Pipe, Overlapped, &BytesTransferred);
             if (ERROR_SUCCESS == Error)
             {
                 StorageUnit->Connected = -StorageUnit->Connected;
@@ -354,8 +350,8 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
             memcpy(Msg + 1, DataBuffer, DataLength);
         Error = WaitOverlappedResult(
             StorageUnit->Event,
-            WriteFile(StorageUnit->Pipe, Msg, sizeof(TRANSACT_MSG) + DataLength, 0, &Overlapped),
-            StorageUnit->Pipe, &Overlapped, &BytesTransferred);
+            WriteFile(StorageUnit->Pipe, Msg, sizeof(TRANSACT_MSG) + DataLength, 0, Overlapped),
+            StorageUnit->Pipe, Overlapped, &BytesTransferred);
         if (ERROR_SUCCESS != Error)
             goto disconnect;
     }
@@ -365,8 +361,8 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
         Error = WaitOverlappedResult(
             StorageUnit->Event,
             ReadFile(StorageUnit->Pipe,
-                Msg, sizeof(TRANSACT_MSG) + StorageUnit->StorageUnitParams.MaxTransferLength, 0, &Overlapped),
-            StorageUnit->Pipe, &Overlapped, &BytesTransferred);
+                Msg, sizeof(TRANSACT_MSG) + StorageUnit->StorageUnitParams.MaxTransferLength, 0, Overlapped),
+            StorageUnit->Pipe, Overlapped, &BytesTransferred);
         if (ERROR_SUCCESS != Error)
             goto disconnect;
 
@@ -417,8 +413,6 @@ static DWORD SpdStorageUnitHandleTransactPipe(HANDLE Handle,
 
 exit:
     MemFree(Msg);
-
-    SpdOverlappedFini(&Overlapped);
 
     return Error;
 
@@ -544,12 +538,29 @@ DWORD SpdStorageUnitHandleTransact(HANDLE Handle,
     UINT32 Btl,
     SPD_IOCTL_TRANSACT_RSP *Rsp,
     SPD_IOCTL_TRANSACT_REQ *Req,
-    PVOID DataBuffer)
+    PVOID DataBuffer,
+    OVERLAPPED *Overlapped)
 {
+    OVERLAPPED TempOverlapped = { 0 };
+    DWORD Error;
+
+    if (Overlapped == NULL)
+    {
+        Error = SpdOverlappedInit(&TempOverlapped);
+        if (ERROR_SUCCESS != Error)
+            return Error;
+
+        Overlapped = &TempOverlapped;
+    }
+
     if (IsPipeHandle(Handle))
-        return SpdStorageUnitHandleTransactPipe(GetPipeHandle(Handle), Btl, Rsp, Req, DataBuffer);
+        Error = SpdStorageUnitHandleTransactPipe(GetPipeHandle(Handle), Btl, Rsp, Req, DataBuffer, Overlapped);
     else
-        return SpdIoctlTransact(GetDeviceHandle(Handle), Btl, Rsp, Req, DataBuffer);
+        Error = SpdIoctlTransact(GetDeviceHandle(Handle), Btl, Rsp, Req, DataBuffer, Overlapped);
+
+    SpdOverlappedFini(&TempOverlapped);
+
+    return Error;
 }
 
 DWORD SpdStorageUnitHandleShutdown(HANDLE Handle,

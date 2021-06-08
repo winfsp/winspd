@@ -412,7 +412,8 @@ DWORD SpdIoctlTransact(HANDLE DeviceHandle,
     UINT32 Btl,
     SPD_IOCTL_TRANSACT_RSP *Rsp,
     SPD_IOCTL_TRANSACT_REQ *Req,
-    PVOID DataBuffer)
+    PVOID DataBuffer,
+    OVERLAPPED *Overlapped)
 {
     SPD_IOCTL_TRANSACT_PARAMS Params;
     DWORD BytesTransferred;
@@ -452,13 +453,26 @@ DWORD SpdIoctlTransact(HANDLE DeviceHandle,
      * FILE_FLAG_OVERLAPPED flag we ensure that the unproductive serialization
      * does not happen.
      */
+     // DeviceIoControl() can hang if lpOverlapped is NULL
     if (!DeviceIoControl(DeviceHandle, IOCTL_MINIPORT_PROCESS_SERVICE_IRP,
         &Params, sizeof Params,
         &Params, sizeof Params,
-        &BytesTransferred, 0))
+        &BytesTransferred, Overlapped))
     {
         Error = GetLastError();
-        goto exit;
+        if (ERROR_IO_PENDING == Error)
+        {
+            if (!GetOverlappedResult(DeviceHandle, Overlapped,
+                &BytesTransferred, TRUE))
+            {
+                Error = GetLastError();
+                goto exit;
+            }
+        }
+        else
+        {
+            goto exit;
+        }
     }
 
     if (0 != Req)

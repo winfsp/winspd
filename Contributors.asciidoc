@@ -56,4 +56,5 @@ CONTRIBUTOR LIST
 |===
 |Bill Zissimopoulos                     |billziss at navimatics.com
 |VRan Liu                               |gliuwr at gmail.com
+|Aleks Margarian                        |aleks.margarian1 at gmail.com
 |===

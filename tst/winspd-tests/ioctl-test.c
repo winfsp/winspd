@@ -20,6 +20,7 @@
  */
 
 #include <winspd/winspd.h>
+#include <shared/minimal.h>
 #include <tlib/testsuite.h>
 #include <process.h>
 #include <strsafe.h>
@@ -342,6 +343,7 @@ static void ioctl_transact_read_dotest(ULONG MaxBlockCount)
     SPD_IOCTL_TRANSACT_REQ Req;
     SPD_IOCTL_TRANSACT_RSP Rsp;
     PVOID DataBuffer = 0;
+    OVERLAPPED Overlapped;
     HANDLE DeviceHandle;
     UINT32 Btl;
     DWORD Error;
@@ -351,6 +353,9 @@ static void ioctl_transact_read_dotest(ULONG MaxBlockCount)
 
     DataBuffer = malloc(MaxBlockCount * 512);
     ASSERT(0 != DataBuffer);
+
+    Error = SpdOverlappedInit(&Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
 
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
     ASSERT(ERROR_SUCCESS == Error);
@@ -371,7 +376,9 @@ static void ioctl_transact_read_dotest(ULONG MaxBlockCount)
     ASSERT(0 != Thread);
 
     memset(DataBuffer, 0, sizeof DataBuffer);
-    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer, &Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
+    Error = ResetEvent(Overlapped.hEvent);
     ASSERT(ERROR_SUCCESS == Error);
 
     ASSERT(0 != Req.Hint);
@@ -387,13 +394,17 @@ static void ioctl_transact_read_dotest(ULONG MaxBlockCount)
     Rsp.Hint = Req.Hint;
     Rsp.Kind = Req.Kind;
 
-    Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer, &Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
+    Error = ResetEvent(Overlapped.hEvent);
     ASSERT(ERROR_SUCCESS == Error);
 
     if (5 > MaxBlockCount)
     {
         memset(DataBuffer, 0, sizeof DataBuffer);
-        Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer);
+        Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer, &Overlapped);
+        ASSERT(ERROR_SUCCESS == Error);
+        Error = ResetEvent(Overlapped.hEvent);
         ASSERT(ERROR_SUCCESS == Error);
 
         ASSERT(0 != Req.Hint);
@@ -409,7 +420,9 @@ static void ioctl_transact_read_dotest(ULONG MaxBlockCount)
         Rsp.Hint = Req.Hint;
         Rsp.Kind = Req.Kind;
 
-        Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer);
+        Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer, &Overlapped);
+        ASSERT(ERROR_SUCCESS == Error);
+        Error = ResetEvent(Overlapped.hEvent);
         ASSERT(ERROR_SUCCESS == Error);
     }
 
@@ -418,6 +431,8 @@ static void ioctl_transact_read_dotest(ULONG MaxBlockCount)
 
     Success = CloseHandle(DeviceHandle);
     ASSERT(Success);
+
+    SpdOverlappedFini(&Overlapped);
 
     free(DataBuffer);
 
@@ -496,6 +511,7 @@ static void ioctl_transact_write_dotest(ULONG MaxBlockCount)
     SPD_IOCTL_TRANSACT_REQ Req;
     SPD_IOCTL_TRANSACT_RSP Rsp;
     PVOID DataBuffer = 0;
+    OVERLAPPED Overlapped;
     HANDLE DeviceHandle;
     UINT32 Btl;
     DWORD Error;
@@ -505,6 +521,9 @@ static void ioctl_transact_write_dotest(ULONG MaxBlockCount)
 
     DataBuffer = malloc(MaxBlockCount * 512);
     ASSERT(0 != DataBuffer);
+
+    Error = SpdOverlappedInit(&Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
 
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
     ASSERT(ERROR_SUCCESS == Error);
@@ -525,7 +544,9 @@ static void ioctl_transact_write_dotest(ULONG MaxBlockCount)
     ASSERT(0 != Thread);
 
     memset(DataBuffer, 0, sizeof DataBuffer);
-    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer, &Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
+    Error = ResetEvent(Overlapped.hEvent);
     ASSERT(ERROR_SUCCESS == Error);
 
     ASSERT(0 != Req.Hint);
@@ -541,13 +562,17 @@ static void ioctl_transact_write_dotest(ULONG MaxBlockCount)
     Rsp.Hint = Req.Hint;
     Rsp.Kind = Req.Kind;
 
-    Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer, &Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
+    Error = ResetEvent(Overlapped.hEvent);
     ASSERT(ERROR_SUCCESS == Error);
 
     if (5 > MaxBlockCount)
     {
         memset(DataBuffer, 0, sizeof DataBuffer);
-        Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer);
+        Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer, &Overlapped);
+        ASSERT(ERROR_SUCCESS == Error);
+        Error = ResetEvent(Overlapped.hEvent);
         ASSERT(ERROR_SUCCESS == Error);
 
         ASSERT(0 != Req.Hint);
@@ -563,7 +588,9 @@ static void ioctl_transact_write_dotest(ULONG MaxBlockCount)
         Rsp.Hint = Req.Hint;
         Rsp.Kind = Req.Kind;
 
-        Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer);
+        Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer, &Overlapped);
+        ASSERT(ERROR_SUCCESS == Error);
+        Error = ResetEvent(Overlapped.hEvent);
         ASSERT(ERROR_SUCCESS == Error);
     }
 
@@ -572,6 +599,8 @@ static void ioctl_transact_write_dotest(ULONG MaxBlockCount)
 
     Success = CloseHandle(DeviceHandle);
     ASSERT(Success);
+
+    SpdOverlappedFini(&Overlapped);
 
     free(DataBuffer);
 
@@ -647,6 +676,7 @@ static void ioctl_transact_flush_test(void)
     SPD_IOCTL_TRANSACT_REQ Req;
     SPD_IOCTL_TRANSACT_RSP Rsp;
     PVOID DataBuffer = 0;
+    OVERLAPPED Overlapped;
     HANDLE DeviceHandle;
     UINT32 Btl;
     DWORD Error;
@@ -656,6 +686,9 @@ static void ioctl_transact_flush_test(void)
 
     DataBuffer = malloc(5 * 512);
     ASSERT(0 != DataBuffer);
+
+    Error = SpdOverlappedInit(&Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
 
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
     ASSERT(ERROR_SUCCESS == Error);
@@ -677,7 +710,9 @@ static void ioctl_transact_flush_test(void)
     ASSERT(0 != Thread);
 
     memset(DataBuffer, 0, sizeof DataBuffer);
-    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer, &Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
+    Error = ResetEvent(Overlapped.hEvent);
     ASSERT(ERROR_SUCCESS == Error);
 
     ASSERT(0 != Req.Hint);
@@ -689,7 +724,9 @@ static void ioctl_transact_flush_test(void)
     Rsp.Hint = Req.Hint;
     Rsp.Kind = Req.Kind;
 
-    Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer, &Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
+    Error = ResetEvent(Overlapped.hEvent);
     ASSERT(ERROR_SUCCESS == Error);
 
     Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
@@ -697,6 +734,8 @@ static void ioctl_transact_flush_test(void)
 
     Success = CloseHandle(DeviceHandle);
     ASSERT(Success);
+
+    SpdOverlappedFini(&Overlapped);
 
     free(DataBuffer);
 
@@ -776,6 +815,7 @@ static void ioctl_transact_unmap_test(void)
     SPD_IOCTL_TRANSACT_REQ Req;
     SPD_IOCTL_TRANSACT_RSP Rsp;
     PVOID DataBuffer = 0;
+    OVERLAPPED Overlapped;
     HANDLE DeviceHandle;
     UINT32 Btl;
     DWORD Error;
@@ -785,6 +825,9 @@ static void ioctl_transact_unmap_test(void)
 
     DataBuffer = malloc(5 * 512);
     ASSERT(0 != DataBuffer);
+
+    Error = SpdOverlappedInit(&Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
 
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
     ASSERT(ERROR_SUCCESS == Error);
@@ -806,7 +849,9 @@ static void ioctl_transact_unmap_test(void)
     ASSERT(0 != Thread);
 
     memset(DataBuffer, 0, sizeof DataBuffer);
-    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer, &Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
+    Error = ResetEvent(Overlapped.hEvent);
     ASSERT(ERROR_SUCCESS == Error);
 
     ASSERT(0 != Req.Hint);
@@ -827,7 +872,9 @@ static void ioctl_transact_unmap_test(void)
     Rsp.Hint = Req.Hint;
     Rsp.Kind = Req.Kind;
 
-    Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer, &Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
+    Error = ResetEvent(Overlapped.hEvent);
     ASSERT(ERROR_SUCCESS == Error);
 
     Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
@@ -835,6 +882,8 @@ static void ioctl_transact_unmap_test(void)
 
     Success = CloseHandle(DeviceHandle);
     ASSERT(Success);
+
+    SpdOverlappedFini(&Overlapped);
 
     free(DataBuffer);
 
@@ -905,6 +954,7 @@ static void ioctl_transact_error_test(void)
     SPD_IOCTL_TRANSACT_REQ Req;
     SPD_IOCTL_TRANSACT_RSP Rsp;
     PVOID DataBuffer = 0;
+    OVERLAPPED Overlapped;
     HANDLE DeviceHandle;
     UINT32 Btl;
     DWORD Error;
@@ -914,6 +964,9 @@ static void ioctl_transact_error_test(void)
 
     DataBuffer = malloc(5 * 512);
     ASSERT(0 != DataBuffer);
+
+    Error = SpdOverlappedInit(&Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
 
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
     ASSERT(ERROR_SUCCESS == Error);
@@ -933,7 +986,9 @@ static void ioctl_transact_error_test(void)
     Thread = (HANDLE)_beginthreadex(0, 0, ioctl_transact_error_test_thread, (PVOID)(UINT_PTR)Btl, 0, 0);
     ASSERT(0 != Thread);
 
-    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer, &Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
+    Error = ResetEvent(Overlapped.hEvent);
     ASSERT(ERROR_SUCCESS == Error);
 
     ASSERT(0 != Req.Hint);
@@ -953,7 +1008,9 @@ static void ioctl_transact_error_test(void)
     Rsp.Status.Information = 11;
     Rsp.Status.InformationValid = 1;
 
-    Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer, &Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
+    Error = ResetEvent(Overlapped.hEvent);
     ASSERT(ERROR_SUCCESS == Error);
 
     Error = SpdIoctlUnprovision(DeviceHandle, &StorageUnitParams.Guid);
@@ -961,6 +1018,8 @@ static void ioctl_transact_error_test(void)
 
     Success = CloseHandle(DeviceHandle);
     ASSERT(Success);
+
+    SpdOverlappedFini(&Overlapped);
 
     free(DataBuffer);
 
@@ -1014,6 +1073,7 @@ static void ioctl_transact_cancel_test(void)
     SPD_IOCTL_STORAGE_UNIT_PARAMS StorageUnitParams;
     SPD_IOCTL_TRANSACT_REQ Req;
     PVOID DataBuffer = 0;
+    OVERLAPPED Overlapped;
     HANDLE DeviceHandle;
     UINT32 Btl;
     DWORD Error;
@@ -1023,6 +1083,9 @@ static void ioctl_transact_cancel_test(void)
 
     DataBuffer = malloc(5 * 512);
     ASSERT(0 != DataBuffer);
+
+    Error = SpdOverlappedInit(&Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
 
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
     ASSERT(ERROR_SUCCESS == Error);
@@ -1042,7 +1105,9 @@ static void ioctl_transact_cancel_test(void)
     Thread = (HANDLE)_beginthreadex(0, 0, ioctl_transact_cancel_test_thread, (PVOID)(UINT_PTR)Btl, 0, 0);
     ASSERT(0 != Thread);
 
-    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer, &Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
+    Error = ResetEvent(Overlapped.hEvent);
     ASSERT(ERROR_SUCCESS == Error);
 
     ASSERT(0 != Req.Hint);
@@ -1057,6 +1122,8 @@ static void ioctl_transact_cancel_test(void)
 
     Success = CloseHandle(DeviceHandle);
     ASSERT(Success);
+
+    SpdOverlappedFini(&Overlapped);
 
     free(DataBuffer);
 
@@ -1161,24 +1228,32 @@ static void ioctl_process_access_test_DO_NOT_RUN_FROM_COMMAND_LINE(void)
     HANDLE DeviceHandle;
     SPD_IOCTL_TRANSACT_REQ Req;
     PVOID DataBuffer = 0;
+    OVERLAPPED Overlapped;
     DWORD Error;
     BOOL Success;
 
     DataBuffer = malloc(5 * 512);
     ASSERT(0 != DataBuffer);
 
+    Error = SpdOverlappedInit(&Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
+
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
     ASSERT(ERROR_SUCCESS == Error);
 
     memset(DataBuffer, 0, sizeof DataBuffer);
-    Error = SpdIoctlTransact(DeviceHandle, 0, 0, &Req, DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, 0, 0, &Req, DataBuffer, &Overlapped);
     ASSERT(ERROR_ACCESS_DENIED == Error);
+    Error = ResetEvent(Overlapped.hEvent);
+    ASSERT(ERROR_SUCCESS == Error);
 
     Error = SpdIoctlUnprovision(DeviceHandle, &TestGuid);
     ASSERT(ERROR_ACCESS_DENIED == Error);
 
     Success = CloseHandle(DeviceHandle);
     ASSERT(Success);
+
+    SpdOverlappedFini(&Overlapped);
 
     free(DataBuffer);
 }
@@ -1261,6 +1336,7 @@ static void ioctl_process_transact_test_DO_NOT_RUN_FROM_COMMAND_LINE(void)
     SPD_IOCTL_TRANSACT_REQ Req;
     SPD_IOCTL_TRANSACT_RSP Rsp;
     PVOID DataBuffer = 0;
+    OVERLAPPED Overlapped;
     HANDLE DeviceHandle;
     UINT32 Btl;
     DWORD Error;
@@ -1271,6 +1347,9 @@ static void ioctl_process_transact_test_DO_NOT_RUN_FROM_COMMAND_LINE(void)
     DataBuffer = malloc(5 * 512);
     ASSERT(0 != DataBuffer);
 
+    Error = SpdOverlappedInit(&Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
+
     Error = SpdIoctlOpenDevice(L"" SPD_IOCTL_HARDWARE_ID, &DeviceHandle);
     ASSERT(ERROR_SUCCESS == Error);
 
@@ -1280,7 +1359,9 @@ static void ioctl_process_transact_test_DO_NOT_RUN_FROM_COMMAND_LINE(void)
     ASSERT(0 != Thread);
 
     memset(DataBuffer, 0, sizeof DataBuffer);
-    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, Btl, 0, &Req, DataBuffer, &Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
+    Error = ResetEvent(Overlapped.hEvent);
     ASSERT(ERROR_SUCCESS == Error);
 
     ASSERT(0 != Req.Hint);
@@ -1296,11 +1377,15 @@ static void ioctl_process_transact_test_DO_NOT_RUN_FROM_COMMAND_LINE(void)
     Rsp.Hint = Req.Hint;
     Rsp.Kind = Req.Kind;
 
-    Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer);
+    Error = SpdIoctlTransact(DeviceHandle, Btl, &Rsp, 0, DataBuffer, &Overlapped);
+    ASSERT(ERROR_SUCCESS == Error);
+    Error = ResetEvent(Overlapped.hEvent);
     ASSERT(ERROR_SUCCESS == Error);
 
     Success = CloseHandle(DeviceHandle);
     ASSERT(Success);
+
+    SpdOverlappedFini(&Overlapped);
 
     free(DataBuffer);
 

@@ -28,7 +28,8 @@ DWORD SpdStorageUnitHandleTransact(HANDLE Handle,
     UINT32 Btl,
     SPD_IOCTL_TRANSACT_RSP *Rsp,
     SPD_IOCTL_TRANSACT_REQ *Req,
-    PVOID DataBuffer);
+    PVOID DataBuffer,
+    OVERLAPPED *Overlapped);
 DWORD SpdStorageUnitHandleShutdown(HANDLE Handle,
     const GUID *Guid);
 DWORD SpdStorageUnitHandleClose(HANDLE Handle);
@@ -135,6 +136,7 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
     SPD_IOCTL_TRANSACT_RSP ResponseBuf, *Response;
     SPD_STORAGE_UNIT_OPERATION_CONTEXT OperationContext;
     PVOID DataBuffer = 0;
+    OVERLAPPED Overlapped;
     HANDLE DispatcherThread = 0;
     BOOLEAN Complete;
     DWORD Error;
@@ -145,6 +147,10 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
         Error = ERROR_NO_SYSTEM_RESOURCES;
         goto exit;
     }
+
+    Error = SpdOverlappedInit(&Overlapped);
+    if (ERROR_SUCCESS != Error)
+        goto exit;
 
     OperationContext.Request = &RequestBuf;
     OperationContext.Response = &ResponseBuf;
@@ -165,9 +171,15 @@ static DWORD WINAPI SpdStorageUnitDispatcherThread(PVOID StorageUnit0)
     Response = 0;
     for (;;)
     {
+        if (!ResetEvent(Overlapped.hEvent))
+        {
+            Error = GetLastError();
+            goto exit;
+        }
+
         memset(Request, 0, sizeof *Request);
         Error = SpdStorageUnitHandleTransact(StorageUnit->Handle,
-            StorageUnit->Btl, Response, Request, DataBuffer);
+            StorageUnit->Btl, Response, Request, DataBuffer, &Overlapped);
         if (ERROR_SUCCESS != Error)
             goto exit;
 
@@ -277,6 +289,8 @@ exit:
 
     TlsSetValue(SpdStorageUnitTlsKey, 0);
 
+    SpdOverlappedFini(&Overlapped);
+
     StorageUnit->BufferFree(DataBuffer);
 
     return Error;
@@ -336,7 +350,7 @@ VOID SpdStorageUnitSendResponse(SPD_STORAGE_UNIT *StorageUnit,
     }
 
     Error = SpdStorageUnitHandleTransact(StorageUnit->Handle,
-        StorageUnit->Btl, Response, 0, DataBuffer);
+        StorageUnit->Btl, Response, 0, DataBuffer, NULL);
     if (ERROR_SUCCESS != Error)
     {
         SpdStorageUnitSetDispatcherError(StorageUnit, Error);
